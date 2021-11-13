@@ -25,8 +25,7 @@ def extract_leading_text(lines):
     return leading_text
 
 
-def extract_similar_to_pattern(file, pattern_vec, text_to_tokens, tokens_to_vector):
-    range_len = 20
+def extract_similar_to_pattern(file, pattern_vec, text_to_tokens, tokens_to_vector, window_size):
     fp = os.path.abspath(file)
     text = parsers.parse(fp)
     lines = text.split('\n')
@@ -34,17 +33,17 @@ def extract_similar_to_pattern(file, pattern_vec, text_to_tokens, tokens_to_vect
     max_subrange = None
     max_subtext = None
     len_lines = len(lines)
-    for pos in range(0, len_lines, range_len // 2):
-        end_pos = min(pos + range_len, len_lines)
+    for pos in range(0, len_lines, window_size // 2):
+        end_pos = min(pos + window_size, len_lines)
         subtext = '\n'.join(lines[pos : end_pos])
         tokens = text_to_tokens(subtext)
         vec = tokens_to_vector(tokens)
         ip = np.inner(vec, pattern_vec)
         if ip >= max_ip:
             max_ip = ip
-            max_subrange = pos, pos + range_len
+            max_subrange = pos, end_pos
             max_subtext = subtext
-    return max_ip, "%s:%d-%d" % (file, max_subrange[0], max_subrange[1]), max_subtext
+    return max_ip, "%s:%d-%d" % (file, max_subrange[0] + 1, max_subrange[1] + 1), max_subtext
 
 
 __doc__ = """Doc2Vec Grep.
@@ -54,7 +53,9 @@ Usage:
 
 Option:
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
+  -w NUM                        Line window size [default: 20].
   -t NUM                        Show top NUM files [default: 20]. Specify `0` to show all files.
+  --lang=LANG, -l LANG          Specify model language. Either `ja` or `en`.
 """
 
 
@@ -64,6 +65,17 @@ def main():
     pattern = args['<pattern>']
     target_files = args['<file>']
     top_n = int(args['-t'])
+    window_size = int(args['-w'])
+
+    l = os.environ.get('LANG')
+    if l == 'ja_JP.UTF-8':
+        language = 'ja'
+    elif l == 'en_US.UTF-8':
+        language = 'en'
+    else:
+        language = None
+    if args['--lang']:
+        language = args['--lang']
 
     target_files_expand = []
     for f in target_files:
@@ -87,7 +99,7 @@ def main():
     if not pattern:
         sys.exit("Error: pattern string is empty.")
     
-    text_to_tokens, tokens_to_vector = model_loaders.get_funcs()
+    text_to_tokens, tokens_to_vector = model_loaders.get_funcs(language)
 
     pattern_vec = tokens_to_vector(text_to_tokens(pattern))
 
@@ -95,7 +107,8 @@ def main():
     for tf in target_files:
         ip, label, subtext = extract_similar_to_pattern(
             tf, pattern_vec, 
-            text_to_tokens, tokens_to_vector)
+            text_to_tokens, tokens_to_vector,
+            window_size)
         heapq.heappush(tf_data, (ip, label, subtext))
         if len(tf_data) > top_n:
             _smallest = heapq.heappop(tf_data)
