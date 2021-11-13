@@ -1,6 +1,10 @@
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 
+def remove_code_from_post(soup):
+    for script in soup(['code']):
+        script.decompose()
+
 # ref: https://meta.stackexchange.com/questions/2677/database-schema-documentation-for-the-public-data-dump-and-sede
 # PostTypeId (listed in the PostTypes table)
 # 1 = Question
@@ -43,7 +47,9 @@ for c in root:
                 tags_lines = []
             text = c.attrib['Body']
             soup = BeautifulSoup(text, 'html.parser')
+            remove_code_from_post(soup)
             texts = soup.find_all(text=True)
+
             if texts and not texts[-1].endswith('\n'):
                 texts[-1] = texts[-1] + '\n'
 
@@ -51,6 +57,7 @@ for c in root:
         elif post_type_id == '2' and post_id in post_data:
             text = c.attrib['Body']
             soup = BeautifulSoup(text, 'html.parser')
+            remove_code_from_post(soup)
             texts = soup.find_all(text=True)
 
             pdi = post_data[post_id]

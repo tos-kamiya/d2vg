@@ -17,3 +17,4 @@ python3 d2vg.py "図形を認識する" 'sample-texts/ja-stackoverflow/ja.stacko
 cd ja.stackoverflow.com
 python3 ../expand_ja_stackoverflow_com_posts.py
 
+どうしてもソースコードが検索結果に出てくるので、stackoverflowのデータについては「code」というタグを参照に、ソースコードを排除したテキストを作った。
