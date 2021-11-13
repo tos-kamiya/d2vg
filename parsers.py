@@ -2,16 +2,25 @@ from io import StringIO
 import re
 
 import bs4
+
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 
+import docx2txt
+
 
 def parse(file_name):
     text = _parse_i(file_name)
     if text is not None:
-        text = re.sub(r'[\x00-\x09\x0b-\x1f\x7f-\x9f]', '', text)
+        lines = text.split('\n')
+        r = []
+        for L in lines:
+            L = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', L)
+            L = re.sub(r'\s+', ' ', L)
+            r.append(L)
+        text = '\n'.join(r)
     return text
 
 
@@ -24,6 +33,8 @@ def _parse_i(file_name):
         return html_parse(file_name)
     elif extension == '.pdf':
         return pdf_parse(file_name)
+    elif extension == '.docx':
+        return docx_parse(file_name)
     else:
         with open(file_name) as inp:
             text = inp.read()
@@ -52,3 +63,7 @@ def html_parse(file_name):
             script.decompose()
         texts = soup.find_all(text=True)
     return '\n'.join(texts)
+
+
+def docx_parse(file_name):
+    return docx2txt.process(file_name)

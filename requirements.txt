@@ -5,3 +5,4 @@ mecab
 # python-multipart
 pdfminer.six
 chardet
+docx2txt
