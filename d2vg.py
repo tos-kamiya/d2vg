@@ -18,7 +18,7 @@ def extract_leading_text(lines):
         return ""
     leading_text = lines[0]
     for L in lines[1:]:
-        leading_text += "|" + L
+        leading_text += "|" + L.strip()
         if len(leading_text) >= upper_limit:
             leading_text = leading_text[:upper_limit]
             return leading_text
@@ -105,7 +105,7 @@ def main():
         if ip < 0:
             break  # for i
         leading_text = extract_leading_text(subtext.split('\n'))
-        print('%g %s %s' % (ip, label, leading_text))
+        print('%g\t%s\t%s' % (ip, label, leading_text))
         if i >= top_n > 0:
             break  # for i
 
