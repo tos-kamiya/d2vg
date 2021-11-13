@@ -1,6 +1,6 @@
 # d2vg
 
-d2vg, A Doc2Vec grep.
+d2vg, a Doc2Vec grep.
 
 Use Doc2Vec models to search for files that contain similar parts to the phrase in the query.
 
@@ -42,7 +42,7 @@ Mecab cannot be fully set up with pip3 and/or apt alone, so please install it ma
 ```sh
 sudo apt install mecab libmecab-dev mecab-ipadic-utf8
 git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git
-cd cd mecab-ipadic-neologd
+cd mecab-ipadic-neologd
 ./bin/install-mecab-ipadic-neologd -n -a
 sudo cp /etc/mecabrc /usr/local/etc/
 ```
