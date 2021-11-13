@@ -1,0 +1,5 @@
+gensim==3.8
+mecab
+fastapi
+uvicorn[standard]
+python-multipart
