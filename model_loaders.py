@@ -24,7 +24,7 @@ def get_funcs(lang):
             tokens = prune_tokens(tokens)
             return tokens
     elif lang in ['en_US', 'en']:
-        model = Doc2Vec.load(os.path.join(_script_dir, "enwiki_dbow/doc2vec.bin"))  # https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia/
+        model = Doc2Vec.load(os.path.join(_script_dir, "enwiki_dbow/doc2vec.bin"))  # https://github.com/jhlau/doc2vec
 
         def text_to_tokens(text):
             tokens = list(tokenize(text))
