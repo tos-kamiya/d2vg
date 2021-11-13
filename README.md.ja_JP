@@ -1,0 +1,67 @@
+# d2vg
+
+d2vg, A Doc2Vec grep.
+
+Doc2Vecモデルを使って、クエリのフレーズに似た部分を含むファイルを検索します。
+
+* テキストファイル（.txt）、PDFファイル（.pdf）、MS Wordファイル（.docx）からの検索に対応
+* 対応言語は日本語、英語（Doc2Vecのモデルは言語に依存するため）
+
+## インストール
+
+注意! インストールはpip3では自動化されません。d2vg.pyなどのファイルを格納するディレクトリと、Doc2Vecモデルを配置するディレクトリを手動で用意する必要があります。
+
+### 英語版Doc2Vecモデル
+
+英語版Doc2Vecモデル
+
+英語版のDoc2Vecモデルとしては、 https://github.com/jhlau/doc2vec から `enwiki_dbow.tgz` をダウンロードしてください (1.5GiB)。
+このアーカイブを、`d2gv.py` が格納されているディレクトリのサブディレクトリ `enwiki_dbow` に展開してください。
+
+```
+./enwiki_dbow
+├── doc2vec.bin
+├── doc2vec.bin.syn0.npy
+└── doc2vec.bin.syn1neg.npy
+```
+
+### 日本語版 Doc2Vec モデル
+
+日本語のDoc2Vecモデルとしては、https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia から `jawiki.doc2vec.dbow300d.tar.bz2` をダウンロードしてください(5.2GiB)。
+このアーカイブは、`d2gv.py` が格納されているディレクトリのサブディレクトリ `jawiki.doc2vec.dbow300d` に展開してください。
+
+```
+./jawiki.doc2vec.dbow300d
+├── jawiki.doc2vec.dbow300d.model
+├── jawiki.doc2vec.dbow300d.model.docvecs.vectors_docs.npy
+├── jawiki.doc2vec.dbow300d.model.trainables.syn1neg.npy
+└── jawiki.doc2vec.dbow300d.model.wv.vectors.npy
+```
+
+Mecabをインストールします（Ubuntuの場合）。
+Mecabはpip3やaptだけでは十分に設定できないので、手動でインストールしてください。
+
+```sh
+sudo apt install mecab libmecab-dev mecab-ipadic-utf8
+git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git
+cd cd mecab-ipadic-neologd
+./bin/install-mecab-ipadic-neologd -n -a
+sudo cp /etc/mecabrc /usr/local/etc/
+```
+
+```
+pip3 install mecab
+```
+
+## 利用法
+
+```sh
+python3 d2vg.py -v <クエリとなるフレーズ> <ファイル>...
+```
+
+## ライセンス
+
+d2vgは [BSD-2](https://opensource.org/licenses/BSD-2-Clause) ライセンスで配布されます。
+
+当然のことながら、上記のDoc2Vecモデルについては、販売店のライセンスに従う必要があります。
+素晴らしい言語モデルを配されている両氏に感謝いたします。
