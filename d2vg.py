@@ -102,6 +102,8 @@ def main():
     
     tf_data = heapq.nlargest(top_n, tf_data)
     for i, (ip, label, subtext) in enumerate(tf_data):
+        if ip < 0:
+            break  # for i
         leading_text = extract_leading_text(subtext.split('\n'))
         print('%g %s %s' % (ip, label, leading_text))
         if i >= top_n > 0:

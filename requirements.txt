@@ -3,3 +3,5 @@ mecab
 # fastapi
 # uvicorn[standard]
 # python-multipart
+pdfminer.six
+chardet
