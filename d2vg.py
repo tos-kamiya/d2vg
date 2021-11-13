@@ -56,6 +56,7 @@ Option:
   -w NUM                        Line window size [default: 20].
   -t NUM                        Show top NUM files [default: 20]. Specify `0` to show all files.
   --lang=LANG, -l LANG          Specify model language. Either `ja` or `en`.
+  --verbose, -v                 Verbose.
 """
 
 
@@ -66,6 +67,7 @@ def main():
     target_files = args['<file>']
     top_n = int(args['-t'])
     window_size = int(args['-w'])
+    verbose = args['--verbose']
 
     l = os.environ.get('LANG')
     if l == 'ja_JP.UTF-8':
@@ -103,8 +105,13 @@ def main():
 
     pattern_vec = tokens_to_vector(text_to_tokens(pattern))
 
+    len_target_files = len(target_files)
     tf_data = []
-    for tf in target_files:
+    for i, tf in enumerate(target_files):
+        if verbose:
+            max_tf = heapq.nlargest(1, tf_data)
+            if max_tf:
+                print("\x1b[1K\x1b[1G" + "[%d/%d] Provisional top-1: %s" % (i + 1, len_target_files, max_tf[0][1]), end='')
         ip, label, subtext = extract_similar_to_pattern(
             tf, pattern_vec, 
             text_to_tokens, tokens_to_vector,
@@ -112,7 +119,9 @@ def main():
         heapq.heappush(tf_data, (ip, label, subtext))
         if len(tf_data) > top_n:
             _smallest = heapq.heappop(tf_data)
-    
+    if verbose:
+        print("\x1b[1K\x1b[1G")
+
     tf_data = heapq.nlargest(top_n, tf_data)
     for i, (ip, label, subtext) in enumerate(tf_data):
         if ip < 0:
