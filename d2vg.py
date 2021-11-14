@@ -25,14 +25,15 @@ def extract_leading_text(lines):
     return leading_text
 
 
-def extract_similar_to_pattern(file, pattern_vec, text_to_tokens, tokens_to_vector, window_size):
-    fp = os.path.abspath(file)
+def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to_vector, window_size):
+    fp = os.path.abspath(file_name)
     text = parsers.parse(fp)
     lines = text.split('\n')
     max_ip = -sys.float_info.max
     max_subrange = None
     max_subtext = None
     len_lines = len(lines)
+    found_any = False
     for pos in range(0, len_lines, window_size // 2):
         end_pos = min(pos + window_size, len_lines)
         subtext = '\n'.join(lines[pos : end_pos])
@@ -40,10 +41,14 @@ def extract_similar_to_pattern(file, pattern_vec, text_to_tokens, tokens_to_vect
         vec = tokens_to_vector(tokens)
         ip = np.inner(vec, pattern_vec)
         if ip >= max_ip:
+            found_any = True
             max_ip = ip
             max_subrange = pos, end_pos
             max_subtext = subtext
-    return max_ip, "%s:%d-%d" % (file, max_subrange[0] + 1, max_subrange[1] + 1), max_subtext
+    if found_any:
+        return max_ip, "%s:%d-%d" % (file_name, max_subrange[0] + 1, max_subrange[1] + 1), max_subtext
+    else:
+        return None
 
 
 __doc__ = """Doc2Vec Grep.
@@ -52,10 +57,10 @@ Usage:
   d2vg [options] <pattern> <file>...
 
 Option:
+  --lang=LANG, -l LANG          Model language. Either `ja` or `en`.
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
-  -w NUM                        Line window size [default: 20].
-  -t NUM                        Show top NUM files [default: 20]. Specify `0` to show all files.
-  --lang=LANG, -l LANG          Specify model language. Either `ja` or `en`.
+  --window=NUM, -w NUM          Line window size [default: 20].
+  --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
   --verbose, -v                 Verbose.
 """
 
@@ -65,8 +70,8 @@ def main():
 
     pattern = args['<pattern>']
     target_files = args['<file>']
-    top_n = int(args['-t'])
-    window_size = int(args['-w'])
+    top_n = int(args['--topn'])
+    window_size = int(args['--window'])
     verbose = args['--verbose']
 
     l = os.environ.get('LANG')
@@ -112,13 +117,15 @@ def main():
             max_tf = heapq.nlargest(1, tf_data)
             if max_tf:
                 print("\x1b[1K\x1b[1G" + "[%d/%d] Provisional top-1: %s" % (i + 1, len_target_files, max_tf[0][1]), end='')
-        ip, label, subtext = extract_similar_to_pattern(
+        r = extract_similar_to_pattern(
             tf, pattern_vec, 
             text_to_tokens, tokens_to_vector,
             window_size)
-        heapq.heappush(tf_data, (ip, label, subtext))
-        if len(tf_data) > top_n:
-            _smallest = heapq.heappop(tf_data)
+        if r is not None:
+            ip, label, subtext = r
+            heapq.heappush(tf_data, (ip, label, subtext))
+            if len(tf_data) > top_n:
+                _smallest = heapq.heappop(tf_data)
     if verbose:
         print("\x1b[1K\x1b[1G")
 

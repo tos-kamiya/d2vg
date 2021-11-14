@@ -51,6 +51,7 @@ def pdf_parse(file_name):
                 for page in PDFPage.get_pages(input):
                     interpreter.process_page(page)
         text = outp.getvalue()
+        text = re.sub(r'(cid:\d+)', '', text)  # remove unknown glyphs
 
     return text
 
