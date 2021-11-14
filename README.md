@@ -9,11 +9,22 @@ Use Doc2Vec models to search for files that contain similar parts to the phrase 
 
 ## Installation
 
-Caution! Installation is not automated by pip3. You need to manually prepare a directory to store d2vg.py and other files, and place the Doc2Vec models.
+Note! Installation is not automated in pip3.
+In addition to installing the dependencies with pip3, you need to manually prepare a directory to store files such as d2vg.py and place the Doc2Vec models.
 
-### English Doc2Vec model
+The following steps have been checked on Ubuntu 20.04.
 
-For a English Doc2Vec model, download `enwiki_dbow.tgz` from https://github.com/jhlau/doc2vec (1.5GiB).
+### 1. Install dependencies
+
+```sh
+pip3 install -r requirements.txt
+```
+
+### 2. Instal Doc2Vec model(s)
+
+(a) English Doc2Vec model
+
+For an English Doc2Vec model, download `enwiki_dbow.tgz` from https://github.com/jhlau/doc2vec (1.5GiB).
 Expand the archive as a subdirectory `enwiki_dbow` of the directory `d2gv.py` is stored.
 
 ```
@@ -23,7 +34,7 @@ Expand the archive as a subdirectory `enwiki_dbow` of the directory `d2gv.py` is
 └── doc2vec.bin.syn1neg.npy
 ```
 
-### Japanese Doc2Vec model (optional)
+(b) Japanese Doc2Vec model (optional)
 
 For a Japanese Doc2Vec model, download `jawiki.doc2vec.dbow300d.tar.bz2` from https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia (5.2GiB).
 Expand the archive as a subdirectory `jawiki.doc2vec.dbow300d` of the directory where `d2gv.py` is stored.
@@ -36,8 +47,7 @@ Expand the archive as a subdirectory `jawiki.doc2vec.dbow300d` of the directory 
 └── jawiki.doc2vec.dbow300d.model.wv.vectors.npy
 ```
 
-Install Mecab (on Ubuntu 20.04).
-Mecab cannot be fully set up with pip3 and/or apt alone, so please install it manually.
+You need to install MeCab and NEologd as a special tokenizer (they were used in generation of the Japanese model above).
 
 ```sh
 sudo apt install mecab libmecab-dev mecab-ipadic-utf8

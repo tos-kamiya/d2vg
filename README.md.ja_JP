@@ -11,11 +11,19 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 
 注意! インストールはpip3では自動化されません。d2vg.pyなどのファイルを格納するディレクトリと、Doc2Vecモデルを配置するディレクトリを手動で用意する必要があります。
 
-### 英語版Doc2Vecモデル
+下記の手順はUbuntu 20.04で確認したものです。
 
-英語版Doc2Vecモデル
+### 1. 依存関係をインストールする
 
-英語版のDoc2Vecモデルとしては、 https://github.com/jhlau/doc2vec から `enwiki_dbow.tgz` をダウンロードしてください (1.5GiB)。
+```sh
+pip3 install -r requirements.txt
+```
+
+### 2. Doc2Vecモデルをインストールする
+
+(a) 英語Doc2Vecモデル
+
+英語Doc2Vecモデルとしては、 https://github.com/jhlau/doc2vec から `enwiki_dbow.tgz` をダウンロードしてください (1.5GiB)。
 このアーカイブを、`d2gv.py` が格納されているディレクトリのサブディレクトリ `enwiki_dbow` に展開してください。
 
 ```
@@ -25,9 +33,9 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 └── doc2vec.bin.syn1neg.npy
 ```
 
-### 日本語版 Doc2Vec モデル
+(b) 日本語Doc2Vecモデル
 
-日本語のDoc2Vecモデルとしては、https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia から `jawiki.doc2vec.dbow300d.tar.bz2` をダウンロードしてください(5.2GiB)。
+日本Doc2Vecモデルとしては、https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia から `jawiki.doc2vec.dbow300d.tar.bz2` をダウンロードしてください(5.2GiB)。
 このアーカイブは、`d2gv.py` が格納されているディレクトリのサブディレクトリ `jawiki.doc2vec.dbow300d` に展開してください。
 
 ```
@@ -38,8 +46,7 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 └── jawiki.doc2vec.dbow300d.model.wv.vectors.npy
 ```
 
-Mecabをインストールします（Ubuntu 20.04の場合）。
-Mecabはpip3やaptだけでは十分に設定できないので、手動でインストールしてください。
+専用のトークナイザーとして、MeCabとNEologdをインストールします（上記のモデルの生成に利用されたものです）。
 
 ```sh
 sudo apt install mecab libmecab-dev mecab-ipadic-utf8

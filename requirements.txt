@@ -1,8 +1,4 @@
 gensim==3.8
-mecab
-# fastapi
-# uvicorn[standard]
-# python-multipart
 pdfminer.six
 chardet
 docx2txt
