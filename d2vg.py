@@ -1,5 +1,5 @@
-# doc2vec grep
-
+#!/usr/bin/env python3
+ 
 from glob import glob
 import heapq
 import os
