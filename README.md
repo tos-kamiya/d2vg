@@ -23,7 +23,7 @@ Expand the archive as a subdirectory `enwiki_dbow` of the directory `d2gv.py` is
 └── doc2vec.bin.syn1neg.npy
 ```
 
-### Japanese Doc2Vec model
+### Japanese Doc2Vec model (optional)
 
 For a Japanese Doc2Vec model, download `jawiki.doc2vec.dbow300d.tar.bz2` from https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia (5.2GiB).
 Expand the archive as a subdirectory `jawiki.doc2vec.dbow300d` of the directory where `d2gv.py` is stored.
@@ -36,7 +36,7 @@ Expand the archive as a subdirectory `jawiki.doc2vec.dbow300d` of the directory 
 └── jawiki.doc2vec.dbow300d.model.wv.vectors.npy
 ```
 
-Install Mecab (on Ubuntu).
+Install Mecab (on Ubuntu 20.04).
 Mecab cannot be fully set up with pip3 and/or apt alone, so please install it manually.
 
 ```sh
@@ -55,6 +55,12 @@ pip3 install mecab
 
 ```sh
 python3 d2vg.py -v <query_phrase> <files>...
+```
+
+Depending on the OS environment, you need to explicitly specify language `en`:
+
+```sh
+python3 d2vg.py -l en -v <query_phrase> <files>...
 ```
 
 ## License

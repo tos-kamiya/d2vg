@@ -38,7 +38,7 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 └── jawiki.doc2vec.dbow300d.model.wv.vectors.npy
 ```
 
-Mecabをインストールします（Ubuntuの場合）。
+Mecabをインストールします（Ubuntu 20.04の場合）。
 Mecabはpip3やaptだけでは十分に設定できないので、手動でインストールしてください。
 
 ```sh
