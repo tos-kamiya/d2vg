@@ -59,9 +59,18 @@ pip3 install mecab
 python3 d2vg.py -v <クエリとなるフレーズ> <ファイル>...
 ```
 
+英語のドキュメントとして検索する場合には、オプション `-l en` を指定してください:
+
+```sh
+python3 d2vg.py -l en -v <query_phrase> <files>...
+```
+
+実行例:  
+![Search in pdf files](images/example1.png)
+
 ## ライセンス
 
 d2vgは [BSD-2](https://opensource.org/licenses/BSD-2-Clause) ライセンスで配布されます。
 
-当然のことながら、上記のDoc2Vecモデルについては、販売店のライセンスに従う必要があります。
+上記のDoc2Vecモデルについては、もちろん、配布者のライセンスに従う必要があります。
 素晴らしい言語モデルを配されている両氏に感謝いたします。

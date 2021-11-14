@@ -57,11 +57,14 @@ pip3 install mecab
 python3 d2vg.py -v <query_phrase> <files>...
 ```
 
-Depending on the OS environment, you need to explicitly specify language `en`:
+If the OS's language is not `en_US`, you need to explicitly specify with option `-l en`:
 
 ```sh
 python3 d2vg.py -l en -v <query_phrase> <files>...
 ```
+
+Example:  
+![Search in pdf files](images/example1.png)
 
 ## License
 
