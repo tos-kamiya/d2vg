@@ -82,7 +82,7 @@ def main():
     target_files_expand = []
     for f in target_files:
         if '*' in f:
-            gfs = glob(f)
+            gfs = glob(f, recursive=True)
             for gf in gfs:
                 if os.path.isfile(gf):
                     target_files_expand.append(gf)
