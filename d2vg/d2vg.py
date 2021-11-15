@@ -148,7 +148,7 @@ def main():
                 if len(tf_data) > top_n:
                     _smallest = heapq.heappop(tf_data)
         if verbose:
-            print("\x1b[1K\x1b[1G")
+            print("\x1b[1K\x1b[1G", file=sys.stderr)
     except KeyboardInterrupt:
         if verbose:
             print("\x1b[1K\x1b[1G", file=sys.stderr)
