@@ -20,7 +20,7 @@ The following steps have been checked on Ubuntu 20.04.
 pip3 install -r requirements.txt
 ```
 
-### 2. Instal Doc2Vec model(s)
+### 2. Install Doc2Vec model(s)
 
 (a) English Doc2Vec model
 
