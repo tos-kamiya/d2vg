@@ -1,19 +1,29 @@
 import os
-from itertools import zip_longest
+from glob import glob
 
 from gensim.models.doc2vec import Doc2Vec
 from gensim.utils import tokenize
 import MeCab
 
+from . import config
 
-# https://github.com/jhlau/doc2vec
-
-_script_dir = os.path.dirname(os.path.abspath(__file__))
 
 def get_funcs(lang):
-    if lang in ['ja_JP', 'ja']:
-        model = Doc2Vec.load(os.path.join(_script_dir, "jawiki.doc2vec.dbow300d/jawiki.doc2vec.dbow300d.model"))  # https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia/
+    models_dir = os.path.join(config.get_dir(), 'models')
+    lang_model_file = config.get_data().get('model', {}).get(lang, None)
+    if lang_model_file is None:
+        return None
+    p = os.path.join(models_dir, '**', lang_model_file)
+    ps = glob(p, recursive=True)
+    if not ps:
+        return None
+    ps = [p for p in ps if os.path.isfile(p)]
+    if len(ps) >= 2:
+        print("> Warning: matches two or more Doc2Vec model files: %s" % repr(ps))
+    lang_model_path = ps[0]
+    model = Doc2Vec.load(lang_model_path)
 
+    if lang == 'ja':
         vocab_set = model.wv.vocab.keys()
         def prune_tokens(tokens):
             return [t for t in tokens if t in vocab_set]
@@ -23,14 +33,10 @@ def get_funcs(lang):
             tokens = wakati.parse(text).strip().split()
             tokens = prune_tokens(tokens)
             return tokens
-    elif lang in ['en_US', 'en']:
-        model = Doc2Vec.load(os.path.join(_script_dir, "enwiki_dbow/doc2vec.bin"))  # https://github.com/jhlau/doc2vec
-
+    else:
         def text_to_tokens(text):
             tokens = list(tokenize(text))
             return tokens
-    else:
-        assert lang in ['ja', 'en']
 
     def tokens_to_vec(tokens):
         vec = model.infer_vector(tokens, alpha=0.0)  # https://stackoverflow.com/questions/50212449/gensim-doc2vec-why-does-infer-vector-use-alpha

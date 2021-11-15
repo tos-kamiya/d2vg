@@ -9,14 +9,12 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 
 ## インストール
 
-注意! インストールはpip3では自動化されません。d2vg.pyなどのファイルを格納するディレクトリと、Doc2Vecモデルを配置するディレクトリを手動で用意する必要があります。
-
 下記の手順はUbuntu 20.04で確認したものです。
 
-### 1. 依存関係をインストールする
+### 1. スクリプトと依存関係をインストールする
 
 ```sh
-pip3 install -r requirements.txt
+pip3 install git+https://github.com/tos-kamiya/d2vg.git
 ```
 
 ### 2. Doc2Vecモデルをインストールする
@@ -24,26 +22,48 @@ pip3 install -r requirements.txt
 (a) 英語Doc2Vecモデル
 
 英語Doc2Vecモデルとしては、 https://github.com/jhlau/doc2vec から `enwiki_dbow.tgz` をダウンロードしてください (1.5GiB)。
-このアーカイブを、`d2gv.py` が格納されているディレクトリのサブディレクトリ `enwiki_dbow` に展開してください。
+このアーカイブを、ディレクトリ `~/.config/d2vg/models/enwiki_dbow` に展開してください。
 
 ```
-./enwiki_dbow
+~/.config/d2vg/models/enwiki_dbow
 ├── doc2vec.bin
 ├── doc2vec.bin.syn0.npy
 └── doc2vec.bin.syn1neg.npy
 ```
 
+ファイル `~/.config/d2vg/config.yaml` を作成し、中身を次にしてください。
+
+```
+{
+    "model": {
+        "en": "enwiki_dbow/doc2vec.bin",
+    }
+}
+```
+
 (b) 日本語Doc2Vecモデル
 
 日本Doc2Vecモデルとしては、https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia から `jawiki.doc2vec.dbow300d.tar.bz2` をダウンロードしてください(5.2GiB)。
-このアーカイブは、`d2gv.py` が格納されているディレクトリのサブディレクトリ `jawiki.doc2vec.dbow300d` に展開してください。
+このアーカイブを、ディレクトリ `~/.config/d2vg/models/jawiki.doc2vec.dbow300d` に展開してください。
+
 
 ```
-./jawiki.doc2vec.dbow300d
+~/.config/d2vg/models/jawiki.doc2vec.dbow300d
 ├── jawiki.doc2vec.dbow300d.model
 ├── jawiki.doc2vec.dbow300d.model.docvecs.vectors_docs.npy
 ├── jawiki.doc2vec.dbow300d.model.trainables.syn1neg.npy
 └── jawiki.doc2vec.dbow300d.model.wv.vectors.npy
+```
+
+ファイル `~/.config/d2vg/config.yaml` を更新して中身を次にしてください。
+
+```
+{
+    "model": {
+        "en": "enwiki_dbow/doc2vec.bin",
+        "ja": "jawiki.doc2vec.dbow300d.model",
+    }
+}
 ```
 
 専用のトークナイザーとして、MeCabとNEologdをインストールします（上記のモデルの生成に利用されたものです）。
@@ -63,13 +83,13 @@ pip3 install mecab
 ## 利用法
 
 ```sh
-python3 d2vg.py -v <クエリとなるフレーズ> <ファイル>...
+d2vg -v <クエリとなるフレーズ> <ファイル>...
 ```
 
 英語のドキュメントとして検索する場合には、オプション `-l en` を指定してください:
 
 ```sh
-python3 d2vg.py -l en -v <query_phrase> <files>...
+d2vg -l en -v <query_phrase> <files>...
 ```
 
 実行例:  
@@ -93,4 +113,4 @@ d2vgは次のDoc2Vecモデルを利用しています。素晴らしいモデル
 
 d2vgは [BSD-2](https://opensource.org/licenses/BSD-2-Clause) ライセンスで配布されます。
 
-上記のDoc2Vecモデルについては、もちろん、配布者のライセンスに従う必要があります。
+上記のDoc2Vecモデルについては、配布者のライセンスに従ってください。

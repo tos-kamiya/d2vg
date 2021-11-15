@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
- 
 from glob import glob
 import heapq
 import os
@@ -7,9 +5,14 @@ import sys
 
 import numpy as np
 from docopt import docopt
+import appdirs
 
-import parsers
-import model_loaders
+from . import config
+from . import parsers
+from . import model_loaders
+
+
+_user_config_dir = appdirs.user_config_dir("d2vg")
 
 
 def extract_leading_text(lines):
@@ -20,8 +23,8 @@ def extract_leading_text(lines):
     for L in lines[1:]:
         leading_text += "|" + L.strip()
         if len(leading_text) >= upper_limit:
-            leading_text = leading_text[:upper_limit]
-            return leading_text
+            break
+    leading_text = leading_text[:upper_limit]
     return leading_text
 
 
@@ -55,6 +58,7 @@ __doc__ = """Doc2Vec Grep.
 
 Usage:
   d2vg [options] <pattern> <file>...
+  d2vg --list-lang
 
 Option:
   --lang=LANG, -l LANG          Model language. Either `ja` or `en`.
@@ -62,11 +66,21 @@ Option:
   --window=NUM, -w NUM          Line window size [default: 20].
   --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
   --verbose, -v                 Verbose.
+  --list-lang                   Listing the languages in which the corresponding models are installed.
 """
 
 
 def main():
+    if not os.path.isdir(_user_config_dir):
+        os.mkdir(_user_config_dir)
+
     args = docopt(__doc__)
+
+    if args['--list-lang']:
+        langs = config.get_data().get('model', {}).items()
+        langs = list(sorted(langs))
+        print("\n".join("%s %s" % (l, repr(m)) for l, m in langs))
+        sys.exit(0)
 
     pattern = args['<pattern>']
     target_files = args['<file>']
@@ -106,28 +120,37 @@ def main():
     if not pattern:
         sys.exit("Error: pattern string is empty.")
     
-    text_to_tokens, tokens_to_vector = model_loaders.get_funcs(language)
+    r = model_loaders.get_funcs(language)
+    if r is None:
+        sys.exit("Error: not found Doc2Vec model for language: %s" % language)
+    text_to_tokens, tokens_to_vector = r
 
     pattern_vec = tokens_to_vector(text_to_tokens(pattern))
 
     len_target_files = len(target_files)
     tf_data = []
-    for i, tf in enumerate(target_files):
+    tfi = -1
+    try:
+        for tfi, tf in enumerate(target_files):
+            if verbose:
+                max_tf = heapq.nlargest(1, tf_data)
+                if max_tf:
+                    print("\x1b[1K\x1b[1G" + "[%d/%d] Provisional top-1: %s" % (tfi + 1, len_target_files, max_tf[0][1]), end='', file=sys.stderr)
+            r = extract_similar_to_pattern(
+                tf, pattern_vec, 
+                text_to_tokens, tokens_to_vector,
+                window_size)
+            if r is not None:
+                ip, label, subtext = r
+                heapq.heappush(tf_data, (ip, label, subtext))
+                if len(tf_data) > top_n:
+                    _smallest = heapq.heappop(tf_data)
         if verbose:
-            max_tf = heapq.nlargest(1, tf_data)
-            if max_tf:
-                print("\x1b[1K\x1b[1G" + "[%d/%d] Provisional top-1: %s" % (i + 1, len_target_files, max_tf[0][1]), end='')
-        r = extract_similar_to_pattern(
-            tf, pattern_vec, 
-            text_to_tokens, tokens_to_vector,
-            window_size)
-        if r is not None:
-            ip, label, subtext = r
-            heapq.heappush(tf_data, (ip, label, subtext))
-            if len(tf_data) > top_n:
-                _smallest = heapq.heappop(tf_data)
-    if verbose:
-        print("\x1b[1K\x1b[1G")
+            print("\x1b[1K\x1b[1G")
+    except KeyboardInterrupt:
+        if verbose:
+            print("\x1b[1K\x1b[1G", file=sys.stderr)
+        print("> Warning: interrupted [%d/%d]. shows the search results up to now." % (tfi, len(target_files)), file=sys.stderr)
 
     tf_data = heapq.nlargest(top_n, tf_data)
     for i, (ip, label, subtext) in enumerate(tf_data):
