@@ -79,13 +79,19 @@ Example:
 ## Todo
 
 - [ ] Optimization by caching
-- [ ] More concise Doc2Vec data
+- [ ] Concise and light-weight Doc2Vec data
 - [ ] Consider other models (in particular, could the Word2Vec model be used?)
 - [ ] Support for more languages
+
+## Acknowledgements
+
+d2vg uses the following Doc2Vec models. Thanks for the excellent models.
+
+* [jhlau/doc2vec](https://github.com/jhlau/doc2vec)
+* [Doc2vec model trained on Japanese Wikipedia](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
 
 ## License
 
 d2vg is distributed under [BSD-2](https://opensource.org/licenses/BSD-2-Clause) license.
 
 Obviously, you must follow the license of the distributors for the above Doc2Vec models.
-I would like to thank them both for their excellent language models.

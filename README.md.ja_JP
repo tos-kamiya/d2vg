@@ -82,9 +82,15 @@ python3 d2vg.py -l en -v <query_phrase> <files>...
 - [ ] 他のモデルの検討(特に、Word2Vecのモデルが利用できないか)
 - [ ] より多くの言語サポート
 
+## 謝辞
+
+d2vgは次のDoc2Vecモデルを利用しています。素晴らしいモデルを提供されている両氏に感謝いたします。
+
+* [jhlau/doc2vec](https://github.com/jhlau/doc2vec)
+* [日本語Wikipediaで学習したdoc2vecモデル](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
+
 ## ライセンス
 
 d2vgは [BSD-2](https://opensource.org/licenses/BSD-2-Clause) ライセンスで配布されます。
 
 上記のDoc2Vecモデルについては、もちろん、配布者のライセンスに従う必要があります。
-素晴らしい言語モデルを配されている両氏に感謝いたします。
