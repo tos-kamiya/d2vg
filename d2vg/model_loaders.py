@@ -8,7 +8,7 @@ import MeCab
 from . import config
 
 
-def get_funcs(lang):
+def get_model_file(lang):
     models_dir = os.path.join(config.get_dir(), 'models')
     lang_model_file = config.get_data().get('model', {}).get(lang, None)
     if lang_model_file is None:
@@ -21,6 +21,10 @@ def get_funcs(lang):
     if len(ps) >= 2:
         print("> Warning: matches two or more Doc2Vec model files: %s" % repr(ps))
     lang_model_path = ps[0]
+    return lang_model_path
+
+
+def load_funcs(lang, lang_model_path):
     model = Doc2Vec.load(lang_model_path)
 
     if lang == 'ja':

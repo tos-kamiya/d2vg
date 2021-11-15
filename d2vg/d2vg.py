@@ -29,12 +29,9 @@ def extract_leading_text(lines):
 
 
 def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to_vector, window_size):
-    fp = os.path.abspath(file_name)
-    text = parsers.parse(fp)
-    lines = text.split('\n')
+    lines = parsers.parse(file_name)
     max_ip = -sys.float_info.max
     max_subrange = None
-    max_subtext = None
     len_lines = len(lines)
     found_any = False
     for pos in range(0, len_lines, window_size // 2):
@@ -47,11 +44,17 @@ def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to
             found_any = True
             max_ip = ip
             max_subrange = pos, end_pos
-            max_subtext = subtext
     if found_any:
-        return max_ip, "%s:%d-%d" % (file_name, max_subrange[0] + 1, max_subrange[1] + 1), max_subtext
+        return max_ip, max_subrange
     else:
         return None
+
+
+def extract_subtext(file_name, subrange):
+    start_pos, end_pos = subrange
+    lines = parsers.parse(file_name)
+    subtext = '\n'.join(lines[start_pos : end_pos])
+    return subtext
 
 
 __doc__ = """Doc2Vec Grep.
@@ -120,10 +123,11 @@ def main():
     if not pattern:
         sys.exit("Error: pattern string is empty.")
     
-    r = model_loaders.get_funcs(language)
-    if r is None:
+    lang_model_file = model_loaders.get_model_file(language)
+    if lang_model_file is None:
         sys.exit("Error: not found Doc2Vec model for language: %s" % language)
-    text_to_tokens, tokens_to_vector = r
+
+    text_to_tokens, tokens_to_vector = model_loaders.load_funcs(language, lang_model_file)
 
     pattern_vec = tokens_to_vector(text_to_tokens(pattern))
 
@@ -135,14 +139,12 @@ def main():
             if verbose:
                 max_tf = heapq.nlargest(1, tf_data)
                 if max_tf:
-                    print("\x1b[1K\x1b[1G" + "[%d/%d] Provisional top-1: %s" % (tfi + 1, len_target_files, max_tf[0][1]), end='', file=sys.stderr)
-            r = extract_similar_to_pattern(
-                tf, pattern_vec, 
-                text_to_tokens, tokens_to_vector,
-                window_size)
+                    _, f, sr = max_tf[0]
+                    print("\x1b[1K\x1b[1G" + "[%d/%d] Provisional top-1: %s:%d-%d" % (tfi + 1, len_target_files, f, sr[0] + 1, sr[1] + 1), end='', file=sys.stderr)
+            r = extract_similar_to_pattern(tf, pattern_vec, text_to_tokens, tokens_to_vector, window_size)
             if r is not None:
-                ip, label, subtext = r
-                heapq.heappush(tf_data, (ip, label, subtext))
+                ip, subrange = r
+                heapq.heappush(tf_data, (ip, tf, subrange))
                 if len(tf_data) > top_n:
                     _smallest = heapq.heappop(tf_data)
         if verbose:
@@ -153,11 +155,12 @@ def main():
         print("> Warning: interrupted [%d/%d]. shows the search results up to now." % (tfi, len(target_files)), file=sys.stderr)
 
     tf_data = heapq.nlargest(top_n, tf_data)
-    for i, (ip, label, subtext) in enumerate(tf_data):
+    for i, (ip, tf, sr) in enumerate(tf_data):
         if ip < 0:
             break  # for i
-        leading_text = extract_leading_text(subtext.split('\n'))
-        print('%g\t%s\t%s' % (ip, label, leading_text))
+        st = extract_subtext(tf, sr)
+        leading_text = extract_leading_text(st.split('\n'))
+        print('%g\t%s:%d-%d\t%s' % (ip, tf, sr[0] + 1, sr[1] + 1, leading_text))
         if i >= top_n > 0:
             break  # for i
 

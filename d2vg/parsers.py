@@ -20,8 +20,8 @@ def parse(file_name):
             L = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', L)
             L = re.sub(r'\s+', ' ', L)
             r.append(L)
-        text = '\n'.join(r)
-    return text
+        return r
+    return None
 
 
 def _parse_i(file_name):
