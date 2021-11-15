@@ -75,6 +75,13 @@ python3 d2vg.py -l en -v <query_phrase> <files>...
 実行例:  
 ![Search in pdf files](images/example1.png)
 
+## Todo
+
+- [ ] キャッシュの導入による最適化
+- [ ] Doc2Vecデータの軽量化
+- [ ] 他のモデルの検討(特に、Word2Vecのモデルが利用できないか)
+- [ ] より多くの言語サポート
+
 ## ライセンス
 
 d2vgは [BSD-2](https://opensource.org/licenses/BSD-2-Clause) ライセンスで配布されます。

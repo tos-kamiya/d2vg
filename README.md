@@ -76,6 +76,13 @@ python3 d2vg.py -l en -v <query_phrase> <files>...
 Example:  
 ![Search in pdf files](images/example1.png)
 
+## Todo
+
+- [ ] Optimization by caching
+- [ ] More concise Doc2Vec data
+- [ ] Consider other models (in particular, could the Word2Vec model be used?)
+- [ ] Support for more languages
+
 ## License
 
 d2vg is distributed under [BSD-2](https://opensource.org/licenses/BSD-2-Clause) license.
