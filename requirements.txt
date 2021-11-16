@@ -1,4 +1,0 @@
-gensim==3.8
-pdfminer.six
-chardet
-docx2txt
