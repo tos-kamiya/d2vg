@@ -6,6 +6,7 @@ Use Doc2Vec models to search for files that contain similar parts to the phrase 
 
 * Supports searching within text files (.txt), PDF files (.pdf), and MS Word files (.docx)
 * Supported languages are Japanese and English (Since Doc2Vec model is language-dependent)
+* Performance gain by indexing
 
 ## Installation
 
@@ -98,23 +99,36 @@ Example:
 
 By letting d2vg create indexes of document files, you can improve the speed of the second and later searches from the same set of documents.
 
-d2vg creates and refers an index DB when the following conditions are satisfied.
+d2vg creates and refers to an index DB when the following conditions are satisfied.
 
-* The current directory when executing d2vg has a subdirectory named `.d2vg`.
+* The current directory of running d2vg has a subdirectory named `.d2vg`.
 * The target documents are specified as relative paths.
 
+So, you can start indexing by changing the directory of the document fies and making a `.d2vg` directory.
+
+```sh
+cd <the/document/directory>
+mkdir .d2vg
+```
+
 The index DB is updated incrementally each time you perform a search.
-That is, at the timing when a new document is added and becomes the target of the search, the index data of that document is created and added to the index DB.
+That is, when a new document is added and becomes the target of the search, the index data of that document is created and added to the index DB.
 
 On the other hand, there is no function to automatically remove the index data of deleted documents from the database, so you should explicitly remove the `.d2vg` directory if necessary.
 
+```sh
+cd <the/document/directory>
+rm -rf .d2vg
+```
+
 Example of execution with indexes enabled:  
+(In this example, it took 10 minutes without indexing, but it was reduced to 33 seconds.)  
 ![Search in pdf files](images/example2.png)
 
 ## Todo
 
 - [x] Optimization by indexing document files
-- [ ] Concise and light-weight Doc2Vec data
+- [ ] Prepare Doc2Vec models compatible to the latest gensim (v4) 
 - [ ] Consider other models (in particular, could the Word2Vec model be used?)
 - [ ] Support for more languages
 
