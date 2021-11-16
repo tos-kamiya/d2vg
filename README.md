@@ -94,9 +94,26 @@ d2vg -l en -v <query_phrase> <files>...
 Example:  
 ![Search in pdf files](images/example1.png)
 
+### Indexing for x10 speedup
+
+By letting d2vg create indexes of document files, you can improve the speed of the second and later searches from the same set of documents.
+
+d2vg creates and refers an index DB when the following conditions are satisfied.
+
+* The current directory when executing d2vg has a subdirectory named `.d2vg`.
+* The target documents are specified as relative paths.
+
+The index DB is updated incrementally each time you perform a search.
+That is, at the timing when a new document is added and becomes the target of the search, the index data of that document is created and added to the index DB.
+
+On the other hand, there is no function to automatically remove the index data of deleted documents from the database, so you should explicitly remove the `.d2vg` directory if necessary.
+
+Example of execution with indexes enabled:  
+![Search in pdf files](images/example2.png)
+
 ## Todo
 
-- [ ] Optimization by caching
+- [x] Optimization by indexing document files
 - [ ] Concise and light-weight Doc2Vec data
 - [ ] Consider other models (in particular, could the Word2Vec model be used?)
 - [ ] Support for more languages

@@ -1,6 +1,8 @@
+import dbm
 from glob import glob
 import heapq
 import os
+import pickle
 import sys
 
 import numpy as np
@@ -13,6 +15,12 @@ from . import model_loaders
 
 
 _user_config_dir = appdirs.user_config_dir("d2vg")
+
+DB_DIR = '.d2vg'
+
+
+def file_signature(file_name):
+    return "%s-%s-%f" % (os.path.basename(file_name), os.path.getsize(file_name), os.path.getmtime(file_name))
 
 
 def extract_leading_text(lines):
@@ -28,23 +36,51 @@ def extract_leading_text(lines):
     return leading_text
 
 
-def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to_vector, window_size):
-    lines = parsers.parse(file_name)
-    max_ip = -sys.float_info.max
-    max_subrange = None
-    len_lines = len(lines)
-    found_any = False
-    for pos in range(0, len_lines, window_size // 2):
-        end_pos = min(pos + window_size, len_lines)
-        subtext = '\n'.join(lines[pos : end_pos])
-        tokens = text_to_tokens(subtext)
-        vec = tokens_to_vector(tokens)
-        ip = np.inner(vec, pattern_vec)
-        if ip >= max_ip:
-            found_any = True
-            max_ip = ip
-            max_subrange = pos, end_pos
-    if found_any:
+def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=None):
+    if index_db is not None and not os.path.isabs(file_name):
+        keyb = ("%s-%d" % (file_signature(file_name), window_size)).encode()
+        valueb = index_db.get(keyb, None)
+        if valueb is None:
+            pos_vecs = []
+            lines = parsers.parse(file_name)
+            len_lines = len(lines)
+            for pos in range(0, len_lines, window_size // 2):
+                end_pos = min(pos + window_size, len_lines)
+                subtext = '\n'.join(lines[pos : end_pos])
+                tokens = text_to_tokens(subtext)
+                vec = tokens_to_vector(tokens)
+                pos_vecs.append((pos, end_pos, vec))
+            valueb = pickle.dumps(pos_vecs)
+            index_db[keyb] = valueb
+        else:
+            pos_vecs = pickle.loads(valueb)
+
+        max_ip = -sys.float_info.max
+        max_subrange = None
+        found_some = False
+        for pos, end_pos, vec in pos_vecs:
+            ip = np.inner(vec, pattern_vec)
+            if ip >= max_ip:
+                found_some = True
+                max_ip = ip
+                max_subrange = pos, end_pos
+    else:
+        lines = parsers.parse(file_name)
+        max_ip = -sys.float_info.max
+        max_subrange = None
+        len_lines = len(lines)
+        found_some = False
+        for pos in range(0, len_lines, window_size // 2):
+            end_pos = min(pos + window_size, len_lines)
+            subtext = '\n'.join(lines[pos : end_pos])
+            tokens = text_to_tokens(subtext)
+            vec = tokens_to_vector(tokens)
+            ip = np.inner(vec, pattern_vec)
+            if ip >= max_ip:
+                found_some = True
+                max_ip = ip
+                max_subrange = pos, end_pos
+    if found_some:
         return max_ip, max_subrange
     else:
         return None
@@ -131,6 +167,11 @@ def main():
 
     pattern_vec = tokens_to_vector(text_to_tokens(pattern))
 
+    db = None
+    if os.path.isdir(DB_DIR):
+        db_file = os.path.join(DB_DIR, language + "-" + file_signature(lang_model_file))
+        db = dbm.open(db_file, 'c')
+
     len_target_files = len(target_files)
     tf_data = []
     tfi = -1
@@ -141,7 +182,7 @@ def main():
                 if max_tf:
                     _, f, sr = max_tf[0]
                     print("\x1b[1K\x1b[1G" + "[%d/%d] Provisional top-1: %s:%d-%d" % (tfi + 1, len_target_files, f, sr[0] + 1, sr[1] + 1), end='', file=sys.stderr)
-            r = extract_similar_to_pattern(tf, pattern_vec, text_to_tokens, tokens_to_vector, window_size)
+            r = extract_similar_to_pattern(tf, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=db)
             if r is not None:
                 ip, subrange = r
                 heapq.heappush(tf_data, (ip, tf, subrange))
@@ -153,6 +194,9 @@ def main():
         if verbose:
             print("\x1b[1K\x1b[1G", file=sys.stderr)
         print("> Warning: interrupted [%d/%d]. shows the search results up to now." % (tfi, len(target_files)), file=sys.stderr)
+    finally:
+        if db is not None:
+            db.close()
 
     tf_data = heapq.nlargest(top_n, tf_data)
     for i, (ip, tf, sr) in enumerate(tf_data):
