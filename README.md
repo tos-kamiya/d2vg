@@ -33,7 +33,7 @@ Download `enw50k.tar.bz2` (English Doc2Vec model). Expand the archive as a direc
 If you downloaded `enw50k.tar.bz2.aa` and `enw50k.tar.bz2.ab` from github, create `enw50k.tar.bz2` as follows:
 
 ```
-cat `enw50k.tar.bz2.a* > `enw50k.tar.bz2
+cat enw50k.tar.bz2.a* > enw50k.tar.bz2
 ```
 
 ### Install optional Doc2Vec model(s)
@@ -117,7 +117,7 @@ For instructions on how to create a Doc2Vec model, please refer to the script I 
 The attached model has a vocabulary of 50K words and represents a document as a vector of 100 dimensions.
 If you feel it is not enough, you can run the modified script to create an enhanced model.
 
-### Doc22Vec model distribution files
+### Doc2Vec model distribution files
 
 The Doc2Vec model should be created with Gensim v4.
 

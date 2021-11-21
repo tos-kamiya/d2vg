@@ -33,7 +33,7 @@ pip3 install git+https://github.com/tos-kamiya/d2vg.git
 githubから`enw50k.tar.bz2.aa`と`enw50k.tar.bz2.ab`をダウンロードしたときは、次のようにして`enw50k.tar.bz2`を作成してください。
 
 ```
-cat `enw50k.tar.bz2.a* > `enw50k.tar.bz2
+cat enw50k.tar.bz2.a* > enw50k.tar.bz2
 ```
 
 ### 日本語Doc2Vecモデルのインストール
@@ -117,7 +117,7 @@ Doc2Vecモデルの作成の方法については、`making_doc2vec_model/`に�
 添付しているモデルは語彙が5万語、100次元のベクトルでドキュメントを表現するものです。
 不足していると感じる場合には、変更したスクリプトを実行することで、より強化したモデルを作成することが可能です。
 
-### Doc22Vecモデルの配布ファイル
+### Doc2Vecモデルの配布ファイル
 
 Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 `<言語.ref>`というファイル(「言語」はオプション`-l`で指定する言語の名前です)に、Doc2Vecモデルのファイルへの相対パスを記述してください。
