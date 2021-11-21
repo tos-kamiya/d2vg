@@ -12,62 +12,47 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 
 下記の手順はUbuntu 20.04で確認したものです。
 
-### 1. スクリプトと依存関係をインストールする
+(1) スクリプトや依存を`pip`でインストールします。
 
 ```sh
 pip3 install git+https://github.com/tos-kamiya/d2vg.git
 ```
 
-### 2. Doc2Vecモデルをインストールする
+(2) 英語Doc2Vecモデルのインストール
 
-(a) 英語Doc2Vecモデル
-
-英語Doc2Vecモデルとしては、 https://github.com/jhlau/doc2vec から `enwiki_dbow.tgz` をダウンロードしてください (1.5GiB)。
-このアーカイブを、ディレクトリ `~/.config/d2vg/models/enwiki_dbow` に展開してください。
+ファイル`enw50k.tar.bz2`をダウンロードして、ディレクトリ`~/.config/d2vg/models/en50k`へと展開します。
+（ディレクトリ`~/.config/d2vg/models`が存在しない場合は作成してください。）
 
 ```
-~/.config/d2vg/models/enwiki_dbow
-├── doc2vec.bin
-├── doc2vec.bin.syn0.npy
-└── doc2vec.bin.syn1neg.npy
+~/.config/d2vg/models/enw50k
+├── en.ref
+├── enwiki-w50k-d100.model
+└── enwiki-w50k-d100.model.dv.vectors.npy
 ```
 
-ファイル `~/.config/d2vg/config.yaml` を作成し、中身を次にしてください。
+githubから`enw50k.tar.bz2.aa`と`enw50k.tar.bz2.ab`をダウンロードしたときは、次のようにして`enw50k.tar.bz2`を作成してください。
 
 ```
-{
-    "model": {
-        "en": "enwiki_dbow/doc2vec.bin",
-    }
-}
+cat `enw50k.tar.bz2.a* > `enw50k.tar.bz2
 ```
 
-(b) 日本語Doc2Vecモデル
+### 日本語Doc2Vecモデルのインストール
 
-日本Doc2Vecモデルとしては、https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia から `jawiki.doc2vec.dbow300d.tar.bz2` をダウンロードしてください(5.2GiB)。
-このアーカイブを、ディレクトリ `~/.config/d2vg/models/jawiki.doc2vec.dbow300d` に展開してください。
+(1) 日本語Doc2Vecモデルをインストールします。
 
-
-```
-~/.config/d2vg/models/jawiki.doc2vec.dbow300d
-├── jawiki.doc2vec.dbow300d.model
-├── jawiki.doc2vec.dbow300d.model.docvecs.vectors_docs.npy
-├── jawiki.doc2vec.dbow300d.model.trainables.syn1neg.npy
-└── jawiki.doc2vec.dbow300d.model.wv.vectors.npy
-```
-
-ファイル `~/.config/d2vg/config.yaml` を更新して中身を次にしてください。
+ファイル`jaw50k.tar.bz2`をダウンロードしてディレクトリ`~/.config/d2vg/models/ja50k`へと展開します。
+（ディレクトリ`~/.config/d2vg/models`が存在しない場合は作成してください。）
 
 ```
-{
-    "model": {
-        "en": "enwiki_dbow/doc2vec.bin",
-        "ja": "jawiki.doc2vec.dbow300d.model",
-    }
-}
+~/.config/d2vg/models/jaw50k
+├── ja.ref
+├── jawiki-w50k-d100.model
+└── jawiki-w50k-d100.model.dv.vectors.npy
 ```
 
-専用のトークナイザーとして、MeCabとNEologdをインストールします（上記のモデルの生成に利用されたものです）。
+(2) トークナイザーのインストール。
+
+MeCabとNEologdをインストールします（上記の日本語モデルの作成に利用されたものです）。
 
 ```sh
 sudo apt install mecab libmecab-dev mecab-ipadic-utf8
@@ -123,13 +108,33 @@ rm -rf .d2vg
 ```
 
 インデックスを有効にしたときの実行例:  
-(この例では、インデックス化をしていないときは10分かかっていたものが、33秒に短縮されました。)  
+(この例では、インデックス化をしていないときは9分かかっていたものが、25秒に短縮されました。)  
 ![Search in pdf files](images/example2.png)
+
+## 開発
+
+Doc2Vecモデルの作成の方法については、`making_doc2vec_model/`にある、英語のDoc2Vecモデルを作成したスクリプトを参考にしてください。
+添付しているモデルは語彙が5万語、100次元のベクトルでドキュメントを表現するものです。
+不足していると感じる場合には、変更したスクリプトを実行することで、より強化したモデルを作成することが可能です。
+
+### Doc22Vecモデルの配布ファイル
+
+Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
+`<言語.ref>`というファイル(「言語」はオプション`-l`で指定する言語の名前です)に、Doc2Vecモデルのファイルへの相対パスを記述してください。
+
+例えば、日本語のDoc2Vecモデルの場合には、`ja.ref`というファイルの中身は`jawiki-w50k-d100.model`という行になっています。
+
+```
+~/.config/d2vg/models/jaw50k
+├── ja.ref
+├── jawiki-w50k-d100.model
+└── jawiki-w50k-d100.model.dv.vectors.npy
+```
 
 ## Todo
 
 - [x] ドキュメントファイルのインデックスの導入による最適化
-- [ ] 最新版のgensim v4と互換性のあるDoc2Vecデータの準備
+- [x] 最新版のgensim v4と互換性のあるDoc2Vecデータの準備
 - [ ] 他のモデルの検討(特に、Word2Vecのモデルが利用できないか)
 - [ ] より多くの言語サポート
 

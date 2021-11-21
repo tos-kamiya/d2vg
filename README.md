@@ -12,61 +12,47 @@ Use Doc2Vec models to search for files that contain similar parts to the phrase 
 
 The following steps have been checked on Ubuntu 20.04.
 
-1. Install the script and dependencies
+(1) Install the script and dependencies with `pip`.
 
 ```sh
 pip3 install git+https://github.com/tos-kamiya/d2vg.git
 ```
 
-2. Install Doc2Vec model(s)
+(2) Install an English Doc2Vec model file.
 
-(a) English Doc2Vec model
-
-For an English Doc2Vec model, download `enwiki_dbow.tgz` from https://github.com/jhlau/doc2vec (1.5GiB).
-Expand the archive as a directory `~/.config/d2vg/models/enwiki_dbow`.
+Download `enw50k.tar.bz2` (English Doc2Vec model). Expand the archive as a directory `~/.config/d2vg/models/en50k`.
+(In case the directory `~/.config/d2vg/models` does not exist, create it.)
 
 ```
-~/.config/d2vg/models/enwiki_dbow
-├── doc2vec.bin
-├── doc2vec.bin.syn0.npy
-└── doc2vec.bin.syn1neg.npy
+~/.config/d2vg/models/enw50k
+├── en.ref
+├── enwiki-w50k-d100.model
+└── enwiki-w50k-d100.model.dv.vectors.npy
 ```
 
-Make a file `~/.config/d2vg/config.yaml`, whose contents are as follows:
+If you downloaded `enw50k.tar.bz2.aa` and `enw50k.tar.bz2.ab` from github, create `enw50k.tar.bz2` as follows:
 
 ```
-{
-    "model": {
-        "en": "enwiki_dbow/doc2vec.bin",
-    }
-}
+cat `enw50k.tar.bz2.a* > `enw50k.tar.bz2
 ```
 
-(b) Japanese Doc2Vec model (optional)
+### Install optional Doc2Vec model(s)
 
-For a Japanese Doc2Vec model, download `jawiki.doc2vec.dbow300d.tar.bz2` from https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia (5.2GiB).
-Expand the archive as a directory `~/.config/d2vg/models/jawiki.doc2vec.dbow300d`.
+(1) Install a Japanese Doc2Vec model file.
 
-```
-~/.config/d2vg/models/jawiki.doc2vec.dbow300d
-├── jawiki.doc2vec.dbow300d.model
-├── jawiki.doc2vec.dbow300d.model.docvecs.vectors_docs.npy
-├── jawiki.doc2vec.dbow300d.model.trainables.syn1neg.npy
-└── jawiki.doc2vec.dbow300d.model.wv.vectors.npy
-```
-
-Update the file `~/.config/d2vg/config.yaml` as follows:
+Download `jaw50k.tar.bz2` (Japanese Doc2Vec model). Expand the archive as a directory `~/.config/d2vg/models/ja50k`.
+(In case the directory `~/.config/d2vg/models` does not exist, create it.)
 
 ```
-{
-    "model": {
-        "en": "enwiki_dbow/doc2vec.bin",
-        "ja": "jawiki.doc2vec.dbow300d.model",
-    }
-}
+~/.config/d2vg/models/jaw50k
+├── ja.ref
+├── jawiki-w50k-d100.model
+└── jawiki-w50k-d100.model.dv.vectors.npy
 ```
 
-You need to install MeCab and NEologd as a special tokenizer (used in generation of the Japanese model above).
+(2) Install a tokenizer. 
+
+Install MeCab and NEologd as a special tokenizer (used in generation of the Japanese model above).
 
 ```sh
 sudo apt install mecab libmecab-dev mecab-ipadic-utf8
@@ -122,13 +108,34 @@ rm -rf .d2vg
 ```
 
 Example of execution with indexes enabled:  
-(In this example, it took 10 minutes without indexing, but it was reduced to 33 seconds.)  
+(In this example, it took 9 minutes without indexing, but it was reduced to 25 seconds.)  
 ![Search in pdf files](images/example2.png)
+
+## Development
+
+For instructions on how to create a Doc2Vec model, please refer to the script I used to create the English Doc2Vec model in `making_doc2vec_model/`.
+The attached model has a vocabulary of 50K words and represents a document as a vector of 100 dimensions.
+If you feel it is not enough, you can run the modified script to create an enhanced model.
+
+### Doc22Vec model distribution files
+
+The Doc2Vec model should be created with Gensim v4.
+
+Prepare a file named `<language.ref>` (the `language` is a name of language specified with the option `-l`), contains the relative path to the Doc2Vec model file.
+
+For example, in the case of Japanese Doc2Vec model, the content of the file `ja.ref` is the line `jawiki-w50k-d100.model`.
+
+````
+~/.config/d2vg/models/jaw50k
+├─ ja.ref
+├─ jawiki-w50k-d100.model
+└─ jawiki-w50k-d100.model.dv.vectors.npy
+````
 
 ## Todo
 
 - [x] Optimization by indexing document files
-- [ ] Prepare Doc2Vec models compatible to the latest gensim (v4) 
+- [x] Prepare Doc2Vec models compatible to the latest gensim (v4) 
 - [ ] Consider other models (in particular, could the Word2Vec model be used?)
 - [ ] Support for more languages
 

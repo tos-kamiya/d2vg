@@ -11,8 +11,16 @@ from pdfminer.pdfpage import PDFPage
 import docx2txt
 
 
+class PraseError(Exception):
+    pass
+
+
 def parse(file_name):
-    text = _parse_i(file_name)
+    try:
+        text = _parse_i(file_name)
+    except Exception as e:
+        raise PraseError("ParseError: in parsing file: %s" % repr(file_name)) from e
+
     if text is not None:
         lines = text.split('\n')
         r = []

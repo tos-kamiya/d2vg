@@ -9,7 +9,6 @@ import numpy as np
 from docopt import docopt
 import appdirs
 
-from . import config
 from . import parsers
 from . import model_loaders
 
@@ -17,6 +16,7 @@ from . import model_loaders
 _user_config_dir = appdirs.user_config_dir("d2vg")
 
 DB_DIR = '.d2vg'
+INDEXER_VERSION = "4"  # gensim major version
 
 
 def file_signature(file_name):
@@ -36,6 +36,22 @@ def extract_leading_text(lines):
     return leading_text
 
 
+def pickle_dumps_pos_vecs(pos_vecs):
+    dumped = []
+    for pos_start, pos_end, vecs in pos_vecs:
+        vecs = [float(d) for d in vecs]
+        dumped.append((pos_start, pos_end, vecs))
+    return pickle.dumps(dumped)
+
+
+def pickle_loads_pos_vecs(b):
+    loaded = []
+    for pos_start, pos_end, vecs in pickle.loads(b):
+        vecs = np.array(vecs, dtype=np.float32)
+        loaded.append((pos_start, pos_end, vecs))
+    return loaded
+
+
 def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=None):
     if index_db is not None and not os.path.isabs(file_name):
         keyb = ("%s-%d" % (file_signature(file_name), window_size)).encode()
@@ -50,10 +66,9 @@ def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to
                 tokens = text_to_tokens(subtext)
                 vec = tokens_to_vector(tokens)
                 pos_vecs.append((pos, end_pos, vec))
-            valueb = pickle.dumps(pos_vecs)
-            index_db[keyb] = valueb
+            index_db[keyb] = pickle_dumps_pos_vecs(pos_vecs)
         else:
-            pos_vecs = pickle.loads(valueb)
+            pos_vecs = pickle_loads_pos_vecs(valueb)
 
         max_ip = -sys.float_info.max
         max_subrange = None
@@ -116,8 +131,7 @@ def main():
     args = docopt(__doc__)
 
     if args['--list-lang']:
-        langs = config.get_data().get('model', {}).items()
-        langs = list(sorted(langs))
+        langs = model_loaders.get_model_langs()
         print("\n".join("%s %s" % (l, repr(m)) for l, m in langs))
         sys.exit(0)
 
@@ -163,13 +177,17 @@ def main():
     if lang_model_file is None:
         sys.exit("Error: not found Doc2Vec model for language: %s" % language)
 
-    text_to_tokens, tokens_to_vector = model_loaders.load_funcs(language, lang_model_file)
+    text_to_tokens, tokens_to_vector, find_oov_tokens = model_loaders.load_funcs(language, lang_model_file)
 
-    pattern_vec = tokens_to_vector(text_to_tokens(pattern))
+    tokens = text_to_tokens(pattern)
+    pattern_vec = tokens_to_vector(tokens)
+    oov_tokens = find_oov_tokens(tokens)
+    if oov_tokens:
+        print("> Warning: unknown words: %s" % ", ".join(oov_tokens), file=sys.stderr)
 
     db = None
     if os.path.isdir(DB_DIR):
-        db_file = os.path.join(DB_DIR, language + "-" + file_signature(lang_model_file))
+        db_file = os.path.join(DB_DIR, "%s-%s-%s" % (language, file_signature(lang_model_file), INDEXER_VERSION))
         db = dbm.open(db_file, 'c')
 
     len_target_files = len(target_files)
@@ -182,12 +200,16 @@ def main():
                 if max_tf:
                     _, f, sr = max_tf[0]
                     print("\x1b[1K\x1b[1G" + "[%d/%d] Provisional top-1: %s:%d-%d" % (tfi + 1, len_target_files, f, sr[0] + 1, sr[1] + 1), end='', file=sys.stderr)
-            r = extract_similar_to_pattern(tf, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=db)
-            if r is not None:
-                ip, subrange = r
-                heapq.heappush(tf_data, (ip, tf, subrange))
-                if len(tf_data) > top_n:
-                    _smallest = heapq.heappop(tf_data)
+            try:
+                r = extract_similar_to_pattern(tf, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=db)
+                if r is not None:
+                    ip, subrange = r
+                    heapq.heappush(tf_data, (ip, tf, subrange))
+                    if len(tf_data) > top_n:
+                        _smallest = heapq.heappop(tf_data)
+            except parsers.PraseError as e:
+                print("> Warning: %s" % e)
+                return None
         if verbose:
             print("\x1b[1K\x1b[1G", file=sys.stderr)
     except KeyboardInterrupt:
