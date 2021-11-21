@@ -136,14 +136,14 @@ For example, in the case of Japanese Doc2Vec model, the content of the file `ja.
 
 - [x] Optimization by indexing document files
 - [x] Prepare Doc2Vec models compatible to the latest gensim (v4) 
+- [ ] Combining keyword search
 - [ ] Consider other models (in particular, could the Word2Vec model be used?)
 - [ ] Support for more languages
 
 ## Acknowledgements
 
-d2vg uses the following Doc2Vec models. Thanks for the excellent models.
+I referred to the following sites to create the Doc2Vec model. Many thanks.
 
-* [jhlau/doc2vec](https://github.com/jhlau/doc2vec)
 * [Doc2vec model trained on Japanese Wikipedia](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
 
 ## License

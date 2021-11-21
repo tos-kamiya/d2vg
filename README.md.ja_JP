@@ -135,14 +135,14 @@ Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 
 - [x] ドキュメントファイルのインデックスの導入による最適化
 - [x] 最新版のgensim v4と互換性のあるDoc2Vecデータの準備
+- [ ] キーワード検索の併用
 - [ ] 他のモデルの検討(特に、Word2Vecのモデルが利用できないか)
 - [ ] より多くの言語サポート
 
 ## 謝辞
 
-d2vgは次のDoc2Vecモデルを利用しています。素晴らしいモデルを提供されている両氏に感謝いたします。
+Doc2Vecモデルの作成には次のサイトを参考にしました。感謝いたします。
 
-* [jhlau/doc2vec](https://github.com/jhlau/doc2vec)
 * [日本語Wikipediaで学習したdoc2vecモデル](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
 
 ## ライセンス
