@@ -2,7 +2,7 @@
 
 d2vg, a Doc2Vec grep.
 
-Use Doc2Vec models to search for files that contain similar parts to the phrase in the query.
+Use Doc2Vec models to search document files that contain similar parts to the phrase in the query.
 
 * Supports searching within text files (.txt), PDF files (.pdf), and MS Word files (.docx)
 * Supported languages are Japanese and English (Since Doc2Vec model is language-dependent)
@@ -30,10 +30,10 @@ Download `enw50k.tar.bz2` (English Doc2Vec model). Expand the archive as a direc
 └── enwiki-w50k-d100.model.dv.vectors.npy
 ```
 
-If you downloaded `enw50k.tar.bz2.aa` and `enw50k.tar.bz2.ab` from github, create `enw50k.tar.bz2` as follows:
+If you downloaded `enw50k.tar.bz2.aa` and `enw50k.tar.bz2.ab` from the releases page on github, obtain the file `enw50k.tar.bz2` as follows:
 
 ```
-cat enw50k.tar.bz2.a* > enw50k.tar.bz2
+cat enw50k.tar.bz2.aa enw50k.tar.bz2.ab > enw50k.tar.bz2
 ```
 
 ### Install optional Doc2Vec model(s)
@@ -136,6 +136,7 @@ For example, in the case of Japanese Doc2Vec model, the content of the file `ja.
 
 - [x] Optimization by indexing document files
 - [x] Prepare Doc2Vec models compatible to the latest gensim (v4) 
+- [ ] Check if the software can be installed on Windows.
 - [ ] Combining keyword search
 - [ ] Consider other models (in particular, could the Word2Vec model be used?)
 - [ ] Support for more languages

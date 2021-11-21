@@ -2,7 +2,7 @@
 
 d2vg, A Doc2Vec grep.
 
-Doc2Vecモデルを使って、クエリのフレーズに似た部分を含むファイルを検索します。
+Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む文書ファイルを検索します。
 
 * テキストファイル（.txt）、PDFファイル（.pdf）、MS Wordファイル（.docx）からの検索に対応
 * 対応言語は日本語、英語（Doc2Vecのモデルは言語に依存するため）
@@ -30,10 +30,10 @@ pip3 install git+https://github.com/tos-kamiya/d2vg.git
 └── enwiki-w50k-d100.model.dv.vectors.npy
 ```
 
-githubから`enw50k.tar.bz2.aa`と`enw50k.tar.bz2.ab`をダウンロードしたときは、次のようにして`enw50k.tar.bz2`を作成してください。
+githubのリリースページから`enw50k.tar.bz2.aa`と`enw50k.tar.bz2.ab`をダウンロードしたときは、次のようにして`enw50k.tar.bz2`を作成してください。
 
 ```
-cat enw50k.tar.bz2.a* > enw50k.tar.bz2
+cat enw50k.tar.bz2.aa enw50k.tar.bz2.ab > enw50k.tar.bz2
 ```
 
 ### 日本語Doc2Vecモデルのインストール
@@ -135,6 +135,7 @@ Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 
 - [x] ドキュメントファイルのインデックスの導入による最適化
 - [x] 最新版のgensim v4と互換性のあるDoc2Vecデータの準備
+- [ ] Windowsでインストールできるか確認する
 - [ ] キーワード検索の併用
 - [ ] 他のモデルの検討(特に、Word2Vecのモデルが利用できないか)
 - [ ] より多くの言語サポート
