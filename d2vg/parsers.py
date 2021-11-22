@@ -21,6 +21,16 @@ if os.name == 'nt' and os.path.exists(os.path.join(_script_dir, 'nkf32.exe')):
     _ja_nkf_abspath = os.path.abspath(os.path.join(_script_dir, 'nkf32.exe'))
 
 
+if _ja_nkf_abspath:
+    def read_text_file(file_name):
+        b = subprocess.check_output([_ja_nkf_abspath, "-Lu", "--oc=UTF-8", file_name])
+        return b.decode('utf-8')
+else:
+    def read_text_file(file_name):
+        with open(file_name) as inp:
+            return inp.read()
+
+
 class PraseError(Exception):
     pass
 
@@ -54,13 +64,7 @@ def _parse_i(file_name):
     elif extension == '.docx':
         return docx_parse(file_name)
     else:
-        if _ja_nkf_abspath:
-            b = subprocess.check_output([_ja_nkf_abspath, "-Lu", "--oc=UTF-8", file_name])
-            return b.decode('utf-8')
-        else:
-            with open(file_name) as inp:
-                text = inp.read()
-            return text
+        return read_text_file(file_name)
 
 
 def pdf_parse(file_name):

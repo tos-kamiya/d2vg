@@ -1,13 +1,13 @@
 import dbm
 from glob import glob
 import heapq
+import locale
 import os
 import pickle
 import sys
 
 import numpy as np
 from docopt import docopt
-import appdirs
 
 from . import parsers
 from . import model_loaders
@@ -131,13 +131,11 @@ def main():
     window_size = int(args['--window'])
     verbose = args['--verbose']
 
-    l = os.environ.get('LANG')
-    if l == 'ja_JP.UTF-8':
-        language = 'ja'
-    elif l == 'en_US.UTF-8':
-        language = 'en'
-    else:
-        language = None
+    l = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
+    i = l.find('_')
+    if i >= 0:
+        l = l[:i]
+    language = l
     if args['--lang']:
         language = args['--lang']
 
@@ -156,9 +154,7 @@ def main():
         sys.exit("Error: no target files are given.")
 
     if args['--pattern-from-file']:
-        with open(pattern) as inp:
-            text = inp.read()
-        pattern = text
+        pattern = parsers.read_text_file(pattern)
 
     if not pattern:
         sys.exit("Error: pattern string is empty.")
