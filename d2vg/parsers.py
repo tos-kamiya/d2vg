@@ -35,36 +35,45 @@ class PraseError(Exception):
     pass
 
 
-def parse(file_name):
-    try:
-        text = _parse_i(file_name)
-    except Exception as e:
-        raise PraseError("ParseError: in parsing file: %s" % repr(file_name)) from e
+class Parser:
+    def __init__(self):
+        self.__stdin_text = None
 
-    if text is not None:
-        lines = text.split('\n')
-        r = []
-        for L in lines:
-            L = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', L)
-            L = re.sub(r'\s+', ' ', L)
-            r.append(L)
-        return r
-    return None
+    def parse(self, file_name):
+        try:
+            text = self._parse_i(file_name)
+        except Exception as e:
+            raise PraseError("ParseError: in parsing file: %s" % repr(file_name)) from e
 
-
-def _parse_i(file_name):
-    i = file_name.rfind('.')
-    if i < 0:
+        if text is not None:
+            lines = text.split('\n')
+            r = []
+            for L in lines:
+                L = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', L)
+                L = re.sub(r'\s+', ' ', L)
+                r.append(L)
+            return r
         return None
-    extension = file_name[i:].lower()
-    if extension in ['.html', 'htm']:
-        return html_parse(file_name)
-    elif extension == '.pdf':
-        return pdf_parse(file_name)
-    elif extension == '.docx':
-        return docx_parse(file_name)
-    else:
-        return read_text_file(file_name)
+
+    def _parse_i(self, file_name):
+        if file_name == '-':
+            if self.__stdin_text is None:
+                self.__stdin_text = sys.stdin.read()
+            return self.__stdin_text
+
+        i = file_name.rfind('.')
+        if i < 0:
+            return None
+        extension = file_name[i:].lower()
+
+        if extension in ['.html', 'htm']:
+            return html_parse(file_name)
+        elif extension == '.pdf':
+            return pdf_parse(file_name)
+        elif extension == '.docx':
+            return docx_parse(file_name)
+        else:
+            return read_text_file(file_name)
 
 
 def pdf_parse(file_name):
