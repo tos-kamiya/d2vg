@@ -1,0 +1,51 @@
+## Windowsでのインストール
+
+(1) スクリプトや依存を`pip`でインストールします。
+
+```
+pip install wheel
+pip install git+https://github.com/tos-kamiya/d2vg.git
+```
+
+(2) 英語Doc2Vecモデルのファイルをインストールします。
+
+ダウンロードしたファイル enw50k.tar.bz2.aa と enw50k.tar.bz2.ab を連結します。
+
+DOSプロンプトで行う場合は次のようになります。
+
+```
+C:
+cd C:\Users\<username>\Downloads
+copy /y /b "enw50k.tar.bz2.aa"+"enw50k.tar.bz2.ab" "enw50k.tar.bz2"
+```
+
+ファイル enw50k.tar.bz2 を何らかのツールを使って展開します。
+例えば、7-zipを使った場合は、1回展開するとファイルenw50k.tarが生成されるので、このファイルを再度展開します。
+
+展開してできた `enw50k` というデレクトリを置くディレクトリを作成します。
+
+DOSプロンプトで行う場合は次のようになります。
+
+```
+C:
+cd C:\Users\<username>\AppData\Local
+mkdir tos.kamiya
+mkdir tos.kamiya\d2vg
+mkdir tos.kamiya\d2vg\models
+```
+
+エクスプローラーで行う場合には、AppDataは隠しフォルダなので、
+エクスプローラーのバーに直接「C:\Users\<username>\AppData」と入力してください。
+
+ディレクトリ `enw50k` を `C:\Users\<username>\AppData\tos.kamiya\d2vg\models` の直下のディレクトリになるように移動します。
+
+![](images/win-enw50k-place-ja.png)
+
+### 実行時の注意
+
+オプション`-v`(検索の途中経過を表示する)はANSIエスケープシーケンスを出力するため、
+ANSIエスケープシーケンスに対応したPowershell等を利用してください。
+
+![](images/win-example-powershell.png)
+
+

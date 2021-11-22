@@ -125,8 +125,11 @@ Option:
 
 
 def main():
-    if not os.path.isdir(_user_config_dir):
+    if not os.path.exists(_user_config_dir):
         os.mkdir(_user_config_dir)
+    else:
+        if os.path.isfile(_user_config_dir):
+            sys.exit('Error: should be directory, not file: %s' % _user_config_dir)
 
     args = docopt(__doc__)
 

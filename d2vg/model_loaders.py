@@ -1,18 +1,22 @@
 from glob import glob
 import os
 import sys
+import importlib.metadata
 
 import appdirs
 from gensim.models.doc2vec import Doc2Vec
 from gensim.utils import tokenize
 
 
+_app_name = 'd2vg'
+_author = 'tos.kamiya'
 _script_dir = os.path.dirname(os.path.realpath(__file__))
-_user_config_dir = appdirs.user_config_dir("d2vg")
+_user_data_dir = appdirs.user_data_dir(_app_name, _author)
+_user_config_dir = appdirs.user_config_dir(_app_name)
 
 
 def get_model_langs():
-    dirs = [_user_config_dir, _script_dir]
+    dirs = [_user_config_dir, _user_data_dir, _script_dir]
 
     paths = []
     for d in dirs:
@@ -26,13 +30,13 @@ def get_model_langs():
 
 
 def get_model_file(lang):
-    dirs = [_user_config_dir, _script_dir]
+    dirs = [_user_config_dir, _user_data_dir, _script_dir]
 
     for d in dirs:
         p = os.path.join(d, "models", "**", "%s.ref" % lang)
         ps = glob(p, recursive=True)
         if not ps:
-            return None
+            continue
         ps = [p for p in ps if os.path.isfile(p)]
         if len(ps) >= 2:
             print("> Warning: matches two or more Doc2Vec model configs: %s" % repr(ps))
@@ -42,6 +46,7 @@ def get_model_file(lang):
         lang_model_path = os.path.join(os.path.dirname(ps[0]), lines[0])
 
         return lang_model_path
+    return None
 
 
 def load_funcs(lang, lang_model_path):

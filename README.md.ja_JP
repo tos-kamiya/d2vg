@@ -11,6 +11,7 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 ## インストール
 
 下記の手順はUbuntu 20.04で確認したものです。
+Windowsを利用している場合には、[Windowsでのインストール](installation-on-windows.md.ja_JP)を参照してください。
 
 (1) スクリプトや依存を`pip`でインストールします。
 
@@ -18,7 +19,7 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 pip3 install git+https://github.com/tos-kamiya/d2vg.git
 ```
 
-(2) 英語Doc2Vecモデルのインストール
+(2) 英語Doc2Vecモデルのファイルをインストールします。
 
 ファイル`enw50k.tar.bz2`をダウンロードして、ディレクトリ`~/.config/d2vg/models/en50k`へと展開します。
 （ディレクトリ`~/.config/d2vg/models`が存在しない場合は作成してください。）
@@ -50,7 +51,7 @@ cat enw50k.tar.bz2.aa enw50k.tar.bz2.ab > enw50k.tar.bz2
 └── jawiki-w50k-d100.model.dv.vectors.npy
 ```
 
-(2) トークナイザーのインストール。
+(2) トークナイザーをインストールします。
 
 MeCabとNEologdをインストールします（上記の日本語モデルの作成に利用されたものです）。
 

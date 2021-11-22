@@ -11,6 +11,7 @@ Use Doc2Vec models to search document files that contain similar parts to the ph
 ## Installation
 
 The following steps have been checked on Ubuntu 20.04.
+If you are using Windows, please refer to [Installation on Windows](installation-on-windows.md)
 
 (1) Install the script and dependencies with `pip`.
 
