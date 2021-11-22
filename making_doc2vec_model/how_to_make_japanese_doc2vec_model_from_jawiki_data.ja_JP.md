@@ -16,7 +16,7 @@ jawiki-latest-pages-articles.xml.bz2               01-Nov-2021 20:04          35
 curl -O https://dumps.wikimedia.org/jawiki/latest/jawiki-latest-pages-articles.xml.bz2
 ```
 
-(3) クリーング（XMLタグの除去など)と分かち書き
+(3) クリーニング（XMLタグの除去など)と分かち書き
 
 ```
 mkdir wc

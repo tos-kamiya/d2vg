@@ -43,6 +43,6 @@ Move the directory `enw50k` so that it is directly under `C:\Users\<username>\Ap
 ### Note on running the script
 
 The option `-v` (to show the progress of the search) will output ANSI escape sequences.
-Use a terminal supporting ANSI escape sequences, such a PowerShell.
+Use a terminal supporting ANSI escape sequences, such as PowerShell.
 
 ![](images/win-example-powershell.png)
