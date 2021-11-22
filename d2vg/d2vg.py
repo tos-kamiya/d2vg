@@ -47,7 +47,7 @@ def pickle_loads_pos_vecs(b):
     return loaded
 
 
-def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=None):
+def extract_pos_vecs(file_name, text_to_tokens, tokens_to_vector, window_size, index_db=None):
     if index_db is not None and not os.path.isabs(file_name):
         keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
         valueb = index_db.get(keyb, None)
@@ -64,36 +64,43 @@ def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to
             index_db[keyb] = pickle_dumps_pos_vecs(pos_vecs)
         else:
             pos_vecs = pickle_loads_pos_vecs(valueb)
-
-        max_ip = -sys.float_info.max
-        max_subrange = None
-        found_some = False
-        for pos, end_pos, vec in pos_vecs:
-            ip = np.inner(vec, pattern_vec)
-            if ip >= max_ip:
-                found_some = True
-                max_ip = ip
-                max_subrange = pos, end_pos
     else:
+        pos_vecs = []
         lines = parsers.parse(file_name)
-        max_ip = -sys.float_info.max
-        max_subrange = None
         len_lines = len(lines)
-        found_some = False
         for pos in range(0, len_lines, window_size // 2):
             end_pos = min(pos + window_size, len_lines)
             subtext = '\n'.join(lines[pos : end_pos])
             tokens = text_to_tokens(subtext)
             vec = tokens_to_vector(tokens)
-            ip = np.inner(vec, pattern_vec)
-            if ip >= max_ip:
-                found_some = True
-                max_ip = ip
-                max_subrange = pos, end_pos
+            pos_vecs.append((pos, end_pos, vec))
+    
+    return pos_vecs
+
+
+def similarity_to_pattern(pos_vecs, pattern_vec):
+    r = []
+    for pos, end_pos, vec in pos_vecs:
+        ip = np.inner(vec, pattern_vec)
+        r.append((ip, (pos, end_pos)))
+    return r
+
+
+def most_similar_to_pattern(pos_vecs, pattern_vec):
+    max_ip = -sys.float_info.max
+    max_subrange = None
+    found_some = False
+    for pos, end_pos, vec in pos_vecs:
+        ip = np.inner(vec, pattern_vec)
+        if ip >= max_ip:
+            found_some = True
+            max_ip = ip
+            max_subrange = pos, end_pos
+
     if found_some:
-        return max_ip, max_subrange
+        return [(max_ip, max_subrange)]
     else:
-        return None
+        return []
 
 
 __doc__ = """Doc2Vec Grep.
@@ -107,6 +114,7 @@ Options:
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --window=NUM, -w NUM          Line window size [default: 20].
   --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
+  --paragraph, -p               Search paragraphs in documents.
   --verbose, -v                 Verbose.
   --list-lang                   Listing the languages in which the corresponding models are installed.
 """
@@ -125,6 +133,7 @@ def main():
     top_n = int(args['--topn'])
     window_size = int(args['--window'])
     verbose = args['--verbose']
+    search_paragraph = args['--paragraph']
 
     lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
     i = lng.find('_')
@@ -184,9 +193,12 @@ def main():
                     top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
                     print("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end='', file=sys.stderr, flush=True)
             try:
-                r = extract_similar_to_pattern(tf, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=db)
-                if r is not None:
-                    ip, subrange = r
+                pos_vecs = extract_pos_vecs(tf, text_to_tokens, tokens_to_vector, window_size, index_db=db)
+                if search_paragraph:
+                    r = similarity_to_pattern(pos_vecs, pattern_vec)
+                else:
+                    r = most_similar_to_pattern(pos_vecs, pattern_vec)
+                for ip, subrange in r:
                     heapq.heappush(tf_data, (ip, tf, subrange))
                     if len(tf_data) > top_n:
                         _smallest = heapq.heappop(tf_data)
