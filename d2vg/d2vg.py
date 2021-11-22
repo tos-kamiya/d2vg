@@ -13,14 +13,7 @@ from . import parsers
 from . import model_loaders
 
 
-_user_config_dir = appdirs.user_config_dir("d2vg")
-
 DB_DIR = '.d2vg'
-INDEXER_VERSION = "4"  # gensim major version
-
-
-def file_signature(file_name):
-    return "%s-%s-%f" % (os.path.basename(file_name), os.path.getsize(file_name), os.path.getmtime(file_name))
 
 
 def extract_leading_text(lines):
@@ -54,7 +47,7 @@ def pickle_loads_pos_vecs(b):
 
 def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=None):
     if index_db is not None and not os.path.isabs(file_name):
-        keyb = ("%s-%d" % (file_signature(file_name), window_size)).encode()
+        keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
         valueb = index_db.get(keyb, None)
         if valueb is None:
             pos_vecs = []
@@ -125,12 +118,6 @@ Option:
 
 
 def main():
-    if not os.path.exists(_user_config_dir):
-        os.mkdir(_user_config_dir)
-    else:
-        if os.path.isfile(_user_config_dir):
-            sys.exit('Error: should be directory, not file: %s' % _user_config_dir)
-
     args = docopt(__doc__)
 
     if args['--list-lang']:
@@ -180,7 +167,8 @@ def main():
     if lang_model_file is None:
         sys.exit("Error: not found Doc2Vec model for language: %s" % language)
 
-    text_to_tokens, tokens_to_vector, find_oov_tokens = model_loaders.load_funcs(language, lang_model_file)
+    text_to_tokens, tokens_to_vector, find_oov_tokens, get_index_db_name = model_loaders.load_funcs(language, lang_model_file)
+    index_db_name = get_index_db_name()
 
     tokens = text_to_tokens(pattern)
     pattern_vec = tokens_to_vector(tokens)
@@ -190,7 +178,7 @@ def main():
 
     db = None
     if os.path.isdir(DB_DIR):
-        db_file = os.path.join(DB_DIR, "%s-%s-%s" % (language, file_signature(lang_model_file), INDEXER_VERSION))
+        db_file = os.path.join(DB_DIR, index_db_name)
         db = dbm.open(db_file, 'c')
 
     len_target_files = len(target_files)

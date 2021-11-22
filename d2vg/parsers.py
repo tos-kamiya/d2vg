@@ -1,5 +1,8 @@
 from io import StringIO
+import os
 import re
+import subprocess
+import sys
 
 import bs4
 
@@ -9,6 +12,13 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 
 import docx2txt
+
+
+_script_dir = os.path.dirname(os.path.realpath(__file__))
+
+_ja_nkf_abspath = None
+if os.name == 'nt' and os.path.exists(os.path.join(_script_dir, 'nkf32.exe')):
+    _ja_nkf_abspath = os.path.abspath(os.path.join(_script_dir, 'nkf32.exe'))
 
 
 class PraseError(Exception):
@@ -44,9 +54,13 @@ def _parse_i(file_name):
     elif extension == '.docx':
         return docx_parse(file_name)
     else:
-        with open(file_name) as inp:
-            text = inp.read()
-        return text
+        if _ja_nkf_abspath:
+            b = subprocess.check_output([_ja_nkf_abspath, "-Lu", "--oc=UTF-8", file_name])
+            return b.decode('utf-8')
+        else:
+            with open(file_name) as inp:
+                text = inp.read()
+            return text
 
 
 def pdf_parse(file_name):

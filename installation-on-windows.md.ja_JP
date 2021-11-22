@@ -41,6 +41,31 @@ mkdir tos.kamiya\d2vg\models
 
 ![](images/win-enw50k-place-ja.png)
 
+### MeCabのインストール
+
+MeCab本体をインストールします。
+
+https://github.com/ikegami-yukino/mecab/releases
+
+「コントロールパネル-システムとセキュリティ-システム-システムの詳細設定-環境変数」で「Path」を編集して「C:\Program Files\MeCab\bin」を追加します。DOSプロンプトから、次でMeCabのPythonラッパーをインストールします。
+
+MeCabのPythonラッパーをインストールします。
+
+```
+pip install mecab
+```
+
+動作確認には、DOSプロンプト等で次のように入力してみてください。
+
+```
+python
+import MeCab
+mecab = MeCab.Tagger()
+print(mecab.parse("ただいまMeCabのテスト中。"))
+```
+
+次のように表示されれば、動作しています。
+
 ### 実行時の注意
 
 オプション`-v`(検索の途中経過を表示する)はANSIエスケープシーケンスを出力するため、
