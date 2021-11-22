@@ -59,7 +59,7 @@ def load_funcs(lang, lang_model_path):
 
     if lang == 'ja':
         import MeCab
-        
+
         wakati = MeCab.Tagger("-O wakati")
         def text_to_tokens(text):
             tokens = wakati.parse(text).strip().split()
@@ -79,5 +79,5 @@ def load_funcs(lang, lang_model_path):
     def tokens_to_vec(tokens):
         vec = model.infer_vector(tokens, alpha=0.0)  # https://stackoverflow.com/questions/50212449/gensim-doc2vec-why-does-infer-vector-use-alpha
         return vec
-    
+
     return text_to_tokens, tokens_to_vec, find_oov_tokens, get_index_db_name

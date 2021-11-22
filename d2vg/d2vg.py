@@ -102,7 +102,7 @@ Usage:
   d2vg [options] <pattern> <file>...
   d2vg --list-lang
 
-Option:
+Options:
   --lang=LANG, -l LANG          Model language. Either `ja` or `en`.
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --window=NUM, -w NUM          Line window size [default: 20].
@@ -126,11 +126,11 @@ def main():
     window_size = int(args['--window'])
     verbose = args['--verbose']
 
-    l = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
-    i = l.find('_')
+    lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
+    i = lng.find('_')
     if i >= 0:
-        l = l[:i]
-    language = l
+        lng = lng[:i]
+    language = lng
     if args['--lang']:
         language = args['--lang']
 
@@ -153,13 +153,12 @@ def main():
 
     if not pattern:
         sys.exit("Error: pattern string is empty.")
-    
+
     lang_model_file = model_loaders.get_model_file(language)
     if lang_model_file is None:
         sys.exit("Error: not found Doc2Vec model for language: %s" % language)
 
     text_to_tokens, tokens_to_vector, find_oov_tokens, get_index_db_name = model_loaders.load_funcs(language, lang_model_file)
-    index_db_name = get_index_db_name()
 
     tokens = text_to_tokens(pattern)
     pattern_vec = tokens_to_vector(tokens)
@@ -169,7 +168,7 @@ def main():
 
     db = None
     if os.path.isdir(DB_DIR):
-        db_file = os.path.join(DB_DIR, index_db_name)
+        db_file = os.path.join(DB_DIR, get_index_db_name())
         db = dbm.open(db_file, 'c')
 
     len_target_files = len(target_files)
@@ -181,7 +180,7 @@ def main():
             if verbose and tfi % verbose_interval == 0:
                 max_tf = heapq.nlargest(1, tf_data)
                 if max_tf:
-                    _, f, sr = max_tf[0]
+                    _ip, f, sr = max_tf[0]
                     top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
                     print("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end='', file=sys.stderr, flush=True)
             try:
