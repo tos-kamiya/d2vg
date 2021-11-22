@@ -47,9 +47,11 @@ MeCab本体をインストールします。
 
 https://github.com/ikegami-yukino/mecab/releases
 
-「コントロールパネル-システムとセキュリティ-システム-システムの詳細設定-環境変数」で「Path」を編集して「C:\Program Files\MeCab\bin」を追加します。DOSプロンプトから、次でMeCabのPythonラッパーをインストールします。
+「コントロールパネル-システムとセキュリティ-システム-システムの詳細設定-環境変数」で「Path」を編集して「C:\Program Files\MeCab\bin」を追加します。
 
-MeCabのPythonラッパーをインストールします。
+![](images/win-mecab-env-ja.png)
+
+DOSプロンプトから、次でMeCabのPythonラッパーをインストールします。
 
 ```
 pip install mecab
@@ -65,6 +67,8 @@ print(mecab.parse("ただいまMeCabのテスト中。"))
 ```
 
 次のように表示されれば、動作しています。
+
+![](images/win-mecab-run-ja.png)
 
 ### 実行時の注意
 
