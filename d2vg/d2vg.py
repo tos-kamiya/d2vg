@@ -200,9 +200,11 @@ def main():
         for tfi, tf in enumerate(target_files):
             if verbose:
                 max_tf = heapq.nlargest(1, tf_data)
+                top1_message = ""
                 if max_tf:
                     _, f, sr = max_tf[0]
-                    print("\x1b[1K\x1b[1G" + "[%d/%d] Provisional top-1: %s:%d-%d" % (tfi + 1, len_target_files, f, sr[0] + 1, sr[1] + 1), end='', file=sys.stderr)
+                    top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
+                print("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end='', file=sys.stderr, flush=True)
             try:
                 r = extract_similar_to_pattern(tf, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=db)
                 if r is not None:
@@ -218,7 +220,8 @@ def main():
     except KeyboardInterrupt:
         if verbose:
             print("\x1b[1K\x1b[1G", file=sys.stderr)
-        print("> Warning: interrupted [%d/%d]. shows the search results up to now." % (tfi, len(target_files)), file=sys.stderr)
+        print("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), file=sys.stderr)
+        print("> Warning: shows the search results up to now.", file=sys.stderr)
     finally:
         if db is not None:
             db.close()
