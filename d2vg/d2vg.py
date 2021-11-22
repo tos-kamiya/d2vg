@@ -14,18 +14,20 @@ from . import model_loaders
 
 
 DB_DIR = '.d2vg'
+LEADING_TEXT_MAX_LEN = 80
 
 
-def extract_leading_text(lines):
-    upper_limit = 80
-    if not lines:
-        return ""
-    leading_text = lines[0]
-    for L in lines[1:]:
-        leading_text += "|" + L.strip()
-        if len(leading_text) >= upper_limit:
-            break
-    leading_text = leading_text[:upper_limit]
+def extract_leading_text(file_name, subrange):
+    start_pos, end_pos = subrange
+    lines = parsers.parse(file_name)
+    leading_text = ""
+    for L in lines[start_pos : end_pos]:
+        leading_text += L + "|"
+        if len(leading_text) > LEADING_TEXT_MAX_LEN:
+            break  # for L
+    if leading_text:
+        leading_text = leading_text[:-1]  # remove the last "|"
+    leading_text = leading_text[:LEADING_TEXT_MAX_LEN]
     return leading_text
 
 
@@ -92,13 +94,6 @@ def extract_similar_to_pattern(file_name, pattern_vec, text_to_tokens, tokens_to
         return max_ip, max_subrange
     else:
         return None
-
-
-def extract_subtext(file_name, subrange):
-    start_pos, end_pos = subrange
-    lines = parsers.parse(file_name)
-    subtext = '\n'.join(lines[start_pos : end_pos])
-    return subtext
 
 
 __doc__ = """Doc2Vec Grep.
@@ -214,8 +209,7 @@ def main():
     for i, (ip, tf, sr) in enumerate(tf_data):
         if ip < 0:
             break  # for i
-        st = extract_subtext(tf, sr)
-        leading_text = extract_leading_text(st.split('\n'))
+        leading_text = extract_leading_text(tf, sr)
         print('%g\t%s:%d-%d\t%s' % (ip, tf, sr[0] + 1, sr[1] + 1, leading_text))
         if i >= top_n > 0:
             break  # for i
