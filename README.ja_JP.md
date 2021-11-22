@@ -10,8 +10,8 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 
 ## インストール
 
-* &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.md.ja_JP)
-* &rarr; [Installation on Windows](docs/installation-on-windows.md.ja_JP)
+* &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.ja_JP.md)
+* &rarr; [Installation on Windows](docs/installation-on-windows.ja_JP.md)
 
 ## 利用法
 
