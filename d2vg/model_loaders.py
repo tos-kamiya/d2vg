@@ -1,7 +1,6 @@
 from glob import glob
 import os
 import sys
-import importlib.metadata
 
 import appdirs
 from gensim.models.doc2vec import Doc2Vec
