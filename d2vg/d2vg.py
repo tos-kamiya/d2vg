@@ -175,15 +175,15 @@ def main():
     len_target_files = len(target_files)
     tf_data = []
     tfi = -1
+    verbose_interval = max(10, min(len(target_files) // 200, 100))
     try:
         for tfi, tf in enumerate(target_files):
-            if verbose:
+            if verbose and tfi % verbose_interval == 0:
                 max_tf = heapq.nlargest(1, tf_data)
-                top1_message = ""
                 if max_tf:
                     _, f, sr = max_tf[0]
                     top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
-                print("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end='', file=sys.stderr, flush=True)
+                    print("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end='', file=sys.stderr, flush=True)
             try:
                 r = extract_similar_to_pattern(tf, pattern_vec, text_to_tokens, tokens_to_vector, window_size, index_db=db)
                 if r is not None:
