@@ -19,7 +19,7 @@ cd C:\Users\<username>\Downloads
 copy /y /b "enw50k.tar.bz2.aa"+"enw50k.tar.bz2.ab" "enw50k.tar.bz2"
 ```
 
-Extract the file enw50k.tar.bz2 using some tool.
+Extract the file `enw50k.tar.bz2` with some tool.
 For example, if you use 7-zip, expand it once to generate the file `enw50k.tar`, and then expand this file again.
 
 Make a directory to store the extracted `enw50k` directory.

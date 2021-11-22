@@ -9,7 +9,7 @@ pip install git+https://github.com/tos-kamiya/d2vg.git
 
 (2) 英語Doc2Vecモデルのファイルをインストールします。
 
-releasesのページからダウンロードしたファイル enw50k.tar.bz2.aa と enw50k.tar.bz2.ab を連結します。
+releasesのページからダウンロードしたファイル `enw50k.tar.bz2.aa` と `enw50k.tar.bz2.ab` を連結します。
 
 DOSプロンプトで行う場合は次のようになります。
 
@@ -19,8 +19,8 @@ cd C:\Users\<username>\Downloads
 copy /y /b "enw50k.tar.bz2.aa"+"enw50k.tar.bz2.ab" "enw50k.tar.bz2"
 ```
 
-ファイル enw50k.tar.bz2 を何らかのツールを使って展開します。
-例えば、7-zipを使った場合は、1回展開するとファイルenw50k.tarが生成されるので、このファイルを再度展開します。
+ファイル `enw50k.tar.bz2` を何らかのツールを使って展開します。
+例えば、7-zipを使った場合は、1回展開するとファイル `enw50k.tar` が生成されるので、このファイルを再度展開します。
 
 展開してできるディレクトリ `enw50k` を置くディレクトリ
 `C:\Users\<username>\AppData\Local\tos.kamiya\d2vg\models`
@@ -36,7 +36,8 @@ mkdir tos.kamiya\d2vg
 mkdir tos.kamiya\d2vg\models
 ```
 
-エクスプローラーで行う場合には、AppDataは隠しフォルダなので、開くには、エクスプローラーのバーに直接「C:\Users\<username>\AppData」と入力してください。
+エクスプローラーで行う場合には、 `AppData` は隠しフォルダなので、
+開くには、エクスプローラーのバーに直接「`C:\Users\<username>\AppData`」と入力してください。
 
 ディレクトリ `enw50k` を `C:\Users\<username>\AppData\Local\tos.kamiya\d2vg\models` の直下のディレクトリになるように移動します。
 
@@ -44,13 +45,13 @@ mkdir tos.kamiya\d2vg\models
 
 ![](images/win-enw50k-place-ja.png)
 
-### 日本語Doc2Vecモデルのインストール
+(3) 日本語Doc2Vecモデルをインストールします。
 
-releasesのページから jaw50k.tar.bz2 をダウンロードし、上の(2)に準じてインストールしてください。
+releasesのページからファイル `jaw50k.tar.bz2` をダウンロードし、上の(2)に準じてインストールしてください。
 
 ![](images/win-jaw50k-place-ja.png)
 
-### MeCabのインストール
+(4) 形態素解析ツールをインストールします。
 
 MeCab本体をインストールします。
 
@@ -79,7 +80,7 @@ print(mecab.parse("ただいまMeCabのテスト中。"))
 
 ![](images/win-mecab-run-ja.png)
 
-### NKFのインストール(オプション)
+(5) NKFのインストール(オプション)
 
 **文字コードがUTF-8のテキストファイルも検索対象にするには、NKFをインストールしてください。**
 (いわゆるShiftJISのテキストファイルと、UTF-8のテキストファイルが混在しているときに、NKFを用いることで、文字コードを判別して読み込みます。)
@@ -98,7 +99,7 @@ python -c "help('d2vg')"
 ### 実行時の注意
 
 オプション`-v`(検索の途中経過を表示する)はANSIエスケープシーケンスを出力するため、
-ANSIエスケープシーケンスに対応したPowershell等を利用してください。
+ANSIエスケープシーケンスに対応したPowerShell等を利用してください。
 
 ![](images/win-example-powershell.png)
 

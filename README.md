@@ -10,62 +10,8 @@ Use Doc2Vec models to search document files that contain similar parts to the ph
 
 ## Installation
 
-The following steps have been checked on Ubuntu 20.04.
-If you are using Windows, please refer to [Installation on Windows](installation-on-windows.md)
-
-(1) Install the script and dependencies with `pip`.
-
-```sh
-pip3 install git+https://github.com/tos-kamiya/d2vg.git
-```
-
-(2) Install an English Doc2Vec model file.
-
-Download `enw50k.tar.bz2` (English Doc2Vec model). Expand the archive as a directory `~/.config/d2vg/models/en50k`.
-(In case the directory `~/.config/d2vg/models` does not exist, create it.)
-
-```
-~/.config/d2vg/models/enw50k
-├── en.ref
-├── enwiki-w50k-d100.model
-└── enwiki-w50k-d100.model.dv.vectors.npy
-```
-
-If you downloaded `enw50k.tar.bz2.aa` and `enw50k.tar.bz2.ab` from the releases page on github, obtain the file `enw50k.tar.bz2` as follows:
-
-```
-cat enw50k.tar.bz2.aa enw50k.tar.bz2.ab > enw50k.tar.bz2
-```
-
-### Install optional Doc2Vec model(s)
-
-(1) Install a Japanese Doc2Vec model file.
-
-Download `jaw50k.tar.bz2` (Japanese Doc2Vec model). Expand the archive as a directory `~/.config/d2vg/models/ja50k`.
-(In case the directory `~/.config/d2vg/models` does not exist, create it.)
-
-```
-~/.config/d2vg/models/jaw50k
-├── ja.ref
-├── jawiki-w50k-d100.model
-└── jawiki-w50k-d100.model.dv.vectors.npy
-```
-
-(2) Install a tokenizer. 
-
-Install MeCab and NEologd as a special tokenizer (used in generation of the Japanese model above).
-
-```sh
-sudo apt install mecab libmecab-dev mecab-ipadic-utf8
-git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git
-cd mecab-ipadic-neologd
-./bin/install-mecab-ipadic-neologd -n -a
-sudo cp /etc/mecabrc /usr/local/etc/
-```
-
-```
-pip3 install mecab
-```
+* &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.md)
+* &rarr; [Installation on Windows](docs/installation-on-windows.md)
 
 ## Usage
 
@@ -137,7 +83,7 @@ For example, in the case of Japanese Doc2Vec model, the content of the file `ja.
 
 - [x] Optimization by indexing document files
 - [x] Prepare Doc2Vec models compatible to the latest gensim (v4) 
-- [ ] Check if the software can be installed on Windows.
+- [x] Check installation on Windows.
 - [ ] Combining keyword search
 - [ ] Consider other models (in particular, could the Word2Vec model be used?)
 - [ ] Support for more languages

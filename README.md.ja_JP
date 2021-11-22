@@ -10,62 +10,8 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 
 ## インストール
 
-下記の手順はUbuntu 20.04で確認したものです。
-Windowsを利用している場合には、[Windowsでのインストール](installation-on-windows.md.ja_JP)を参照してください。
-
-(1) スクリプトや依存を`pip`でインストールします。
-
-```sh
-pip3 install git+https://github.com/tos-kamiya/d2vg.git
-```
-
-(2) 英語Doc2Vecモデルのファイルをインストールします。
-
-ファイル`enw50k.tar.bz2`をダウンロードして、ディレクトリ`~/.config/d2vg/models/en50k`へと展開します。
-（ディレクトリ`~/.config/d2vg/models`が存在しない場合は作成してください。）
-
-```
-~/.config/d2vg/models/enw50k
-├── en.ref
-├── enwiki-w50k-d100.model
-└── enwiki-w50k-d100.model.dv.vectors.npy
-```
-
-githubのリリースページから`enw50k.tar.bz2.aa`と`enw50k.tar.bz2.ab`をダウンロードしたときは、次のようにして`enw50k.tar.bz2`を作成してください。
-
-```
-cat enw50k.tar.bz2.aa enw50k.tar.bz2.ab > enw50k.tar.bz2
-```
-
-### 日本語Doc2Vecモデルのインストール
-
-(1) 日本語Doc2Vecモデルをインストールします。
-
-ファイル`jaw50k.tar.bz2`をダウンロードしてディレクトリ`~/.config/d2vg/models/ja50k`へと展開します。
-（ディレクトリ`~/.config/d2vg/models`が存在しない場合は作成してください。）
-
-```
-~/.config/d2vg/models/jaw50k
-├── ja.ref
-├── jawiki-w50k-d100.model
-└── jawiki-w50k-d100.model.dv.vectors.npy
-```
-
-(2) トークナイザーをインストールします。
-
-MeCabとNEologdをインストールします（上記の日本語モデルの作成に利用されたものです）。
-
-```sh
-sudo apt install mecab libmecab-dev mecab-ipadic-utf8
-git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git
-cd mecab-ipadic-neologd
-./bin/install-mecab-ipadic-neologd -n -a
-sudo cp /etc/mecabrc /usr/local/etc/
-```
-
-```
-pip3 install mecab
-```
+* &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.md.ja_JP)
+* &rarr; [Installation on Windows](docs/installation-on-windows.md.ja_JP)
 
 ## 利用法
 
@@ -136,7 +82,7 @@ Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 
 - [x] ドキュメントファイルのインデックスの導入による最適化
 - [x] 最新版のgensim v4と互換性のあるDoc2Vecデータの準備
-- [ ] Windowsでインストールできるか確認する
+- [x] Windowsでのインストールを確認する
 - [ ] キーワード検索の併用
 - [ ] 他のモデルの検討(特に、Word2Vecのモデルが利用できないか)
 - [ ] より多くの言語サポート
