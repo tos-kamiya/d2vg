@@ -1,3 +1,5 @@
+![test workflow](https://github.com/tos-kamiya/d2vg/workflows/Tests/badge.svg)
+
 # d2vg
 
 d2vg, a Doc2Vec grep.

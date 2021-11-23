@@ -19,6 +19,7 @@ from .types import Vec
 DB_DIR = '.d2vg'
 LEADING_TEXT_MAX_LEN = 80
 
+
 T = TypeVar('T')
 
 def remove_second_appearance(lst: List[T]) -> List[T]:
@@ -45,9 +46,8 @@ def expand_target_files(target_files: Iterable[str]) -> List[str]:
     return target_files_expand
 
 
-def extract_leading_text(file_name: str, subrange: Tuple[int, int], parse: Callable[[str], List[str]]) -> str:
+def extract_leading_text(lines: List[str], subrange: Tuple[int, int]) -> str:
     start_pos, end_pos = subrange
-    lines = parse(file_name)
     leading_text = ""
     for L in lines[start_pos : end_pos]:
         leading_text += L + "|"
@@ -82,23 +82,8 @@ def extract_pos_vecs(
         window_size: int,
         parse: Callable[[str], List[str]], 
         index_db=None) -> List[Tuple[int, int, List[Vec]]]:
-    if index_db is not None and not os.path.isabs(file_name):
-        keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
-        valueb = index_db.get(keyb, None)
-        if valueb is None:
-            pos_vecs = []
-            lines = parse(file_name)
-            len_lines = len(lines)
-            for pos in range(0, len_lines, window_size // 2):
-                end_pos = min(pos + window_size, len_lines)
-                subtext = '\n'.join(lines[pos : end_pos])
-                tokens = text_to_tokens(subtext)
-                vec = tokens_to_vector(tokens)
-                pos_vecs.append((pos, end_pos, vec))
-            index_db[keyb] = pickle_dumps_pos_vecs(pos_vecs)
-        else:
-            pos_vecs = pickle_loads_pos_vecs(valueb)
-    else:
+    
+    def read_pos_vecs(file_name):
         pos_vecs = []
         lines = parse(file_name)
         len_lines = len(lines)
@@ -114,6 +99,18 @@ def extract_pos_vecs(
                 tokens = text_to_tokens(subtext)
                 vec = tokens_to_vector(tokens)
                 pos_vecs.append((pos, end_pos, vec))
+        return pos_vecs
+
+    if index_db is not None and file_name != '-' and not os.path.isabs(file_name):
+        keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
+        valueb = index_db.get(keyb, None)
+        if valueb is None:
+            pos_vecs = read_pos_vecs(file_name)
+            index_db[keyb] = pickle_dumps_pos_vecs(pos_vecs)
+        else:
+            pos_vecs = pickle_loads_pos_vecs(valueb)
+    else:
+        pos_vecs = read_pos_vecs(file_name)
     
     return pos_vecs
 
@@ -258,7 +255,8 @@ def main():
     for i, (ip, tf, sr) in enumerate(tf_data):
         if ip < 0:
             break  # for i
-        leading_text = extract_leading_text(tf, sr, parse)
+        lines = parse(tf)
+        leading_text = extract_leading_text(lines, sr)
         print('%g\t%s:%d-%d\t%s' % (ip, tf, sr[0] + 1, sr[1] + 1, leading_text))
         if i >= top_n > 0:
             break  # for i
