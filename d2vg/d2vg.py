@@ -1,3 +1,5 @@
+from typing import *
+
 import dbm
 from glob import glob
 import heapq
@@ -11,13 +13,15 @@ from docopt import docopt
 
 from . import parsers
 from . import model_loaders
+from .types import Vec
 
 
 DB_DIR = '.d2vg'
 LEADING_TEXT_MAX_LEN = 80
 
+T = TypeVar('T')
 
-def remove_second_appearance(lst):
+def remove_second_appearance(lst: List[T]) -> List[T]:
     s = set()
     r = []
     for i in lst:
@@ -27,7 +31,7 @@ def remove_second_appearance(lst):
     return r
 
 
-def expand_target_files(target_files):
+def expand_target_files(target_files: Iterable[str]) -> List[str]:
     target_files_expand = []
     for f in target_files:
         if '*' in f:
@@ -41,7 +45,7 @@ def expand_target_files(target_files):
     return target_files_expand
 
 
-def extract_leading_text(file_name, subrange, parse):
+def extract_leading_text(file_name: str, subrange: Tuple[int, int], parse: Callable[[str], List[str]]) -> str:
     start_pos, end_pos = subrange
     lines = parse(file_name)
     leading_text = ""
@@ -55,7 +59,7 @@ def extract_leading_text(file_name, subrange, parse):
     return leading_text
 
 
-def pickle_dumps_pos_vecs(pos_vecs):
+def pickle_dumps_pos_vecs(pos_vecs: Iterable[Tuple[int, int, List[Vec]]]) -> bytes:
     dumped = []
     for pos_start, pos_end, vecs in pos_vecs:
         vecs = [float(d) for d in vecs]
@@ -63,7 +67,7 @@ def pickle_dumps_pos_vecs(pos_vecs):
     return pickle.dumps(dumped)
 
 
-def pickle_loads_pos_vecs(b):
+def pickle_loads_pos_vecs(b: bytes) -> List[Tuple[int, int, List[Vec]]]:
     loaded = []
     for pos_start, pos_end, vecs in pickle.loads(b):
         vecs = np.array(vecs, dtype=np.float32)
@@ -71,7 +75,13 @@ def pickle_loads_pos_vecs(b):
     return loaded
 
 
-def extract_pos_vecs(file_name, text_to_tokens, tokens_to_vector, window_size, parse, index_db=None):
+def extract_pos_vecs(
+        file_name: str,
+        text_to_tokens: Callable[[str], List[str]], 
+        tokens_to_vector: Callable[[List[str]], Vec], 
+        window_size: int,
+        parse: Callable[[str], List[str]], 
+        index_db=None) -> List[Tuple[int, int, List[Vec]]]:
     if index_db is not None and not os.path.isabs(file_name):
         keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
         valueb = index_db.get(keyb, None)
@@ -108,7 +118,7 @@ def extract_pos_vecs(file_name, text_to_tokens, tokens_to_vector, window_size, p
     return pos_vecs
 
 
-def similarity_to_pattern(pos_vecs, pattern_vec):
+def similarity_to_pattern(pos_vecs: Iterable[Tuple[int, int, List[Vec]]], pattern_vec: Vec) -> List[Tuple[float, Tuple[int, int]]]:
     r = []
     for pos, end_pos, vec in pos_vecs:
         ip = np.inner(vec, pattern_vec)
@@ -116,12 +126,12 @@ def similarity_to_pattern(pos_vecs, pattern_vec):
     return r
 
 
-def most_similar_to_pattern(pos_vecs, pattern_vec):
-    max_ip = -sys.float_info.max
-    max_subrange = None
+def most_similar_to_pattern(pos_vecs: Iterable[Tuple[int, int, List[Vec]]], pattern_vec: Vec) -> List[Tuple[float, Tuple[int, int]]]:
+    max_ip: float = -sys.float_info.max
+    max_subrange = (0, 0)
     found_some = False
     for pos, end_pos, vec in pos_vecs:
-        ip = np.inner(vec, pattern_vec)
+        ip = float(np.inner(vec, pattern_vec))  # numpy.inner 's return type is declared as array
         if ip >= max_ip:
             found_some = True
             max_ip = ip
@@ -133,7 +143,7 @@ def most_similar_to_pattern(pos_vecs, pattern_vec):
         return []
 
 
-__doc__ = """Doc2Vec Grep.
+__doc__: str = """Doc2Vec Grep.
 
 Usage:
   d2vg [options] <pattern> <file>...
@@ -158,6 +168,7 @@ def main():
         print("\n".join("%s %s" % (l, repr(m)) for l, m in langs))
         sys.exit(0)
 
+    language = None
     pattern = args['<pattern>']
     target_files = args['<file>']
     top_n = int(args['--topn'])
@@ -169,12 +180,15 @@ def main():
     parse = parser.parse
 
     lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
-    i = lng.find('_')
-    if i >= 0:
-        lng = lng[:i]
-    language = lng
+    if lng is not None:
+        i = lng.find('_')
+        if i >= 0:
+            lng = lng[:i]
+        language = lng
     if args['--lang']:
         language = args['--lang']
+    if language is None:
+        sys.exit("Error: specify the language with option -l")
 
     target_files = expand_target_files(target_files)
     if not target_files:
@@ -207,6 +221,7 @@ def main():
     len_target_files = len(target_files)
     tf_data = []
     tfi = -1
+    tf = None
     verbose_interval = max(10, min(len(target_files) // 200, 100))
     try:
         for tfi, tf in enumerate(target_files):
