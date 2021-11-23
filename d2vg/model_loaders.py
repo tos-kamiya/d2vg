@@ -1,3 +1,5 @@
+from typing import *
+
 from glob import glob
 import os
 import sys
@@ -5,6 +7,8 @@ import sys
 import appdirs
 from gensim.models.doc2vec import Doc2Vec
 from gensim.utils import tokenize
+
+from .types import Vec
 
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -16,11 +20,11 @@ _user_data_dir = appdirs.user_data_dir(_app_name, _author)
 _user_config_dir = appdirs.user_config_dir(_app_name)
 
 
-def file_signature(file_name):
+def file_signature(file_name) -> str:
     return "%s-%s-%f" % (os.path.basename(file_name), os.path.getsize(file_name), os.path.getmtime(file_name))
 
 
-def get_model_langs():
+def get_model_langs() -> List[Tuple[str, str]]:
     dirs = [_user_config_dir, _user_data_dir, _script_dir]
 
     paths = []
@@ -34,7 +38,7 @@ def get_model_langs():
     return list(zip(langs, paths))
 
 
-def get_model_file(lang):
+def get_model_file(lang: str) -> Union[str, None]:
     dirs = [_user_config_dir, _user_data_dir, _script_dir]
 
     for d in dirs:
@@ -54,29 +58,34 @@ def get_model_file(lang):
     return None
 
 
-def load_funcs(lang, lang_model_path):
+def load_funcs(lang: str, lang_model_path: str) -> Tuple[
+        Callable[[str], List[str]],
+        Callable[[List[str]], Vec],
+        Callable[[Iterable[str]], List[str]],
+        Callable[[], str]
+    ]:
     model = Doc2Vec.load(lang_model_path)
 
     if lang == 'ja':
         import MeCab
 
         wakati = MeCab.Tagger("-O wakati")
-        def text_to_tokens(text):
+        def text_to_tokens(text: str) -> List[str]:
             tokens = wakati.parse(text).strip().split()
             return tokens
     else:
-        def text_to_tokens(text):
+        def text_to_tokens(text: str) -> List[str]:
             tokens = list(tokenize(text))
             return tokens
 
-    def get_index_db_name():
+    def get_index_db_name() -> str:
         return "%s-%s-%s" % (lang, file_signature(lang_model_path), INDEXER_VERSION)
 
-    def find_oov_tokens(tokens):
+    def find_oov_tokens(tokens: Iterable[str]) -> List[str]:
         ts = [t for t in tokens if model.wv.key_to_index.get(t, None) is None]
         return ts
 
-    def tokens_to_vec(tokens):
+    def tokens_to_vec(tokens: List[str]) -> Vec:
         vec = model.infer_vector(tokens, alpha=0.0)  # https://stackoverflow.com/questions/50212449/gensim-doc2vec-why-does-infer-vector-use-alpha
         return vec
 
