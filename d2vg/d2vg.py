@@ -17,6 +17,16 @@ DB_DIR = '.d2vg'
 LEADING_TEXT_MAX_LEN = 80
 
 
+def remove_second_appearance(lst):
+    s = set()
+    r = []
+    for i in lst:
+        if i not in s:
+            r.append(i)
+            s.add(i)
+    return r
+
+
 def extract_leading_text(file_name, subrange, parser):
     start_pos, end_pos = subrange
     lines = parser.parse(file_name)
@@ -161,6 +171,8 @@ def main():
         else:
             target_files_expand.append(f)
     target_files = target_files_expand
+    target_files_expand = None
+    target_files = remove_second_appearance(target_files)
 
     if not target_files:
         sys.exit("Error: no target files are given.")
@@ -212,7 +224,6 @@ def main():
                         _smallest = heapq.heappop(tf_data)
             except parsers.PraseError as e:
                 print("> Warning: %s" % e)
-                return None
         if verbose:
             print("\x1b[1K\x1b[1G", file=sys.stderr)
     except KeyboardInterrupt:
