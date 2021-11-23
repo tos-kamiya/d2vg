@@ -27,9 +27,23 @@ def remove_second_appearance(lst):
     return r
 
 
-def extract_leading_text(file_name, subrange, parser):
+def expand_target_files(target_files):
+    target_files_expand = []
+    for f in target_files:
+        if '*' in f:
+            gfs = glob(f, recursive=True)
+            for gf in gfs:
+                if os.path.isfile(gf):
+                    target_files_expand.append(gf)
+        else:
+            target_files_expand.append(f)
+    target_files_expand = remove_second_appearance(target_files_expand)
+    return target_files_expand
+
+
+def extract_leading_text(file_name, subrange, parse):
     start_pos, end_pos = subrange
-    lines = parser.parse(file_name)
+    lines = parse(file_name)
     leading_text = ""
     for L in lines[start_pos : end_pos]:
         leading_text += L + "|"
@@ -57,13 +71,13 @@ def pickle_loads_pos_vecs(b):
     return loaded
 
 
-def extract_pos_vecs(file_name, text_to_tokens, tokens_to_vector, window_size, parser, index_db=None):
+def extract_pos_vecs(file_name, text_to_tokens, tokens_to_vector, window_size, parse, index_db=None):
     if index_db is not None and not os.path.isabs(file_name):
         keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
         valueb = index_db.get(keyb, None)
         if valueb is None:
             pos_vecs = []
-            lines = parser.parse(file_name)
+            lines = parse(file_name)
             len_lines = len(lines)
             for pos in range(0, len_lines, window_size // 2):
                 end_pos = min(pos + window_size, len_lines)
@@ -76,7 +90,7 @@ def extract_pos_vecs(file_name, text_to_tokens, tokens_to_vector, window_size, p
             pos_vecs = pickle_loads_pos_vecs(valueb)
     else:
         pos_vecs = []
-        lines = parser.parse(file_name)
+        lines = parse(file_name)
         len_lines = len(lines)
         if window_size == 1:
             for pos, subtext in enumerate(lines):
@@ -152,6 +166,7 @@ def main():
     search_paragraph = args['--paragraph']
 
     parser = parsers.Parser()
+    parse = parser.parse
 
     lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
     i = lng.find('_')
@@ -161,24 +176,13 @@ def main():
     if args['--lang']:
         language = args['--lang']
 
-    target_files_expand = []
-    for f in target_files:
-        if '*' in f:
-            gfs = glob(f, recursive=True)
-            for gf in gfs:
-                if os.path.isfile(gf):
-                    target_files_expand.append(gf)
-        else:
-            target_files_expand.append(f)
-    target_files = target_files_expand
-    target_files_expand = None
-    target_files = remove_second_appearance(target_files)
-
+    target_files = expand_target_files(target_files)
     if not target_files:
         sys.exit("Error: no target files are given.")
 
     if args['--pattern-from-file']:
-        pattern = parsers.read_text_file(pattern)
+        lines = parse(pattern)
+        pattern = '\n'.join(lines)
 
     if not pattern:
         sys.exit("Error: pattern string is empty.")
@@ -213,7 +217,7 @@ def main():
                     top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
                     print("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end='', file=sys.stderr, flush=True)
             try:
-                pos_vecs = extract_pos_vecs(tf, text_to_tokens, tokens_to_vector, window_size, parser, index_db=db)
+                pos_vecs = extract_pos_vecs(tf, text_to_tokens, tokens_to_vector, window_size, parse, index_db=db)
                 if search_paragraph:
                     r = similarity_to_pattern(pos_vecs, pattern_vec)
                 else:
@@ -239,7 +243,7 @@ def main():
     for i, (ip, tf, sr) in enumerate(tf_data):
         if ip < 0:
             break  # for i
-        leading_text = extract_leading_text(tf, sr, parser)
+        leading_text = extract_leading_text(tf, sr, parse)
         print('%g\t%s:%d-%d\t%s' % (ip, tf, sr[0] + 1, sr[1] + 1, leading_text))
         if i >= top_n > 0:
             break  # for i
