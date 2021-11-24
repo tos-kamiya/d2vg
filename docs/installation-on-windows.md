@@ -1,12 +1,16 @@
 ## Installation on Windows
 
-(1) Install the dependencies and d2v with `Microsoft Visual C++ Build Tools`, `conda`, and `pip`.
+(1) Install the dependencies and d2v.
 
-Install `pdf2text` according to the instructions at https://github.com/jalan/pdftotext.
+Download and extract Poppler from the following page.
 
-```
-conda install -c conda-forge poppler
-```
+https://blog.alivate.com.au/poppler-windows/
+
+Add a directory where `pdftotext.exe` is located to your PATH. For example, if the extracted directory is "C:\Users\toshihiro\apps\poppler-0.68.0_x86\poppler-0.68.0" then add "C:\Users\toshihiro\apps\pdftotext.exe poppler-0.68.0_x86\poppler-0.68.0\bin\" to PATH.
+
+Make sure you can run pdftotext from a DOS prompt, etc.
+
+![](images/win-pdftotext.png)
 
 Install `d2vg` as follows.
 

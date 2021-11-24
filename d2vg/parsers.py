@@ -7,8 +7,10 @@ import subprocess
 import sys
 
 import bs4
-import pdftotext
 import docx2txt
+
+if os.name != 'nt':
+    import pdftotext
 
 
 _script_dir: str = os.path.dirname(os.path.realpath(__file__))
@@ -72,15 +74,30 @@ class Parser:
             return read_text_file(file_name)
 
 
-def pdf_parse(file_name: str) -> str:
-    with open(file_name, "rb") as f:
-        pdf = pdftotext.PDF(f)
+if os.name != 'nt':
+    def pdf_parse(file_name: str) -> str:
+        with open(file_name, "rb") as f:
+            pdf = pdftotext.PDF(f)
 
-    page_texts = [page for page in pdf]
-    text = ''.join(page_texts)
-    # text = re.sub(r'(cid:\d+)', '', text)  # remove unknown glyphs
+        page_texts = [page for page in pdf]
+        text = ''.join(page_texts)
+        # text = re.sub(r'(cid:\d+)', '', text)  # remove unknown glyphs
 
-    return text
+        return text
+else:
+    import tempfile
+    _system_temp_dir = tempfile.gettempdir()
+    def pdf_parse(file_name: str) -> str:
+        tempf = os.path.join(_system_temp_dir, "%d.txt" % int.from_bytes(os.urandom(5), byteorder='little'))
+        try:
+            cmd = ["pdftotext.exe", file_name, tempf]
+            subprocess.check_call(cmd, stderr=subprocess.DEVNULL)
+            with open(tempf, 'r', encoding='utf8') as f:
+                text = f.read()
+        finally:
+            if os.path.exists(tempf):
+                os.remove(tempf)
+        return text
 
 
 def html_parse(file_name: str) -> str:
