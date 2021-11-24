@@ -60,6 +60,14 @@ Example of execution with indexes enabled:
 (In this example, it took 57 seconds without indexing, but it was reduced to 4 seconds.)  
 ![Search in pdf files](images/example2.png)
 
+## Troubleshootings
+
+**Q**: I installed the Doc2Vec model correctly, but I got the error "`Error: not found Doc2Vec model for language: jp`".  
+**A**: The language specification was wrong, it should be `ja`, not `jp`.
+
+**Q**: d2vg hangs.  
+**A**: When indexing is enabled (creating a directory `.d2vg`), force quitting may cause d2vg to hang because it cannot open the indexed DB the next time it is run. Please delete the directory `.d2vg`.
+
 ## Development
 
 For instructions on how to create a Doc2Vec model, please refer to the script I used to create the English Doc2Vec model in `making_doc2vec_model/`.
