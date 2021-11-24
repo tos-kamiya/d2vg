@@ -86,7 +86,7 @@ For example, in the case of Japanese Doc2Vec model, the content of the file `ja.
 - [x] Optimization by indexing document files
 - [x] Prepare Doc2Vec models compatible to the latest gensim (v4) 
 - [x] Check installation on Windows.
-- [ ] Combining keyword search
+- [x] Combining keyword search
 - [ ] Consider other models (in particular, could the Word2Vec model be used?)
 - [ ] Support for more languages
 

@@ -81,7 +81,7 @@ def extract_pos_vecs(
         tokens_to_vector: Callable[[List[str]], Vec], 
         window_size: int,
         parse: Callable[[str], List[str]], 
-        index_db=None) -> List[Tuple[int, int, List[Vec]]]:
+        index_db=None) -> Tuple[List[Tuple[int, int, List[Vec]]], Optional[List[str]]]:
     
     def read_pos_vecs(file_name):
         pos_vecs = []
@@ -99,45 +99,21 @@ def extract_pos_vecs(
                 tokens = text_to_tokens(subtext)
                 vec = tokens_to_vector(tokens)
                 pos_vecs.append((pos, end_pos, vec))
-        return pos_vecs
+        return pos_vecs, lines
 
+    lines = None
     if index_db is not None and file_name != '-' and not os.path.isabs(file_name):
         keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
         valueb = index_db.get(keyb, None)
         if valueb is None:
-            pos_vecs = read_pos_vecs(file_name)
+            pos_vecs, lines = read_pos_vecs(file_name)
             index_db[keyb] = pickle_dumps_pos_vecs(pos_vecs)
         else:
             pos_vecs = pickle_loads_pos_vecs(valueb)
     else:
-        pos_vecs = read_pos_vecs(file_name)
+        pos_vecs, lines = read_pos_vecs(file_name)
     
-    return pos_vecs
-
-
-def similarity_to_pattern(pos_vecs: Iterable[Tuple[int, int, List[Vec]]], pattern_vec: Vec) -> List[Tuple[float, Tuple[int, int]]]:
-    r = []
-    for pos, end_pos, vec in pos_vecs:
-        ip = np.inner(vec, pattern_vec)
-        r.append((ip, (pos, end_pos)))
-    return r
-
-
-def most_similar_to_pattern(pos_vecs: Iterable[Tuple[int, int, List[Vec]]], pattern_vec: Vec) -> List[Tuple[float, Tuple[int, int]]]:
-    max_ip: float = -sys.float_info.max
-    max_subrange = (0, 0)
-    found_some = False
-    for pos, end_pos, vec in pos_vecs:
-        ip = float(np.inner(vec, pattern_vec))  # numpy.inner 's return type is declared as array
-        if ip >= max_ip:
-            found_some = True
-            max_ip = ip
-            max_subrange = pos, end_pos
-
-    if found_some:
-        return [(max_ip, max_subrange)]
-    else:
-        return []
+    return pos_vecs, lines
 
 
 __doc__: str = """Doc2Vec Grep.
@@ -149,6 +125,7 @@ Usage:
 Options:
   --lang=LANG, -l LANG          Model language. Either `ja` or `en`.
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
+  --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
   --window=NUM, -w NUM          Line window size [default: 20].
   --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
   --paragraph, -p               Search paragraphs in documents.
@@ -172,6 +149,7 @@ def main():
     window_size = int(args['--window'])
     verbose = args['--verbose']
     search_paragraph = args['--paragraph']
+    unknown_word_as_keyword = args['--unknown-word-as-keyword']
 
     parser = parsers.Parser()
     parse = parser.parse
@@ -207,8 +185,30 @@ def main():
     tokens = text_to_tokens(pattern)
     pattern_vec = tokens_to_vector(tokens)
     oov_tokens = find_oov_tokens(tokens)
+    keyword_set = frozenset(oov_tokens if unknown_word_as_keyword else [])
     if oov_tokens:
-        print("> Warning: unknown words: %s" % ", ".join(oov_tokens), file=sys.stderr)
+        if unknown_word_as_keyword and verbose:
+            print("> keywords: %s" % ", ".join(sorted(keyword_set)), file=sys.stderr)
+        else:
+            print("> Warning: unknown words: %s" % ", ".join(oov_tokens), file=sys.stderr)
+
+    def prune_by_keywords(
+            ip_srls: Iterable[Tuple[float, Tuple[int, int], Optional[List[str]]]], 
+            file_name: str, 
+            min_ip: Optional[float]) -> List[Tuple[float, Tuple[int, int], Optional[List[str]]]]:
+        ipsrl_inc_kws = []
+        lines = None
+        for ip, (sp, ep), ls in ip_srls:
+            if min_ip is not None and ip < min_ip:  # pruning by similarity (inner product)
+                continue  # ri
+            if lines is None:
+                lines = ls if ls is not None else parse(file_name)  # seems a little bit tricky...
+            subtext = '\n'.join(lines[sp:ep])
+            tokens = text_to_tokens(subtext)
+            if not keyword_set.issubset(tokens):
+                continue  # ri
+            ipsrl_inc_kws.append((ip, (sp, ep), lines))
+        return ipsrl_inc_kws
 
     db = None
     if os.path.isdir(DB_DIR):
@@ -216,7 +216,7 @@ def main():
         db = dbm.open(db_file, 'c')
 
     len_target_files = len(target_files)
-    tf_data = []
+    tf_data: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
     tfi = -1
     tf = None
     verbose_interval = max(10, min(len(target_files) // 200, 100))
@@ -225,17 +225,21 @@ def main():
             if verbose and tfi % verbose_interval == 0:
                 max_tf = heapq.nlargest(1, tf_data)
                 if max_tf:
-                    _ip, f, sr = max_tf[0]
+                    _ip, f, sr, _ls = max_tf[0]
                     top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
                     print("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end='', file=sys.stderr, flush=True)
             try:
-                pos_vecs = extract_pos_vecs(tf, text_to_tokens, tokens_to_vector, window_size, parse, index_db=db)
-                if search_paragraph:
-                    r = similarity_to_pattern(pos_vecs, pattern_vec)
-                else:
-                    r = most_similar_to_pattern(pos_vecs, pattern_vec)
-                for ip, subrange in r:
-                    heapq.heappush(tf_data, (ip, tf, subrange))
+                pos_vecs, lines = extract_pos_vecs(tf, text_to_tokens, tokens_to_vector, window_size, parse, index_db=db)
+                ip_srls = [(float(np.inner(vec, pattern_vec)), (pos, end_pos), lines) for pos, end_pos, vec in pos_vecs]  # ignore type mismatch
+
+                if keyword_set:
+                    min_ip = heapq.nsmallest(1, tf_data)[0][0] if len(tf_data) >= top_n else None
+                    ip_srls = prune_by_keywords(ip_srls, tf, min_ip)
+
+                if ip_srls and not search_paragraph:
+                    ip_srls = [sorted(ip_srls).pop()]
+                for ip, subrange, lines in ip_srls:
+                    heapq.heappush(tf_data, (ip, tf, subrange, lines))
                     if len(tf_data) > top_n:
                         _smallest = heapq.heappop(tf_data)
             except parsers.PraseError as e:
@@ -252,10 +256,11 @@ def main():
             db.close()
 
     tf_data = heapq.nlargest(top_n, tf_data)
-    for i, (ip, tf, sr) in enumerate(tf_data):
+    for i, (ip, tf, sr, lines) in enumerate(tf_data):
         if ip < 0:
             break  # for i
-        lines = parse(tf)
+        if lines is None:
+            lines = parse(tf)
         leading_text = extract_leading_text(lines, sr)
         print('%g\t%s:%d-%d\t%s' % (ip, tf, sr[0] + 1, sr[1] + 1, leading_text))
         if i >= top_n > 0:

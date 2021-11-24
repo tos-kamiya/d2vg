@@ -56,7 +56,8 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
         def parse(file_name):
             return file_table[file_name]
 
-        r = d2vg.extract_pos_vecs("a.txt", text_to_tokens, tokens_to_vector, 2, parse, index_db=None)
+        r, lines = d2vg.extract_pos_vecs("a.txt", text_to_tokens, tokens_to_vector, 2, parse, index_db=None)
+        self.assertEqual(lines, file_table.get("a.txt"))
         f = [
             (0, 2, np.array([3, 0], dtype=np.float32)),
             (1, 2, np.array([2, 0], dtype=np.float32))
@@ -66,7 +67,8 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             self.assertEqual(ri[1], fi[1])
             self.assertTrue(np.array_equal(ri[2], fi[2]))
 
-        r = d2vg.extract_pos_vecs("a.txt", text_to_tokens, tokens_to_vector, 1, parse, index_db=None)
+        r, lines = d2vg.extract_pos_vecs("a.txt", text_to_tokens, tokens_to_vector, 1, parse, index_db=None)
+        self.assertEqual(lines, file_table.get("a.txt"))
         f = [
             (0, 1, np.array([1, 0], dtype=np.float32)),
             (1, 2, np.array([2, 0], dtype=np.float32))
