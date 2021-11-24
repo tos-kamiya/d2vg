@@ -13,8 +13,6 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 import docx2txt
 
-from .types import Vec
-
 
 _script_dir: str = os.path.dirname(os.path.realpath(__file__))
 
