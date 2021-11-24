@@ -2,7 +2,11 @@
 
 下記の手順はUbuntu 20.04で確認したものです。
 
-(1) スクリプトや依存を`pip`でインストールします。
+(1) 依存やd2vを`apt`や`pip`でインストールします。
+
+`pdf2text`を記述 https://github.com/jalan/pdftotext に従ってインストールしてください。
+
+`d2vg`を次のようにしてインストールしてください。
 
 ```sh
 pip3 install git+https://github.com/tos-kamiya/d2vg.git

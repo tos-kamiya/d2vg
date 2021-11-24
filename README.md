@@ -57,7 +57,7 @@ rm -rf .d2vg
 ```
 
 Example of execution with indexes enabled:  
-(In this example, it took 9 minutes without indexing, but it was reduced to 25 seconds.)  
+(In this example, it took 57 seconds without indexing, but it was reduced to 4 seconds.)  
 ![Search in pdf files](images/example2.png)
 
 ## Development

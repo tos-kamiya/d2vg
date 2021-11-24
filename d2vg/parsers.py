@@ -7,10 +7,7 @@ import subprocess
 import sys
 
 import bs4
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-from pdfminer.converter import TextConverter
-from pdfminer.layout import LAParams
-from pdfminer.pdfpage import PDFPage
+import pdftotext
 import docx2txt
 
 
@@ -76,16 +73,12 @@ class Parser:
 
 
 def pdf_parse(file_name: str) -> str:
-    manager = PDFResourceManager()
+    with open(file_name, "rb") as f:
+        pdf = pdftotext.PDF(f)
 
-    with StringIO() as outp:
-        with open(file_name, 'rb') as input:
-            with TextConverter(manager, outp, codec='utf-8', laparams=LAParams()) as conv:
-                interpreter = PDFPageInterpreter(manager, conv)
-                for page in PDFPage.get_pages(input):
-                    interpreter.process_page(page)
-        text = outp.getvalue()
-        text = re.sub(r'(cid:\d+)', '', text)  # remove unknown glyphs
+    page_texts = [page for page in pdf]
+    text = ''.join(page_texts)
+    # text = re.sub(r'(cid:\d+)', '', text)  # remove unknown glyphs
 
     return text
 

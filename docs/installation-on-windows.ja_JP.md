@@ -1,6 +1,10 @@
 ## Windowsでのインストール
 
-(1) スクリプトや依存を`pip`でインストールします。
+(1) 依存やd2vを`Microsoft Visual C++ Build Tools`、`conda`、`pip`でインストールします。
+
+`pdf2text`を記述 https://github.com/jalan/pdftotext に従ってインストールしてください。
+
+`d2vg`を次のようにしてインストールしてください。
 
 ```
 pip install wheel

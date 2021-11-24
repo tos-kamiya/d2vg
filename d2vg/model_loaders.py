@@ -13,7 +13,7 @@ from .types import Vec
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
 
-INDEXER_VERSION = "4"  # gensim major version
+INDEXER_VERSION = "4"  # gensim major version 
 _app_name = 'd2vg'
 _author = 'tos.kamiya'
 _user_data_dir = appdirs.user_data_dir(_app_name, _author)

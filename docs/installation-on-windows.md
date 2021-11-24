@@ -1,6 +1,14 @@
 ## Installation on Windows
 
-(1) Install the script and dependencies with `pip`.
+(1) Install the dependencies and d2v with `Microsoft Visual C++ Build Tools`, `conda`, and `pip`.
+
+Install `pdf2text` according to the instructions at https://github.com/jalan/pdftotext.
+
+```
+conda install -c conda-forge poppler
+```
+
+Install `d2vg` as follows.
 
 ```
 pip install wheel
