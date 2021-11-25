@@ -2,11 +2,17 @@
 
 (1) 依存やd2vをインストールします。
 
-Popplerを次のページからダウンロードして展開してください。
+[Chocolatey](https://chocolatey.org/)を利用している場合には、Popplerを次でインストールしてください。
+
+```
+choco install poppler
+```
+
+Popplerを手動でインストーする場合には、まず、Popplerを次のページからダウンロードして展開してください。
 
 https://blog.alivate.com.au/poppler-windows/
 
-展開した先の、`pdftotext.exe`があるディレクトリ（例えば、展開した先が "C:\Users\toshihiro\apps\poppler-0.68.0_x86\poppler-0.68.0" なら "C:\Users\toshihiro\apps\poppler-0.68.0_x86\poppler-0.68.0\bin\" )にPATHを通してください。
+次に、展開した先の、`pdftotext.exe`があるディレクトリ（例えば、展開した先が "C:\Users\toshihiro\apps\poppler-0.68.0_x86\poppler-0.68.0" なら "C:\Users\toshihiro\apps\poppler-0.68.0_x86\poppler-0.68.0\bin\" )にPATHを通してください。
 
 DOSプロンプト等から、pdftotextを実行できることを確認してください。
 
