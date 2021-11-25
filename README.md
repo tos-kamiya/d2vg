@@ -28,7 +28,15 @@ d2vg -l en -v <query_phrase> <files>...
 ```
 
 Example:  
-![Search in pdf files](images/example1.png)
+![](images/example1.png)
+
+### Keyword Search
+
+With the option `-K`, if there are unknown words (of the Doc2Vec model) in the query phrase, those words will be specified as keywords.
+If keywords are specified, only the part that contains all the keywords will be displayed in the search results.  Also, the specified keywords will be displayed in the line "`> keywords:`".
+
+Example: "debugging" was specified as a keyword  
+![](images/example3.png)
 
 ### Indexing for x10 speedup
 
@@ -57,8 +65,16 @@ rm -rf .d2vg
 ```
 
 Example of execution with indexes enabled:  
-(In this example, it took 9 minutes without indexing, but it was reduced to 25 seconds.)  
-![Search in pdf files](images/example2.png)
+(In this example, it took 57 seconds without indexing, but it was reduced to 4 seconds.)  
+![](images/example2.png)
+
+## Troubleshootings
+
+**Q**: I installed the Doc2Vec model correctly, but I got the error "`Error: not found Doc2Vec model for language: jp`".  
+**A**: The language specification was wrong, it should be `ja`, not `jp`.
+
+**Q**: d2vg hangs.  
+**A**: When indexing is enabled (creating a directory `.d2vg`), force quitting may cause d2vg to hang because it cannot open the indexed DB the next time it is run. Please delete the directory `.d2vg`.
 
 ## Development
 
