@@ -186,10 +186,11 @@ def main():
     pattern_vec = tokens_to_vector(tokens)
     oov_tokens = find_oov_tokens(tokens)
     keyword_set = frozenset(oov_tokens if unknown_word_as_keyword else [])
-    if oov_tokens:
-        if unknown_word_as_keyword and verbose:
+    if unknown_word_as_keyword:
+        if oov_tokens:
             print("> keywords: %s" % ", ".join(sorted(keyword_set)), file=sys.stderr)
-        else:
+    else:
+        if oov_tokens:
             print("> Warning: unknown words: %s" % ", ".join(oov_tokens), file=sys.stderr)
 
     def prune_by_keywords(

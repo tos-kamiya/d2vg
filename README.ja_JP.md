@@ -28,7 +28,15 @@ d2vg -l en -v <query_phrase> <files>...
 ```
 
 実行例:  
-![Search in pdf files](images/example1.png)
+![](images/example1.png)
+
+### キーワード検索
+
+オプション`-K`をつけると、クエリのフレーズ中に（Doc2Vecモデルの）未知語があった場合は、それらの語をキーワードに指定します。
+キーワードが指定された場合は、キーワードがすべて含まれる部分のみが検索結果に表示されます。さらに、指定されたキーワードが「`> keywords:`」という行に表示されます。
+
+実行例: 「debugging」がキーワードに指定された例  
+![](images/example3.png)
 
 ### インデックスを作成して10倍高速化
 
@@ -58,7 +66,7 @@ rm -rf .d2vg
 
 インデックスを有効にしたときの実行例:  
 (この例では、インデックス化をしていないときは57秒かかっていたものが、4秒に短縮されました。)  
-![Search in pdf files](images/example2.png)
+![](images/example2.png)
 
 ## トラブルシューティング
 
