@@ -114,9 +114,15 @@ Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 
 ## 謝辞
 
-Doc2Vecモデルの作成には次のサイトを参考にしました。感謝いたします。
+Doc2Vecモデルの作成には次のサイトを参考にしました:  
+[日本語Wikipediaで学習したdoc2vecモデル](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
 
-* [日本語Wikipediaで学習したdoc2vecモデル](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
+`ko`と`zh`のDoc2Vecモデルの作成は、次のソースを参考にしました:  
+https://github.com/Kyubyong/wordvectors/blob/master/build_corpus.py
+
+膨大な言語コーパスを提供されているWikipediaに感謝いたします:  
+https://dumps.wikimedia.org/
+
 
 ## ライセンス
 

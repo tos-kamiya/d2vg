@@ -115,9 +115,14 @@ For example, in the case of Japanese Doc2Vec model, the content of the file `ja.
 
 ## Acknowledgements
 
-I referred to the following sites to create the Doc2Vec model. Many thanks.
+I referred to the following sites to create the Doc2Vec model:  
+[Doc2vec model trained on Japanese Wikipedia](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
 
-* [Doc2vec model trained on Japanese Wikipedia](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
+To create the Doc2Vec model for `ko` and `zh`, I referred to the following sources:  
+https://github.com/Kyubyong/wordvectors/blob/master/build_corpus.py
+
+Thanks to Wikipedia for releasing a huge corpus of languages:  
+https://dumps.wikimedia.org/
 
 ## License
 
