@@ -7,13 +7,20 @@ d2vg, A Doc2Vec grep.
 Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む文書ファイルを検索します。
 
 * テキストファイル（.txt）、PDFファイル（.pdf）、MS Wordファイル（.docx）からの検索に対応
-* 対応言語は日本語、英語（Doc2Vecのモデルは言語に依存するため）
+* 対応言語は日本語、英語。実験的に、中文、韓国語に対応しました。
 * インデックス化を行うことで性能向上
 
 ## インストール
 
 * &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.ja_JP.md)
 * &rarr; [Installation on Windows](docs/installation-on-windows.ja_JP.md)
+
+中文の場合は、インストールの手順で、次の行の`[ja]`を`[zh]`に変更してください。
+韓国語の場合は、同様に、`[ja]`を`[ko]`に変更してください。
+
+```sh
+pip3 install d2vg[ja]
+```
 
 ## 利用法
 
@@ -103,7 +110,7 @@ Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 - [x] Windowsでのインストールを確認する
 - [x] キーワード検索の併用
 - [ ] 他のモデルの検討(特に、Word2Vecのモデルが利用できないか)
-- [ ] より多くの言語サポート
+- [ ] より多くの言語サポート(実験的サポート: ko, zh)
 
 ## 謝辞
 

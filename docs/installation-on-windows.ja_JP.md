@@ -22,7 +22,7 @@ DOSプロンプト等から、pdftotextを実行できることを確認して�
 
 ```
 pip install wheel
-pip install git+https://github.com/tos-kamiya/d2vg.git
+pip install d2vg[ja]
 ```
 
 (2) 英語Doc2Vecモデルのファイルをインストールします。
@@ -78,12 +78,6 @@ https://github.com/ikegami-yukino/mecab/releases
 「コントロールパネル-システムとセキュリティ-システム-システムの詳細設定-環境変数」で「Path」を編集して「C:\Program Files\MeCab\bin」を追加します。
 
 ![](images/win-mecab-env-ja.png)
-
-DOSプロンプトから、次でMeCabのPythonラッパーをインストールします。
-
-```
-pip install mecab
-```
 
 動作確認には、DOSプロンプト等で次のように入力してみてください。
 

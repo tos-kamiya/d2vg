@@ -9,7 +9,7 @@ Install pdf2text according to the instructions at https://github.com/jalan/pdfto
 Install `d2vg` as follows.
 
 ```sh
-pip3 install git+https://github.com/tos-kamiya/d2vg.git
+pip3 install d2vg
 ```
 
 (2) Install an English Doc2Vec model file.

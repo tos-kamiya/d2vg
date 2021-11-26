@@ -73,6 +73,19 @@ def load_funcs(lang: str, lang_model_path: str) -> Tuple[
         def text_to_tokens(text: str) -> List[str]:
             tokens = wakati.parse(text).strip().split()
             return tokens
+    elif lang == 'ko':
+        from konlpy.tag import Kkma
+
+        kkma = Kkma()
+        def text_to_tokens(text: str) -> List[str]:
+            tokens = [w for w, _ in kkma.pos(text)]
+            return tokens
+    elif lang == 'zh':
+        import jieba
+
+        def text_to_tokens(text: str) -> List[str]:
+            tokens = list(jieba.cut(text, cut_all=False))
+            return tokens
     else:
         def text_to_tokens(text: str) -> List[str]:
             tokens = list(tokenize(text))
@@ -82,11 +95,9 @@ def load_funcs(lang: str, lang_model_path: str) -> Tuple[
         return "%s-%s-%s" % (lang, file_signature(lang_model_path), INDEXER_VERSION)
 
     def find_oov_tokens(tokens: Iterable[str]) -> List[str]:
-        ts = [t for t in tokens if model.wv.key_to_index.get(t, None) is None]
-        return ts
+        return [t for t in tokens if model.wv.key_to_index.get(t, None) is None]
 
     def tokens_to_vec(tokens: List[str]) -> Vec:
-        vec = model.infer_vector(tokens, alpha=0.0)  # https://stackoverflow.com/questions/50212449/gensim-doc2vec-why-does-infer-vector-use-alpha
-        return vec
+        return model.infer_vector(tokens, epochs=0)
 
     return text_to_tokens, tokens_to_vec, find_oov_tokens, get_index_db_name

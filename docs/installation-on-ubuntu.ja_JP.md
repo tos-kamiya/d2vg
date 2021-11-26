@@ -9,7 +9,7 @@
 `d2vg`を次のようにしてインストールしてください。
 
 ```sh
-pip3 install git+https://github.com/tos-kamiya/d2vg.git
+pip3 install d2vg[ja]
 ```
 
 (2) 英語Doc2Vecモデルのファイルをインストールします。
@@ -52,10 +52,4 @@ git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git
 cd mecab-ipadic-neologd
 ./bin/install-mecab-ipadic-neologd -n -a
 sudo cp /etc/mecabrc /usr/local/etc/
-```
-
-MeCabのPythonラッパーをインストールします。
-
-```
-pip3 install mecab
 ```

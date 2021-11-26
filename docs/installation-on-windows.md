@@ -22,7 +22,7 @@ Install `d2vg` as follows.
 
 ```
 pip install wheel
-pip install git+https://github.com/tos-kamiya/d2vg.git
+pip install d2vg
 ```
 
 (2) Install an English Doc2Vec model file.
