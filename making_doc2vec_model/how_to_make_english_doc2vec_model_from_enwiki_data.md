@@ -32,13 +32,13 @@ The option `xarg -P5` is the number of worker processes. Change the value depend
 Vocabulary size: 100K words
 
 ```
-python3 remove_words_w_occurrence_less_than.py wiki 100000 wiki_w100k
-python3 ./train.py wiki_w100k enwiki-w100k-d100.model
+python3 ../trim_vocab_to_size.py wiki 100000 wiki_w100k
+python3 ../train.py wiki_w100k enwiki-w100k-d100.model
 ```
 
 Vocabulary size: 50K words
 
 ```
-python3 remove_words_w_occurrence_less_than.py wiki 50000 wiki_w50k
-python3 ./train.py wiki_w50k enwiki-w50k-d100.model
+python3 ../trim_vocab_to_size.py wiki 50000 wiki_w50k
+python3 ../train.py wiki_w50k enwiki-w50k-d100.model
 ```

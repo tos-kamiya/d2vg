@@ -21,7 +21,7 @@ curl -O https://dumps.wikimedia.org/jawiki/latest/jawiki-latest-pages-articles.x
 ```
 mkdir wc
 python3 -m wikiextractor.WikiExtractor -b 500m -o wc jawiki-latest-pages-articles.xml.bz2
-ls wc/**/* | xargs -P5 -n1 -I "{}" python3 ./remove_doc_and_file_tags.py "{}" "{}".rdft
+ls wc/**/* | xargs -P5 -n1 -I "{}" python3 ../remove_doc_and_file_tags.py "{}" "{}".rdft
 ls wc/**/*.rdft | xargs -P5 -n1 -I "{}" mecab -O wakati -o "{}".wakati "{}"
 cat wc/**/*.wakati > wiki_wakati
 ```
@@ -33,13 +33,13 @@ cat wc/**/*.wakati > wiki_wakati
 語彙数: 10万語
 
 ```
-python3 remove_words_w_occurrence_less_than.py wiki_wakati 100000 wiki_wakati_w100k
-python3 ./train.py wiki_wakati_w100k jawiki-w100k-d100.model
+python3 ../trim_vocab_to_size.py wiki_wakati 100000 wiki_wakati_w100k
+python3 ../train.py wiki_wakati_w100k jawiki-w100k-d100.model
 ```
 
 語彙数: 5万語
 
 ```
-python3 remove_words_w_occurrence_less_than.py wiki_wakati 50000 wiki_wakati_w50k
-python3 ./train.py wiki_wakati_w50k jawiki-w50k-d100.model
+python3 ../trim_vocab_to_size.py wiki_wakati 50000 wiki_wakati_w50k
+python3 ../train.py wiki_wakati_w50k jawiki-w50k-d100.model
 ```
