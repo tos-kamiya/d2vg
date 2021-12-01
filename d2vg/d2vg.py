@@ -226,8 +226,10 @@ def main():
     text_to_tokens, tokens_to_vector, find_oov_tokens, get_index_db_name = model_loaders.load_funcs(language, lang_model_file)
 
     tokens = text_to_tokens(pattern)
-    pattern_vec = tokens_to_vector(tokens)
     oov_tokens = find_oov_tokens(tokens)
+    if set(tokens) == set(oov_tokens) and not unknown_word_as_keyword:
+        sys.exit("Error: <pattern> not including any known words")
+    pattern_vec = tokens_to_vector(tokens)
     keyword_set = frozenset(oov_tokens if unknown_word_as_keyword else [])
     if unknown_word_as_keyword:
         if oov_tokens:
