@@ -15,8 +15,8 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 * &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.ja_JP.md)
 * &rarr; [Installation on Windows](docs/installation-on-windows.ja_JP.md)
 
-中文の場合は、インストールの手順で、次の行の`[ja]`を`[zh]`に変更してください。
-韓国語の場合は、同様に、`[ja]`を`[ko]`に変更してください。
+中文の場合は、インストールの手順で、次の行の`d2vg[ja]`を`d2vg[zh]`に変更してください。
+韓国語の場合は、同様に、`d2vg[ja]`を`d2vg[ko]`に変更してください。
 
 ```sh
 pip3 install d2vg[ja]
@@ -45,7 +45,7 @@ d2vg -l en -v <query_phrase> <files>...
 実行例: 「debugging」がキーワードに指定された例  
 ![](images/example3.png)
 
-### インデックス化により10倍高速化
+### インデックス化
 
 d2vgにドキュメント（検索対象のファイル）のインデックスを作成させることで、同じドキュメント（の集合）から何度も検索を行う場合に、2回目以降の検索の速度を向上させることができます。
 
@@ -94,13 +94,13 @@ Doc2Vecモデルの作成の方法については、`making_doc2vec_model/`に�
 Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 `<言語.ref>`というファイル(「言語」はオプション`-l`で指定する言語の名前です)に、Doc2Vecモデルのファイルへの相対パスを記述してください。
 
-例えば、日本語のDoc2Vecモデルの場合には、`ja.ref`というファイルの中身は`jawiki-w50k-d100.model`という行になっています。
+例えば、日本語のDoc2Vecモデルの場合には、`ja.ref`というファイルの中身は`jawiki-janome-m120-d100.model`という行になっています。
 
 ```
-~/.config/d2vg/models/jaw50k
+~/.config/d2vg/models/jawiki-janome-m120-d100
 ├── ja.ref
-├── jawiki-w50k-d100.model
-└── jawiki-w50k-d100.model.dv.vectors.npy
+├── jawiki-janome-m120-d100.model
+└── jawiki-janome-m120-d100.model.dv.vectors.npy
 ```
 
 ## Todo
@@ -109,7 +109,7 @@ Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 - [x] 最新版のgensim v4と互換性のあるDoc2Vecデータの準備
 - [x] Windowsでのインストールを確認する
 - [x] キーワード検索の併用
-- [ ] 他のモデルの検討(特に、Word2Vecのモデルが利用できないか)
+- [x] モデルのチューニング
 - [ ] より多くの言語サポート(実験的サポート: ko, zh)
 
 ## 謝辞
@@ -123,9 +123,6 @@ https://github.com/Kyubyong/wordvectors/blob/master/build_corpus.py
 膨大な言語コーパスを提供されているWikipediaに感謝いたします:  
 https://dumps.wikimedia.org/
 
-
 ## ライセンス
 
 d2vgは [BSD-2](https://opensource.org/licenses/BSD-2-Clause) ライセンスで配布されます。
-
-上記のDoc2Vecモデルについては、配布者のライセンスに従ってください。

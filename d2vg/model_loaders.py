@@ -24,13 +24,21 @@ def file_signature(file_name) -> str:
     return "%s-%s-%f" % (os.path.basename(file_name), os.path.getsize(file_name), os.path.getmtime(file_name))
 
 
-def get_model_langs() -> List[Tuple[str, str]]:
-    dirs = [_user_config_dir, _user_data_dir, _script_dir]
+def get_model_root_dir() -> str:
+    models = 'models'
+    if os.name == 'nt':
+        return os.path.join(appdirs.user_data_dir(_app_name, _author), models)
+    else:
+        return os.path.join(appdirs.user_config_dir(_app_name), models)
+
+
+def get_model_langs(model_root_dirs: Optional[List[str]] = None) -> List[Tuple[str, str]]:
+    if model_root_dirs is None:
+        model_root_dirs = [os.path.join(p) for p in [_user_config_dir, _user_data_dir, _script_dir]]
 
     paths = []
-    for d in dirs:
-        p = os.path.join(d, "models", "**", "*.ref")
-        ps = glob(p, recursive=True)
+    for d in model_root_dirs:
+        ps = glob(os.path.join(d, "**/*.ref"), recursive=True)
         ps = [p for p in ps if os.path.isfile(p)]
         paths.extend(ps)
     files = [os.path.split(p)[1] for p in paths]
@@ -38,12 +46,14 @@ def get_model_langs() -> List[Tuple[str, str]]:
     return list(zip(langs, paths))
 
 
-def get_model_file(lang: str) -> Union[str, None]:
-    dirs = [_user_config_dir, _user_data_dir, _script_dir]
+def get_model_file(lang: str, model_root_dir: Optional[str] = None, exit_when_obsolete_model_found: bool = True) -> Optional[str]:
+    if model_root_dir is not None:
+        model_root_dirs = [model_root_dir]
+    else:
+        model_root_dirs = [os.path.join(p) for p in [_user_config_dir, _user_data_dir, _script_dir]]
 
-    for d in dirs:
-        p = os.path.join(d, "models", "**", "%s.ref" % lang)
-        ps = glob(p, recursive=True)
+    for d in model_root_dirs:
+        ps = glob(os.path.join(d, "**/%s.ref" % lang), recursive=True)
         if not ps:
             continue
         ps = [p for p in ps if os.path.isfile(p)]
@@ -52,6 +62,11 @@ def get_model_file(lang: str) -> Union[str, None]:
         with open(ps[0]) as inp:
             lines = [L.rstrip() for L in inp.readlines()]
         assert len(lines) >= 1
+
+        if exit_when_obsolete_model_found:
+            if lines[0] == 'jawiki-w100k-d100.model':  # special error messages for those migrating from 0.7.0
+                sys.exit('Error: the model file is obsolete and incompatible.\nInstall a newer model file and remove the directory: %s' % os.path.dirname(ps[0]))
+
         lang_model_path = os.path.join(os.path.dirname(ps[0]), lines[0])
 
         return lang_model_path
@@ -67,11 +82,20 @@ def load_funcs(lang: str, lang_model_path: str) -> Tuple[
     model = Doc2Vec.load(lang_model_path)
 
     if lang == 'ja':
-        import MeCab
+        from janome.tokenizer import Tokenizer
 
-        wakati = MeCab.Tagger("-O wakati")
+        janomet = Tokenizer()
         def text_to_tokens(text: str) -> List[str]:
-            tokens = wakati.parse(text).strip().split()
+            tokens = []
+            for token in janomet.tokenize(text):
+                te = token.extra
+                if te is not None:
+                    tokens.append(te[3])
+                else:
+                    s = str(token)
+                    i = s.find('\t')
+                    if i:
+                        tokens.append(s[:i])
             return tokens
     elif lang == 'ko':
         from konlpy.tag import Kkma

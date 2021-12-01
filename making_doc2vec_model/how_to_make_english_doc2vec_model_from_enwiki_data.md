@@ -20,25 +20,35 @@ curl -O https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.x
 
 ```
 mkdir wc
-python3 -m wikiextractor.WikiExtractor -b 500m -o wc enwiki-latest-pages-articles.xml.bz2
-ls wc/**/* | xargs -P5 -n1 -I "{}" python3 ./remove_doc_and_file_tags.py "{}" "{}".rdft
-cat wc/**/*.rdft > wiki
+python3 -m wikiextractor.WikiExtractor -b 120m -o wc enwiki-latest-pages-articles.xml.bz2
+ls wc/**/* | xargs -P11 -n1 -I "{}" python3 ../remove_doc_and_file_tags.py "{}" "{}".tokenized
 ```
 
-The option `xarg -P5` is the number of worker processes. Change the value depending on your environment.
+The option `-b 120m` of wikiextractor is the size of the data chunk, and the option `-P11` of xarg is the number of worker processes. You can change them according to your environment.
 
 (4) Build Doc2Vec model
 
-Vocabulary size: 100K words
+In the following, the option `-m 400` of trim_vocab_and_docs is the minimum occurrence of words. 
+The option `-c 200` is a target number of sentences to be collected for a word.
+As you change these parameters, the file size and vocabulary size of the model will change.
 
 ```
-python3 ../trim_vocab_to_size.py wiki 100000 wiki_w100k
-python3 ../train.py wiki_w100k enwiki-w100k-d100.model
+python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 420 -c 200 wc/**/*.tokenized
+python3 ../train.py wiki_tokenized enwiki-m420-c200-d100.model
 ```
 
-Vocabulary size: 50K words
+Running the above command line given `enwiki-latest-pages-articles.xml.bz2` on `02-Nov-2021 06:04` above, the vocabulary size was `166487`.
 
 ```
-python3 ../trim_vocab_to_size.py wiki 50000 wiki_w50k
-python3 ../train.py wiki_w50k enwiki-w50k-d100.model
+python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 650 -c 400 wc/**/*.tokenized
+python3 ../train.py wiki_tokenized enwiki-m650-c400-d100.model tmp.model
 ```
+
+Running the above command line given `enwiki-latest-pages-articles.xml.bz2` on `02-Nov-2021 06:04` above, the vocabulary size was `138340`.
+
+```
+python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 700 -c 380 wc/**/*.tokenized
+python3 ../train.py wiki_tokenized enwiki-m700-c380-d100.model tmp.model
+```
+
+Running the above command line given `enwiki-latest-pages-articles.xml.bz2` on `02-Nov-2021 06:04` above, the vocabulary size was `116771`.

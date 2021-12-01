@@ -1,6 +1,6 @@
 ## Windowsでのインストール
 
-(1) 依存やd2vをインストールします。
+(1) 依存やd2v本体のインストール
 
 [Chocolatey](https://chocolatey.org/)を利用している場合には、Popplerを次でインストールしてください。
 
@@ -18,81 +18,40 @@ DOSプロンプト等から、pdftotextを実行できることを確認して�
 
 ![](images/win-pdftotext.png)
 
-`d2vg`を次のようにしてインストールしてください。
+日本語Doc2Vecモデルを利用するためには、`d2vg`を次のように`[ja]`オプションをつけてインストールしてください。
 
 ```
 pip install wheel
 pip install d2vg[ja]
 ```
 
-(2) 英語Doc2Vecモデルのファイルをインストールします。
+英語のDoc2Vecモデルは、オプションの有無にかかわらず利用可能です。
 
-releasesのページからダウンロードしたファイル `enw50k.tar.bz2.aa` と `enw50k.tar.bz2.ab` を連結します。
+(2) Doc2Vecモデルのインストール
 
-DOSプロンプトで行う場合は次のようになります。
+githubのリリースページから、英語、日本語に対応するDoc2Vecモデルのファイルをダウンロードしてください。
 
-```
-C:
-cd C:\Users\<username>\Downloads
-copy /y /b "enw50k.tar.bz2.aa"+"enw50k.tar.bz2.ab" "enw50k.tar.bz2"
-```
-
-ファイル `enw50k.tar.bz2` を何らかのツールを使って展開します。
-例えば、7-zipを使った場合は、1回展開するとファイル `enw50k.tar` が生成されるので、このファイルを再度展開します。
-
-展開してできるディレクトリ `enw50k` を置くディレクトリ
-`C:\Users\<username>\AppData\Local\tos.kamiya\d2vg\models`
-を作成します。
-
-DOSプロンプトで行う場合は次のようになります。
+ダウンロードしたファイルを、`d2vg-setup-model`に与えてインストールしてください。
 
 ```
-C:
-cd C:\Users\<username>\AppData\Local
-mkdir tos.kamiya
-mkdir tos.kamiya\d2vg
-mkdir tos.kamiya\d2vg\models
+d2vg-setup-model <ダウンロードしたディレクトリ>/enwiki-m700-c380-d100.tar.bz2
+d2vg-setup-model <ダウンロードしたディレクトリ>/jawiki-janome-m50-c400-d100.tar.bz2
 ```
 
-エクスプローラーで行う場合には、 `AppData` は隠しフォルダなので、
-開くには、エクスプローラーのバーに直接「`C:\Users\<username>\AppData`」と入力してください。
-
-ディレクトリ `enw50k` を `C:\Users\<username>\AppData\Local\tos.kamiya\d2vg\models` の直下のディレクトリになるように移動します。
-
-次のようなディレクトリ構造になります。
-
-![](images/win-enw50k-place-ja.png)
-
-(3) 日本語Doc2Vecモデルをインストールします。
-
-releasesのページからファイル `jaw50k.tar.bz2` をダウンロードし、上の(2)に準じてインストールしてください。
-
-![](images/win-jaw50k-place-ja.png)
-
-(4) 形態素解析ツールをインストールします。
-
-MeCab本体をインストールします。
-
-https://github.com/ikegami-yukino/mecab/releases
-
-「コントロールパネル-システムとセキュリティ-システム-システムの詳細設定-環境変数」で「Path」を編集して「C:\Program Files\MeCab\bin」を追加します。
-
-![](images/win-mecab-env-ja.png)
-
-動作確認には、DOSプロンプト等で次のように入力してみてください。
+インストールできているか確認するには、d2vgの`--list-lang`オプションを使ってください。
 
 ```
-python
-import MeCab
-mecab = MeCab.Tagger()
-print(mecab.parse("ただいまMeCabのテスト中。"))
+d2vg --list-lang
 ```
 
-次のように表示されれば、動作しています。
+何か問題があった場合は、古いDoc2Vecモデルが残っていた可能性があります。
+インストールされているDoc2Vecモデルのファイルを次のようにして削除してから、再度Doc2Vecモデルのインストールの手順を行ってください。
 
-![](images/win-mecab-run-ja.png)
+```
+d2vg-setup-model --delete-all
+```
 
-(5) NKFのインストール(オプション)
+(3) NKFのインストール(オプション)
 
 **文字コードがUTF-8のテキストファイルも検索対象にするには、NKFをインストールしてください。**
 (いわゆるShiftJISのテキストファイルと、UTF-8のテキストファイルが混在しているときに、NKFを用いることで、文字コードを判別して読み込みます。)
@@ -108,11 +67,9 @@ python -c "help('d2vg')"
 
 `__init__.py`というファイルがあるディレクトリに、先の`nkf32.exe`をコピーしてください。
 
-### 実行時の注意
+### d2vg実行時の注意
 
 オプション`-v`(検索の途中経過を表示する)はANSIエスケープシーケンスを出力するため、
 ANSIエスケープシーケンスに対応したPowerShell等を利用してください。
 
 ![](images/win-example-powershell.png)
-
-

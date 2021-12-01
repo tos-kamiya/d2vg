@@ -59,10 +59,3 @@ Vocabulary size: 100K words
 python3 ../trim_vocab_to_size.py  wiki_tokenized 100000 wiki_tokenized_w100k
 python3 ../train.py wiki_tokenized_w100k kowiki-w100k-d100.model
 ```
-
-Vocabulary size: 50K words
-
-```
-python3 ../trim_vocab_to_size.py  wiki_tokenized 50000 wiki_tokenized_w50k
-python3 ../train.py wiki_tokenized_w50k kowiki-w50k-d100.model
-```

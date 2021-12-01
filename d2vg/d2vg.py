@@ -3,6 +3,7 @@ from typing import *
 import dbm
 from glob import glob
 import heapq
+import importlib
 import locale
 import os
 import pickle
@@ -15,6 +16,8 @@ from . import parsers
 from . import model_loaders
 from .types import Vec
 
+
+__version__ = importlib.metadata.version('d2vg')
 
 DB_DIR = '.d2vg'
 LEADING_TEXT_MAX_LEN = 80
@@ -46,17 +49,53 @@ def expand_target_files(target_files: Iterable[str]) -> List[str]:
     return target_files_expand
 
 
-def extract_leading_text(lines: List[str], subrange: Tuple[int, int]) -> str:
+U = TypeVar('U')
+
+def join_lists(lists: List[List[U]]) -> List[U]:
+    r = []
+    for l in lists:
+        r.extend(l)
+    return r
+
+
+def extract_leading_text(
+        lines: List[str], 
+        subrange: Tuple[int, int],
+        text_to_tokens: Callable[[str], List[str]], 
+        tokens_to_vector: Callable[[List[str]], Vec],
+        pattern_vec: Vec) -> Tuple[str, Tuple[int, int]]:
     start_pos, end_pos = subrange
-    leading_text = ""
-    for L in lines[start_pos : end_pos]:
-        leading_text += L + "|"
-        if len(leading_text) > LEADING_TEXT_MAX_LEN:
-            break  # for L
-    if leading_text:
-        leading_text = leading_text[:-1]  # remove the last "|"
+    if start_pos == end_pos:
+        return '', (start_pos, start_pos)
+
+    line_tokens = [[]] * start_pos
+    line_lens = [0] * start_pos
+    for p in range(start_pos, end_pos):
+        L = lines[p]
+        line_tokens.append(text_to_tokens(L))
+        line_lens.append(len(L))
+
+    max_sr_data = None
+    for p in range(start_pos, end_pos):
+        vec = tokens_to_vector(line_tokens[p])
+        ip = float(np.inner(vec, pattern_vec))
+        if max_sr_data is None or ip > max_sr_data[0]:
+            max_sr_data = ip, (p, p + 1)
+        len_sum = line_lens[p]
+        q = p + 1
+        while q < end_pos and len_sum < LEADING_TEXT_MAX_LEN:
+            len_sum += line_lens[q]
+            q += 1
+        vec = tokens_to_vector(join_lists(line_tokens[p:q]))
+        ip = float(np.inner(vec, pattern_vec))
+        if max_sr_data is None or ip > max_sr_data[0]:
+            max_sr_data = ip, (p, q)
+    assert max_sr_data is not None
+
+    sr = max_sr_data[1]
+    leading_text = "|".join(lines[sr[0]:sr[1]])
     leading_text = leading_text[:LEADING_TEXT_MAX_LEN]
-    return leading_text
+    return leading_text, sr
 
 
 def pickle_dumps_pos_vecs(pos_vecs: Iterable[Tuple[int, int, List[Vec]]]) -> bytes:
@@ -121,9 +160,11 @@ __doc__: str = """Doc2Vec Grep.
 Usage:
   d2vg [options] <pattern> <file>...
   d2vg --list-lang
+  d2vg --help
+  d2vg --version
 
 Options:
-  --lang=LANG, -l LANG          Model language. Either `ja` or `en`.
+  --lang=LANG, -l LANG          Model language.
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
   --window=NUM, -w NUM          Line window size [default: 20].
@@ -135,11 +176,11 @@ Options:
 
 
 def main():
-    args = docopt(__doc__)
+    args = docopt(__doc__, version='d2vg %s' % __version__)
 
+    lang_candidates = model_loaders.get_model_langs()
     if args['--list-lang']:
-        langs = model_loaders.get_model_langs()
-        print("\n".join("%s %s" % (l, repr(m)) for l, m in langs))
+        print("\n".join("%s %s" % (l, repr(m)) for l, m in lang_candidates))
         sys.exit(0)
 
     language = None
@@ -176,10 +217,12 @@ def main():
     if not pattern:
         sys.exit("Error: pattern string is empty.")
 
-    lang_model_file = model_loaders.get_model_file(language)
-    if lang_model_file is None:
-        sys.exit("Error: not found Doc2Vec model for language: %s" % language)
+    if not any(language == l for l, _d in lang_candidates):
+        print("Error: not found Doc2Vec model for language: %s" % language, file=sys.stderr)
+        sys.exit("  Specify either: %s" % ', '.join(l for l, _d in lang_candidates))
 
+    lang_model_file = model_loaders.get_model_file(language)
+    assert lang_model_file is not None
     text_to_tokens, tokens_to_vector, find_oov_tokens, get_index_db_name = model_loaders.load_funcs(language, lang_model_file)
 
     tokens = text_to_tokens(pattern)
@@ -246,15 +289,17 @@ def main():
             except parsers.PraseError as e:
                 print("> Warning: %s" % e)
         if verbose:
-            print("\x1b[1K\x1b[1G", file=sys.stderr)
+            print("\x1b[1K\x1b[1G", end='', file=sys.stderr)
     except KeyboardInterrupt:
         if verbose:
-            print("\x1b[1K\x1b[1G", file=sys.stderr)
+            print("\x1b[1K\x1b[1G", end='', file=sys.stderr)
         print("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), file=sys.stderr)
         print("> Warning: shows the search results up to now.", file=sys.stderr)
     finally:
         if db is not None:
             db.close()
+    if verbose:
+        print("", end='', file=sys.stderr)
 
     tf_data = heapq.nlargest(top_n, tf_data)
     for i, (ip, tf, sr, lines) in enumerate(tf_data):
@@ -262,7 +307,7 @@ def main():
             break  # for i
         if lines is None:
             lines = parse(tf)
-        leading_text = extract_leading_text(lines, sr)
+        leading_text, _max_sr = extract_leading_text(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec)
         print('%g\t%s:%d-%d\t%s' % (ip, tf, sr[0] + 1, sr[1] + 1, leading_text))
         if i >= top_n > 0:
             break  # for i

@@ -25,40 +25,37 @@ pip install wheel
 pip install d2vg
 ```
 
+In order to use non-English Doc2Vec models, depending on the language, you may need to add a option such as `[ja]`.
+
+```sh
+pip3 install d2vg[ja]
+```
+
 (2) Install an English Doc2Vec model file.
 
-Concatenate the downloaded files `enw50k.tar.bz2.aa` and `enw50k.tar.bz2.ab`.
+Download the Doc2Vec model file from the github release page.
 
-If you are doing this at the DOS prompt, it will look like this:
+Install the downloaded file by giving it to `d2vg-setup-model`.
 
-```
-C:
-cd C:\Users\<username>\Downloads
-copy /y /b "enw50k.tar.bz2.aa"+"enw50k.tar.bz2.ab" "enw50k.tar.bz2"
+```sh
+d2vg-setup-model the/downloaded/directory/enwiki-m700-c380-d100.tar.bz2
 ```
 
-Extract the file `enw50k.tar.bz2` with some tool.
-For example, if you use 7-zip, expand it once to generate the file `enw50k.tar`, and then expand this file again.
+Use d2vg's ``--list-lang`` option to check if the installation is successfully done.
 
-Make a directory to store the extracted `enw50k` directory.
-
-If you are doing this at the DOS prompt, it will look like this:
-
-```
-C:
-cd C:\Users\<username>\AppData\Local
-mkdir tos.kamiya
-mkdir tos.kamiya\d2vg
-mkdir tos.kamiya\d2vg\models
+```sh
+$ d2vg --list-lang
+en 'C:\Users\<username>\AppData\Local\tos.kamiya\d2vg\models\enwiki-m700-c380-d100/en.ref'
 ```
 
-If you are using Explorer, since AppData is a hidden folder, enter `C:\Users\<username>\AppData` directly into the Explorer bar.
+If you have any problems, it is possible that you still have the old Doc2Vec model.
+Please remove the installed Doc2Vec model files as follows, and then perform the model-file installation procedure again.
 
-Move the directory `enw50k` so that it is directly under `C:\Users\<username>\AppData\tos.kamiya\d2vg\models` .
+```sh
+d2vg-setup-model --delete-all
+```
 
-![](images/win-enw50k-place.png)
-
-### Note on running the script
+### Note on running d2vg
 
 The option `-v` (to show the progress of the search) will output ANSI escape sequences.
 Use a terminal supporting ANSI escape sequences, such as PowerShell.

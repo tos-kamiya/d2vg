@@ -1,9 +1,7 @@
 from typing import *
 
-import appdirs
 import importlib
 import os
-import re
 import shutil
 import sys
 import tarfile
@@ -11,14 +9,12 @@ import tempfile
 
 from docopt import docopt
 
-from .model_loaders import get_model_file
+from .model_loaders import get_model_root_dir, get_model_file, get_model_langs
 
 
 TAR_COMPRESSION_METHODS = ['gz', 'bz2', 'xz']
 
 
-_app_name: str = 'd2vg'
-_author: str = 'tos.kamiya'
 __version__ : str = importlib.metadata.version('d2vg')
 TEMP_DIR: str = tempfile.gettempdir()
 
@@ -31,7 +27,8 @@ def do_check_compression_method(file_or_url: str) -> str:
     return compression_method
 
 
-def do_verify_archive_file(tar: tarfile.TarFile, lang: Optional[str]):
+def do_verify_archive_file(tar: tarfile.TarFile, model_root_dir: str):
+    installed_language_set = frozenset(l for l, _f in get_model_langs(model_root_dirs=[model_root_dir]))
     members = tar.getmembers()
     file_dirs = set()
     detected_lang = None
@@ -44,27 +41,13 @@ def do_verify_archive_file(tar: tarfile.TarFile, lang: Optional[str]):
             fn = os.path.basename(m.name)
             if fn.endswith('.ref'):
                 detected_lang = fn[:-4]
-                if lang:
-                    if detected_lang != lang:
-                        sys.exit("Error: Doc2Vec model language mismatch: %s" % detected_lang)
-                else:
-                    fp = get_model_file(detected_lang)
-                    if fp is not None:
-                        print("Warning: Doc2Vec model already exists for language: %s" % detected_lang, file=sys.stderr, flush=True)
-                        print("  You might be required to remove the model by `rm -rf %s`" % os.path.dirname(fp), file=sys.stderr, flush=True)
-                    lang = detected_lang
+                if detected_lang in installed_language_set:
+                    sys.exit("Error: a model already has been installed for language. Remove model with `d2vg-setup-model --delete -l %s` before installation." % detected_lang)
     if detected_lang is None:
         sys.exit("Error: not a model file (<lang>.ref not found).")
     
     root_dir_of_all_files = file_dirs.pop() if len(file_dirs) != 1 else None
     return detected_lang, root_dir_of_all_files
-
-
-def get_model_dir() -> str:
-    if os.name == 'nt':
-        return os.path.join(appdirs.user_data_dir(_app_name, _author), "models")
-    else:
-        return os.path.join(appdirs.user_config_dir(_app_name), "models")
 
 
 def identify_tar_compression_method(file_name: str) -> Optional[str]:
@@ -77,37 +60,53 @@ def identify_tar_compression_method(file_name: str) -> Optional[str]:
 __doc__: str = """Setup d2vg's Doc2Vec model.
 
 Usage:
-  d2vg-setup-model [-l LANG] <file>
+  d2vg-setup-model <file>
+  d2vg-setup-model --delete -l LANG
+  d2vg-setup-model --delete-all
 
 Options:
+  --delete                  Delete a model for the language.
   --lang=LANG, -l LANG      Model language.
+  --delete-all              Delete all models.
 """
 
 
 def main():
     args = docopt(__doc__, version='d2vg-setup-model %s' % __version__)
-    lang = args['--lang']
+
+    model_root_dir = get_model_root_dir()
+
+    if args['--delete-all']:
+        shutil.rmtree(model_root_dir)
+        return
+
+    if args['--delete']:
+        lang = args['--lang']
+        fp = get_model_file(lang, model_root_dir=model_root_dir)
+        if fp is not None:
+            model_dir = os.path.dirname(fp)
+            assert model_dir != model_root_dir
+            shutil.rmtree(model_dir)
+        else:
+            sys.exit("Error: no model found for the language: %s" % lang)
+        return
+
     archive_file = args['<file>']
+
+    if not os.path.exists(model_root_dir):
+        os.makedirs(model_root_dir)
 
     # examine structure of the archive file
     compression_method = do_check_compression_method(archive_file)
     tar = tarfile.open(archive_file, "r:%s" % compression_method)
 
     print("Verifying: %s" % archive_file, file=sys.stderr, flush=True)
-    _detected_lang, root_dir_of_all_files = do_verify_archive_file(tar, lang)
+    _detected_lang, root_dir_of_all_files = do_verify_archive_file(tar, model_root_dir)
 
     # expand files to the model directory from the archive file
-    target_dir = get_model_dir()
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
-
     print("Expanding: %s" % archive_file, file=sys.stderr, flush=True)
-    print("  Target directory: %s" % target_dir, file=sys.stderr, flush=True)
-    tar.extractall(target_dir)
-
-    if root_dir_of_all_files is not None and root_dir_of_all_files != target_dir:
-        shutil.move(target_dir, root_dir_of_all_files)
-        shutil.rmtree(target_dir)
+    print("  Destination directory: %s" % model_root_dir, file=sys.stderr, flush=True)
+    tar.extractall(model_root_dir)
 
 
 if __name__ == '__main__':

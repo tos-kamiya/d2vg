@@ -1,6 +1,5 @@
 from typing import *
 
-from io import StringIO
 import os
 import re
 import subprocess
@@ -15,7 +14,7 @@ if os.name != 'nt':
 
 _script_dir: str = os.path.dirname(os.path.realpath(__file__))
 
-_ja_nkf_abspath: Union[str, None] = None
+_ja_nkf_abspath: Optional[str] = None
 if os.name == 'nt' and os.path.exists(os.path.join(_script_dir, 'nkf32.exe')):
     _ja_nkf_abspath = os.path.abspath(os.path.join(_script_dir, 'nkf32.exe'))
 

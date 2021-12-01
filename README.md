@@ -15,8 +15,8 @@ Use Doc2Vec models to search document files that contain similar parts to the ph
 * &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.md)
 * &rarr; [Installation on Windows](docs/installation-on-windows.md)
 
-For Chinese, replace `d2vg` with `d2vg[zh]` in the line of the installation instructions.
-For Korean, similarly, replace `d2vg` with `d2vg[ko]`.
+For installation of Chinese Doc2Vec model, replace `d2vg` with `d2vg[zh]` in the line of the installation instructions.
+Similarly, for Japanese or Korean, replace `d2vg` with `d2vg[ja]` or `d2vg[ko]`, respectively.
 
 ```sh
 pip3 install d2vg
@@ -45,7 +45,7 @@ If keywords are specified, only the part that contains all the keywords will be 
 Example: "debugging" was specified as a keyword  
 ![](images/example3.png)
 
-### Indexing for x10 speedup
+### Indexing
 
 By letting d2vg create indexes of document files, you can improve the speed of the second and later searches from the same set of documents.
 
@@ -77,11 +77,11 @@ Example of execution with indexes enabled:
 
 ## Troubleshootings
 
-**Q**: I installed the Doc2Vec model correctly, but I got the error "`Error: not found Doc2Vec model for language: jp`".  
-**A**: The language specification was wrong, it should be `ja`, not `jp`.
-
 **Q**: d2vg hangs.  
 **A**: When indexing is enabled (creating a directory `.d2vg`), force quitting may cause d2vg to hang because it cannot open the indexed DB the next time it is run. Please delete the directory `.d2vg`.
+
+**Q**: I installed the Doc2Vec model correctly, but I got the error "`Error: not found Doc2Vec model for language: jp`".  
+**A**: The language specification was wrong, it should be `ja`, not `jp`.
 
 ## Development
 
@@ -95,22 +95,22 @@ The Doc2Vec model should be created with Gensim v4.
 
 Prepare a file named `<language.ref>` (the `language` is a name of language specified with the option `-l`), contains the relative path to the Doc2Vec model file.
 
-For example, in the case of Japanese Doc2Vec model, the content of the file `ja.ref` is the line `jawiki-w50k-d100.model`.
+For example, in the case of Japanese Doc2Vec model, the content of the file `ja.ref` is the line `jawiki-janome-m120-d100.model`.
 
-````
-~/.config/d2vg/models/jaw50k
-├─ ja.ref
-├─ jawiki-w50k-d100.model
-└─ jawiki-w50k-d100.model.dv.vectors.npy
+```
+~/.config/d2vg/models/jawiki-janome-m120-d100
+├── ja.ref
+├── jawiki-janome-m120-d100.model
+└── jawiki-janome-m120-d100.model.dv.vectors.npy
 ````
 
 ## Todo
 
 - [x] Optimization by indexing document files
 - [x] Prepare Doc2Vec models compatible to the latest gensim (v4) 
-- [x] Check installation on Windows.
+- [x] Check installation on Windows
 - [x] Combining keyword search
-- [ ] Consider other models (in particular, could the Word2Vec model be used?)
+- [x] Tuning models
 - [ ] Support for more languages (experimental support: ko, zh)
 
 ## Acknowledgements
@@ -127,5 +127,3 @@ https://dumps.wikimedia.org/
 ## License
 
 d2vg is distributed under [BSD-2](https://opensource.org/licenses/BSD-2-Clause) license.
-
-You need to follow the license of the distributors for the above Doc2Vec models.

@@ -12,20 +12,31 @@ Install `d2vg` as follows.
 pip3 install d2vg
 ```
 
+In order to use non-English Doc2Vec models, depending on the language, you may need to add a option such as `[ja]`.
+
+```sh
+pip3 install d2vg[ja]
+```
+
 (2) Install an English Doc2Vec model file.
 
-Download `enw50k.tar.bz2` (English Doc2Vec model). Expand the archive as a directory `~/.config/d2vg/models/en50k`.
-(In case the directory `~/.config/d2vg/models` does not exist, create it.)
+Download the Doc2Vec model file from the github release page.
 
-```
-~/.config/d2vg/models/enw50k
-├── en.ref
-├── enwiki-w50k-d100.model
-└── enwiki-w50k-d100.model.dv.vectors.npy
+Install the downloaded file by giving it to `d2vg-setup-model`.
+
+```sh
+d2vg-setup-model the/downloaded/directory/enwiki-m700-c380-d100.tar.bz2
 ```
 
-If you downloaded `enw50k.tar.bz2.aa` and `enw50k.tar.bz2.ab` from the releases page on github, obtain the file `enw50k.tar.bz2` as follows:
+Use d2vg's ``--list-lang`` option to check if the installation is successfully done.
 
+```sh
+d2vg --list-lang
 ```
-cat enw50k.tar.bz2.aa enw50k.tar.bz2.ab > enw50k.tar.bz2
+
+If you have any problems, it is possible that you still have the old Doc2Vec model.
+Please remove the installed Doc2Vec model files as follows, and then perform the model-file installation procedure again.
+
+```sh
+d2vg-setup-model --delete-all
 ```

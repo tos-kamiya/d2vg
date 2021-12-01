@@ -18,28 +18,55 @@ curl -O https://dumps.wikimedia.org/jawiki/latest/jawiki-latest-pages-articles.x
 
 (3) クリーニング（XMLタグの除去など)と分かち書き
 
-```
-mkdir wc
-python3 -m wikiextractor.WikiExtractor -b 500m -o wc jawiki-latest-pages-articles.xml.bz2
-ls wc/**/* | xargs -P5 -n1 -I "{}" python3 ../remove_doc_and_file_tags.py "{}" "{}".rdft
-ls wc/**/*.rdft | xargs -P5 -n1 -I "{}" mecab -O wakati -o "{}".wakati "{}"
-cat wc/**/*.wakati > wiki_wakati
+次の内容のスクリプト ja_tokenize.py を用意してください。
+
+```python
+import sys
+from janome.tokenizer import Tokenizer
+
+input_file = sys.argv[1]
+output_file = sys.argv[2]
+
+t = Tokenizer()
+
+with open(output_file, 'w') as outp:
+    with open(input_file) as inp:
+        for L in inp:
+            L = L.rstrip()
+            try:
+                tokens = []
+                for token in t.tokenize(L):
+                    te = token.extra
+                    if te is not None:
+                        tokens.append(te[3])
+                    else:
+                        s = str(token)
+                        i = s.find('\t')
+                        if i:
+                            tokens.append(s[:i])
+                if tokens:
+                    print(' '.join(tokens), file=outp)
+            except UnicodeDecodeError:
+                pass
 ```
 
-オプション `xarg -P5` はワーカープロセスの数です。環境に応じて変更してください。
+mkdir wc
+python3 -m wikiextractor.WikiExtractor -b 120m -o wc jawiki-latest-pages-articles.xml.bz2
+ls wc/**/* | xargs -P11 -n1 -I "{}" python3 ../remove_doc_and_file_tags.py "{}" "{}".rdft
+ls wc/**/*.rdft | xargs -P11 -n1 -I "{}" python3 ja_tokenize.py "{}" "{}".tokenized
+```
+
+wikiextractorのオプション`-b 120m` of wikiextractorはデータのチャンクの大きさ、xargのオプション`-P11`はワーカープロセスの数です。環境に応じて変更してください。
 
 (4) Doc2Vecモデルの構築
 
-語彙数: 10万語
+以下で、trim_vocab_by_min_occurrenceのオプション`-m 50`は単語の最小出現回数です。
+オプション`-c 400`はある単語について集める文の数の目標値です。
+これらのパラーメータを変えると、Doc2Vecのモデルのファイルサイズや語彙数が変化します。
 
 ```
-python3 ../trim_vocab_to_size.py wiki_wakati 100000 wiki_wakati_w100k
-python3 ../train.py wiki_wakati_w100k jawiki-w100k-d100.model
+python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 50 -c 400 wc/**/*.tokenized
+python3 ../train.py wiki_tokenized jawiki-janome-m50-c400-d100.model tmp.model
 ```
 
-語彙数: 5万語
-
-```
-python3 ../trim_vocab_to_size.py wiki_wakati 50000 wiki_wakati_w50k
-python3 ../train.py wiki_wakati_w50k jawiki-w50k-d100.model
-```
+上述の`01-Nov-2021 20:04`の`jawiki-latest-pages-articles.xml.bz2`を与えて上記のコマンドラインを実行すると、語彙数は`139488`になりました。

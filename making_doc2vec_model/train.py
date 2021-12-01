@@ -9,6 +9,7 @@ cores = multiprocessing.cpu_count() - 1  # leave a margin of one core.
 
 input_file = sys.argv[1]
 output_file = sys.argv[2]
+output_file_epoch1 = sys.argv[3] if len(sys.argv) > 3 else None
 
 
 def read_corpus(fname):
@@ -27,7 +28,11 @@ print("> build_vocab", file=sys.stderr)
 model.build_vocab(documents, progress_per=10000)
 
 print("> train", file=sys.stderr)
-model.train(documents, total_examples=model.corpus_count, epochs=10)
+if output_file_epoch1 is not None:
+    model.train(documents, total_examples=model.corpus_count, epochs=1)
+    print("> save (epoch = 1)", file=sys.stderr)
+    model.save(output_file_epoch1)
+model.train(documents, total_examples=model.corpus_count, epochs=9)
 
 print("> save", file=sys.stderr)
 model.save(output_file)
