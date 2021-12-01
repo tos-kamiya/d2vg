@@ -1,3 +1,5 @@
+from typing import *
+
 import unittest
 
 from pathlib import Path
@@ -6,6 +8,7 @@ import tempfile
 
 import numpy as np
 
+from d2vg import types
 from d2vg import d2vg
 
 
@@ -41,8 +44,21 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
 
     def test_extract_leading_text(self):
         lines = ['%d' % i for i in range(10)]
-        r = d2vg.extract_leading_text(lines, (3, 6))
-        self.assertEqual(r, '|'.join('%d' % i for i in range(3, 6)))
+        sr = (3, 6)
+        high_ip_token_subseq = lines[sr[0]:sr[1]]
+
+        # stubs
+        def text_to_tokens(line: str) -> List[str]:
+            return line.split(' ')
+        def tokens_to_vector(tokens: List[str]) -> types.Vec:
+            if tokens == high_ip_token_subseq:
+                return np.array([1.0, 0.0], dtype=np.float32)
+            else:
+                return np.array([0.0, 0.0], dtype=np.float32)
+        pattern_vec = np.array([1.0, 0.0], dtype=np.float32)
+
+        lt, ip = d2vg.extract_leading_text(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec)
+        self.assertEqual(lt, '|'.join(high_ip_token_subseq))
 
     def test_extract_pos_vecs(self):
         file_table = { 
