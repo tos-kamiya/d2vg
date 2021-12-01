@@ -176,6 +176,9 @@ Options:
 
 
 def main():
+    def eprint(message: str, end='\n'):
+        print(message, file=sys.stderr, end=end, flush=True)
+
     args = docopt(__doc__, version='d2vg %s' % __version__)
 
     lang_candidates = model_loaders.get_model_langs()
@@ -218,7 +221,7 @@ def main():
         sys.exit("Error: pattern string is empty.")
 
     if not any(language == l for l, _d in lang_candidates):
-        print("Error: not found Doc2Vec model for language: %s" % language, file=sys.stderr)
+        eprint("Error: not found Doc2Vec model for language: %s" % language)
         sys.exit("  Specify either: %s" % ', '.join(l for l, _d in lang_candidates))
 
     lang_model_file = model_loaders.get_model_file(language)
@@ -233,10 +236,10 @@ def main():
     keyword_set = frozenset(oov_tokens if unknown_word_as_keyword else [])
     if unknown_word_as_keyword:
         if oov_tokens:
-            print("> keywords: %s" % ", ".join(sorted(keyword_set)), file=sys.stderr)
+            eprint("> keywords: %s" % ", ".join(sorted(keyword_set)))
     else:
         if oov_tokens:
-            print("> Warning: unknown words: %s" % ", ".join(oov_tokens), file=sys.stderr)
+            eprint("> Warning: unknown words: %s" % ", ".join(oov_tokens))
 
     def prune_by_keywords(
             ip_srls: Iterable[Tuple[float, Tuple[int, int], Optional[List[str]]]], 
@@ -273,7 +276,7 @@ def main():
                 if max_tf:
                     _ip, f, sr, _ls = max_tf[0]
                     top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
-                    print("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end='', file=sys.stderr, flush=True)
+                    eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end='')
             try:
                 pos_vecs, lines = extract_pos_vecs(tf, text_to_tokens, tokens_to_vector, window_size, parse, index_db=db)
                 ip_srls = [(float(np.inner(vec, pattern_vec)), (pos, end_pos), lines) for pos, end_pos, vec in pos_vecs]  # ignore type mismatch
@@ -289,19 +292,17 @@ def main():
                     if len(tf_data) > top_n:
                         _smallest = heapq.heappop(tf_data)
             except parsers.PraseError as e:
-                print("> Warning: %s" % e)
+                eprint("> Warning: %s" % e)
         if verbose:
-            print("\x1b[1K\x1b[1G", end='', file=sys.stderr)
+            eprint("\x1b[1K\x1b[1G")
     except KeyboardInterrupt:
         if verbose:
-            print("\x1b[1K\x1b[1G", end='', file=sys.stderr)
-        print("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), file=sys.stderr)
-        print("> Warning: shows the search results up to now.", file=sys.stderr)
+            eprint("\x1b[1K\x1b[1G")
+        eprint("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf))
+        eprint("> Warning: shows the search results up to now.")
     finally:
         if db is not None:
             db.close()
-    if verbose:
-        print("", end='', file=sys.stderr)
 
     tf_data = heapq.nlargest(top_n, tf_data)
     for i, (ip, tf, sr, lines) in enumerate(tf_data):
