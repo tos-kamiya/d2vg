@@ -73,6 +73,12 @@ def get_model_file(lang: str, model_root_dir: Optional[str] = None, exit_when_ob
     return None
 
 
+def exit_with_installation_message(e: ModuleNotFoundError, lang: str):
+    print("Error: %s" % e, file=sys.stderr)
+    print("  Need to install d2vg with `{lang}` option: pip install d2vg[{lang}]".format(lang=lang), file=sys.stderr)
+    sys.exit(1)
+
+
 def load_funcs(lang: str, lang_model_path: str) -> Tuple[
         Callable[[str], List[str]],
         Callable[[List[str]], Vec],
@@ -82,7 +88,10 @@ def load_funcs(lang: str, lang_model_path: str) -> Tuple[
     model = Doc2Vec.load(lang_model_path)
 
     if lang == 'ja':
-        from janome.tokenizer import Tokenizer
+        try:
+            from janome.tokenizer import Tokenizer
+        except ModuleNotFoundError as e:
+            exit_with_installation_message(e, lang)
 
         janomet = Tokenizer()
         def text_to_tokens(text: str) -> List[str]:
@@ -98,14 +107,20 @@ def load_funcs(lang: str, lang_model_path: str) -> Tuple[
                         tokens.append(s[:i])
             return tokens
     elif lang == 'ko':
-        from konlpy.tag import Kkma
+        try:
+            from konlpy.tag import Kkma
+        except ModuleNotFoundError as e:
+            exit_with_installation_message(e, lang)
 
         kkma = Kkma()
         def text_to_tokens(text: str) -> List[str]:
             tokens = [w for w, _ in kkma.pos(text)]
             return tokens
     elif lang == 'zh':
-        import jieba
+        try:
+            import jieba
+        except ModuleNotFoundError as e:
+            exit_with_installation_message(e, lang)
 
         def text_to_tokens(text: str) -> List[str]:
             tokens = list(jieba.cut(text, cut_all=False))
