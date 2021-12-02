@@ -183,7 +183,15 @@ def main():
 
     lang_candidates = model_loaders.get_model_langs()
     if args['--list-lang']:
+        lang_candidates.sort()
         print("\n".join("%s %s" % (l, repr(m)) for l, m in lang_candidates))
+        prevl = None
+        for l, _m in lang_candidates:
+            if l == prevl:
+                eprint("> Warning: multiple Doc2Vec models are found for language: %s" % l)
+                eprint(">   Remove the models with `d2vg-setup-model --delete -l %s`, then" % l)
+                eprint(">   re-install a model for the language.")
+            prevl = l
         sys.exit(0)
 
     language = None
@@ -228,8 +236,8 @@ def main():
     assert lang_model_files
     if len(lang_model_files) >= 2:
         eprint("Error: multiple Doc2Vec models are found for language: %s" % language)
-        for lmf in lang_model_files:
-            eprint("  %s" % repr(lmf))
+        eprint("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % language)
+        eprint("   re-install a model for the language.")
         sys.exit(1)
     lang_model_file = lang_model_files[0]
     text_to_tokens, tokens_to_vector, find_oov_tokens, get_index_db_name = model_loaders.load_funcs(language, lang_model_file)
