@@ -112,7 +112,6 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 - [x] Prepare Doc2Vec models compatible with the latest gensim (v4) 
 - [x] Check installation on Windows
 - [x] Combining keyword search
-- [x] Tuning models
 - [x] Easy installation
 - [ ] Support and tune more languages (experimental support: ko, zh)
 
