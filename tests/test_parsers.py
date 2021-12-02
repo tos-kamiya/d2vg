@@ -10,36 +10,38 @@ import d2vg
 class ParserTest(unittest.TestCase):
     def test_text_file(self):
         with tempfile.TemporaryDirectory() as tempdir:
-            p = Path(tempdir) / 'a.txt'
-            content = '1st line.\n2nd line.\n'
+            p = Path(tempdir) / "a.txt"
+            content = "1st line.\n2nd line.\n"
             p.write_text(content)
             read_content = d2vg.parsers.read_text_file(str(p))
             self.assertEqual(read_content, content)
 
     def test_html_file(self):
         with tempfile.TemporaryDirectory() as tempdir:
-            p = Path(tempdir) / 'a.html'
-            content = '''<!DOCTYPE html>
+            p = Path(tempdir) / "a.html"
+            content = """<!DOCTYPE html>
 <html>
 <body>
 <p>1st paragraph.</p>
 <p>2nd paragraph.</p>
 </body>
-</html>'''
+</html>"""
             p.write_text(content)
             read_content = d2vg.parsers.html_parse(str(p))
-            read_content = re.sub(r'\n+', r'\n', read_content).rstrip()
-            self.assertEqual(read_content, 'html\n1st paragraph.\n2nd paragraph.')
+            read_content = re.sub(r"\n+", r"\n", read_content).rstrip()
+            self.assertEqual(read_content, "html\n1st paragraph.\n2nd paragraph.")
 
     def test_pdf_file(self):
-        from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
+        from borb.pdf.canvas.layout.page_layout.multi_column_layout import (
+            SingleColumnLayout,
+        )
         from borb.pdf.canvas.layout.text.paragraph import Paragraph
         from borb.pdf.document import Document
         from borb.pdf.page.page import Page
         from borb.pdf.pdf import PDF
 
         with tempfile.TemporaryDirectory() as tempdir:
-            p = Path(tempdir) / 'a.pdf'
+            p = Path(tempdir) / "a.pdf"
 
             pdf = Document()
             page = Page()
@@ -51,8 +53,8 @@ class ParserTest(unittest.TestCase):
                 PDF.dumps(pdf_file_handle, pdf)
 
             read_content = d2vg.parsers.pdf_parse(str(p))
-            read_content = re.sub(r'\n+', r'\n', read_content).rstrip()
-            self.assertEqual(read_content, '1st paragraph.\n2nd paragraph.')
+            read_content = re.sub(r"\n+", r"\n", read_content).rstrip()
+            self.assertEqual(read_content, "1st paragraph.\n2nd paragraph.")
 
     # !! not working !! ref: https://stackoverflow.com/questions/58186869/how-to-fix-the-bug-modulenotfounderror-no-module-named-exceptions-when-impo
     # def test_docx_file(self):
@@ -71,5 +73,5 @@ class ParserTest(unittest.TestCase):
     #         self.assertEqual(read_content, '1st paragraph.\n2nd paragraph.')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

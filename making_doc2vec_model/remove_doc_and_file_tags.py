@@ -6,11 +6,11 @@ output_file = sys.argv[2]
 
 tags = ["<doc", "</doc", "[["]
 
-with open(output_file, 'w') as outp:
-    with open(input_file, 'rb') as inpb:
+with open(output_file, "w") as outp:
+    with open(input_file, "rb") as inpb:
         for b in inpb:
             try:
-                L = b.decode('utf-8')
+                L = b.decode("utf-8")
             except UnicodeDecodeError:
                 continue
             L = L.rstrip()

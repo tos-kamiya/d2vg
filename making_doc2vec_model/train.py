@@ -18,11 +18,11 @@ Options:
 
 args = docopt(__doc__)
 
-input_file = args['<input>']
-output_file = args['-o']
-output_file_epoch1 = args['--epoch1']
-min_occurrence = int(args['--min-occurrence']) if args['--min-occurrence'] else None
-workers = args['-w']
+input_file = args["<input>"]
+output_file = args["-o"]
+output_file_epoch1 = args["--epoch1"]
+min_occurrence = int(args["--min-occurrence"]) if args["--min-occurrence"] else None
+workers = args["-w"]
 if workers is None:
     workers = multiprocessing.cpu_count() - 1  # leave a margin of one core.
 
@@ -31,13 +31,24 @@ def read_corpus(fname):
     with open(fname) as inp:
         r = []
         for i, line in enumerate(inp):
-            r.append(gensim.models.doc2vec.TaggedDocument(gensim.utils.simple_preprocess(line, min_len=1), [i]))
+            r.append(
+                gensim.models.doc2vec.TaggedDocument(
+                    gensim.utils.simple_preprocess(line, min_len=1), [i]
+                )
+            )
         return r
 
 
 documents = read_corpus(input_file)
 
-model = gensim.models.doc2vec.Doc2Vec(dm=0, dbow_words=1, vector_size=100, window=8, min_count=min_occurrence, workers=workers)
+model = gensim.models.doc2vec.Doc2Vec(
+    dm=0,
+    dbow_words=1,
+    vector_size=100,
+    window=8,
+    min_count=min_occurrence,
+    workers=workers,
+)
 
 print("> build_vocab", file=sys.stderr)
 model.build_vocab(documents, progress_per=10000)
