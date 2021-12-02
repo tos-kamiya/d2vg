@@ -224,8 +224,14 @@ def main():
         eprint("Error: not found Doc2Vec model for language: %s" % language)
         sys.exit("  Specify either: %s" % ', '.join(l for l, _d in lang_candidates))
 
-    lang_model_file = model_loaders.get_model_file(language)
-    assert lang_model_file is not None
+    lang_model_files = model_loaders.get_model_files(language)
+    assert lang_model_files
+    if len(lang_model_files) >= 2:
+        eprint("Error: multiple Doc2Vec models are found for language: %s" % language)
+        for lmf in lang_model_files:
+            eprint("  %s" % repr(lmf))
+        sys.exit(1)
+    lang_model_file = lang_model_files[0]
     text_to_tokens, tokens_to_vector, find_oov_tokens, get_index_db_name = model_loaders.load_funcs(language, lang_model_file)
 
     tokens = text_to_tokens(pattern)

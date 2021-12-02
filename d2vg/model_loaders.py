@@ -46,7 +46,7 @@ def get_model_langs(model_root_dirs: Optional[List[str]] = None) -> List[Tuple[s
     return list(zip(langs, paths))
 
 
-def get_model_file(lang: str, model_root_dir: Optional[str] = None, exit_when_obsolete_model_found: bool = True) -> Optional[str]:
+def get_model_files(lang: str, model_root_dir: Optional[str] = None, exit_when_obsolete_model_found: bool = True) -> List[str]:
     if model_root_dir is not None:
         model_root_dirs = [model_root_dir]
     else:
@@ -55,22 +55,22 @@ def get_model_file(lang: str, model_root_dir: Optional[str] = None, exit_when_ob
     for d in model_root_dirs:
         ps = glob(os.path.join(d, "**/%s.ref" % lang), recursive=True)
         if not ps:
-            continue
+            continue  # for d
         ps = [p for p in ps if os.path.isfile(p)]
-        if len(ps) >= 2:
-            print("> Warning: matches two or more Doc2Vec model configs: %s" % repr(ps))
-        with open(ps[0]) as inp:
-            lines = [L.rstrip() for L in inp.readlines()]
-        assert len(lines) >= 1
+        lang_model_paths = []
+        for p in ps:
+            with open(p) as inp:
+                lines = [L.rstrip() for L in inp.readlines()]
+            assert len(lines) >= 1
 
-        if exit_when_obsolete_model_found:
-            if lines[0] == 'jawiki-w100k-d100.model':  # special error messages for those migrating from 0.7.0
-                sys.exit('Error: the model file is obsolete and incompatible.\nInstall a newer model file and remove the directory: %s' % os.path.dirname(ps[0]))
+            if exit_when_obsolete_model_found:
+                if lines[0] == 'jawiki-w100k-d100.model':  # special error messages for those migrating from 0.7.0
+                    sys.exit('Error: the model file is obsolete and incompatible.\nInstall a newer model file and remove the directory: %s' % os.path.dirname(ps[0]))
 
-        lang_model_path = os.path.join(os.path.dirname(ps[0]), lines[0])
-
-        return lang_model_path
-    return None
+            lmp = os.path.join(os.path.dirname(p), lines[0])
+            lang_model_paths.append(lmp)
+        return lang_model_paths
+    return []
 
 
 def exit_with_installation_message(e: ModuleNotFoundError, lang: str):

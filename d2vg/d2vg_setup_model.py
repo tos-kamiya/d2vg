@@ -9,7 +9,7 @@ import tempfile
 
 from docopt import docopt
 
-from .model_loaders import get_model_root_dir, get_model_file, get_model_langs
+from .model_loaders import get_model_root_dir, get_model_files, get_model_langs
 
 
 TAR_COMPRESSION_METHODS = ['gz', 'bz2', 'xz']
@@ -82,13 +82,12 @@ def main():
 
     if args['--delete']:
         lang = args['--lang']
-        fp = get_model_file(lang, model_root_dir=model_root_dir)
-        if fp is not None:
-            model_dir = os.path.dirname(fp)
-            assert model_dir != model_root_dir
-            shutil.rmtree(model_dir)
-        else:
+        fps = get_model_files(lang, model_root_dir=model_root_dir)
+        if not fps:
             sys.exit("Error: no model found for the language: %s" % lang)
+        for fp in fps:
+            model_dir = os.path.dirname(fp)
+            shutil.rmtree(model_dir)
         return
 
     archive_file = args['<file>']
