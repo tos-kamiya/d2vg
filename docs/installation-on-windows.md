@@ -4,7 +4,7 @@
 
 If you are using [Chocolatey](https://chocolatey.org/), you can install Poppler as follows:
 
-```
+```sh
 choco install poppler
 ```
 
@@ -20,12 +20,12 @@ Make sure you can run pdftotext from a DOS prompt, etc.
 
 Install `d2vg` as follows.
 
-```
+```sh
 pip install wheel
 pip install d2vg
 ```
 
-In order to use non-English Doc2Vec models, depending on the language, you may need to add a option such as `[ja]`.
+In order to use non-English Doc2Vec models, depending on the language, you may need to add an option such as `[ja]`.
 
 ```sh
 pip3 install d2vg[ja]
@@ -44,8 +44,8 @@ d2vg-setup-model the/downloaded/directory/enwiki-m700-c380-d100.tar.bz2
 Use d2vg's ``--list-lang`` option to check if the installation is successfully done.
 
 ```sh
-$ d2vg --list-lang
-en 'C:\Users\<username>\AppData\Local\tos.kamiya\d2vg\models\enwiki-m700-c380-d100/en.ref'
+> d2vg --list-lang
+en 'C:\\Users\\<username>\\AppData\\Local\\tos.kamiya\\d2vg\\models\\enwiki-m700-c380-d100\\en.ref'
 ```
 
 If you have any problems, it is possible that you still have the old Doc2Vec model.

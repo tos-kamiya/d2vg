@@ -12,7 +12,7 @@ Install `d2vg` as follows.
 pip3 install d2vg
 ```
 
-In order to use non-English Doc2Vec models, depending on the language, you may need to add a option such as `[ja]`.
+In order to use non-English Doc2Vec models, depending on the language, you may need to add an option such as `[ja]`.
 
 ```sh
 pip3 install d2vg[ja]
@@ -28,10 +28,11 @@ Install the downloaded file by giving it to `d2vg-setup-model`.
 d2vg-setup-model the/downloaded/directory/enwiki-m700-c380-d100.tar.bz2
 ```
 
-Use d2vg's ``--list-lang`` option to check if the installation is successfully done.
+Use d2vg's `--list-lang` option to check if the installation is successfully done.
 
 ```sh
-d2vg --list-lang
+$ d2vg --list-lang
+en '/home/<username>/.config/d2vg/models/enwiki-m700-c380-d100/en.ref'
 ```
 
 If you have any problems, it is possible that you still have the old Doc2Vec model.

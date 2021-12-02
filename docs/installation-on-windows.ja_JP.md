@@ -20,7 +20,7 @@ DOSプロンプト等から、pdftotextを実行できることを確認して�
 
 日本語Doc2Vecモデルを利用するためには、`d2vg`を次のように`[ja]`オプションをつけてインストールしてください。
 
-```
+```sh
 pip install wheel
 pip install d2vg[ja]
 ```
@@ -33,21 +33,23 @@ githubのリリースページから、英語、日本語に対応するDoc2Vec�
 
 ダウンロードしたファイルを、`d2vg-setup-model`に与えてインストールしてください。
 
-```
+```sh
 d2vg-setup-model <ダウンロードしたディレクトリ>/enwiki-m700-c380-d100.tar.bz2
-d2vg-setup-model <ダウンロードしたディレクトリ>/jawiki-janome-m50-c400-d100.tar.bz2
+d2vg-setup-model <ダウンロードしたディレクトリ>/jawiki-janome-m100-c400-d100.tar.bz2
 ```
 
 インストールできているか確認するには、d2vgの`--list-lang`オプションを使ってください。
 
-```
-d2vg --list-lang
+```sh
+> d2vg --list-lang
+en 'C:\\Users\\<ユーザー名>\\AppData\\Local\\tos.kamiya\\d2vg\\models\\enwiki-m700-c380-d100\\en.ref'
+ja 'C:\\Users\\<ユーザー名>\\AppData\\Local\\tos.kamiya\\d2vg\\models\\jawiki-janome-m100-c400-d100\\ja.ref'
 ```
 
 何か問題があった場合は、古いDoc2Vecモデルが残っていた可能性があります。
 インストールされているDoc2Vecモデルのファイルを次のようにして削除してから、再度Doc2Vecモデルのインストールの手順を行ってください。
 
-```
+```sh
 d2vg-setup-model --delete-all
 ```
 
@@ -61,7 +63,7 @@ d2vg-setup-model --delete-all
 
 d2vgをインストールしたディレクトリを、DOSプロンプトなどで次を実行することで確認してください。
 
-```
+```sh
 python -c "help('d2vg')"
 ```
 

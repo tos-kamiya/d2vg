@@ -94,22 +94,23 @@ Doc2Vecモデルの作成の方法については、`making_doc2vec_model/`に�
 Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 `<言語.ref>`というファイル(「言語」はオプション`-l`で指定する言語の名前です)に、Doc2Vecモデルのファイルへの相対パスを記述してください。
 
-例えば、日本語のDoc2Vecモデルの場合には、`ja.ref`というファイルの中身は`jawiki-janome-m120-d100.model`という行になっています。
+例えば、日本語のDoc2Vecモデルの場合には、`ja.ref`というファイルの中身は`jawiki-janome-m100-c400-d100.model`という行になっています。
 
 ```
-~/.config/d2vg/models/jawiki-janome-m120-d100
+~/.config/d2vg/models/jawiki-janome-m100-c400-d100
 ├── ja.ref
-├── jawiki-janome-m120-d100.model
-└── jawiki-janome-m120-d100.model.dv.vectors.npy
+├── jawiki-janome-m100-c400-d100.model
+└── jawiki-janome-m100-c400-d100.model.dv.vectors.npy
 ```
 
 ## Todo
 
 - [x] ドキュメントファイルのインデックス化の導入による最適化
 - [x] 最新版のgensim v4と互換性のあるDoc2Vecデータの準備
-- [x] Windowsでのインストールを確認する
+- [x] Windowsでのインストールを確認
 - [x] キーワード検索の併用
 - [x] モデルのチューニング
+- [x] インストールを容易に
 - [ ] より多くの言語サポート(実験的サポート: ko, zh)
 
 ## 謝辞

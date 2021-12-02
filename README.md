@@ -95,13 +95,13 @@ The Doc2Vec model should be created with Gensim v4.
 
 Prepare a file named `<language.ref>` (the `language` is a name of language specified with the option `-l`), contains the relative path to the Doc2Vec model file.
 
-For example, in the case of Japanese Doc2Vec model, the content of the file `ja.ref` is the line `jawiki-janome-m120-d100.model`.
+For example, in the case of English Doc2Vec model, the content of the file `en.ref` is the line `enwiki-m700-c380-d100.model`.
 
 ```
-~/.config/d2vg/models/jawiki-janome-m120-d100
-├── ja.ref
-├── jawiki-janome-m120-d100.model
-└── jawiki-janome-m120-d100.model.dv.vectors.npy
+~/.config/d2vg/models/enwiki-m700-c380-d100
+├── en.ref
+├── enwiki-m700-c380-d100.model
+└── enwiki-m700-c380-d100.model.dv.vectors.npy
 ````
 
 ## Todo
@@ -111,6 +111,7 @@ For example, in the case of Japanese Doc2Vec model, the content of the file `ja.
 - [x] Check installation on Windows
 - [x] Combining keyword search
 - [x] Tuning models
+- [x] Easy installation
 - [ ] Support for more languages (experimental support: ko, zh)
 
 ## Acknowledgements
