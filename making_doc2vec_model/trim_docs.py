@@ -21,14 +21,16 @@ def read_lines_safe_iter(input_file):
                 continue  # for b
 
 
-__doc__ = """Usage:
-  trim_vocab_and_docs [-w WORKERS] -o OUTPUT -m MINOCCURRENCE -c DOCUMENTSCUTOFF <input>...
+__doc__ = """Remove some documents according to the criteria in order to reduce the size of the training data.
+
+Usage:
+  trim_docs [-w WORKERS] -o OUTPUT -m MINOCCURRENCE -c DOCUMENTSCUTOFF <input>...
 
 Options:
   -w WORKERS
   -o OUTPUT
-  -m MINOCCURRENCE
-  -c DOCUMENTSCUTOFF
+  -m MINOCCURRENCE      Remove documents that contain words that occur less than the specified frequency.
+  -c DOCUMENTSCUTOFF    For each word, threshold for collecting documents that contain the word.
 """
 
 

@@ -53,15 +53,9 @@ The option `-b 100m` of wikiextractor is size of data chunks, and the option `-P
 
 (4) Build Doc2Vec model
 
-Vocabulary size: 100K words
-
 ```
-python3 ../train.py wiki_tokenized -m 50 -o kowiki-m50-d100.model
-```
-
-Running the above command line, the vocabulary size was `54531`.
-
-python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 5 -c 400 wc/**/*.tokenized
+python3 ../trim_docs.py -w 11 -o wiki_tokenized -m 5 -c 400 wc/**/*.tokenized
 python3 ../train.py wiki_tokenized -o kowiki-m50-c400-d100.model -m 50 -e tmp.model
+```
 
 Running the above command line, the vocabulary size was `39842`.

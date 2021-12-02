@@ -28,12 +28,8 @@ The option `-b 120m` of wikiextractor is the size of the data chunk, and the opt
 
 (4) Build Doc2Vec model
 
-In the following, the option `-m 400` of trim_vocab_and_docs is the minimum occurrence of words. 
-The option `-c 200` is a target number of sentences to be collected for a word.
-As you change these parameters, the file size and vocabulary size of the model will change.
-
 ```
-python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 700 -c 380 wc/**/*.tokenized
+python3 ../trim_docs.py -w 11 -o wiki_tokenized -m 700 -c 380 wc/**/*.tokenized
 python3 ../train.py wiki_tokenized -o enwiki-m700-c380-d100.model -e tmp.model
 ```
 

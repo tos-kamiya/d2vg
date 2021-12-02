@@ -60,12 +60,8 @@ wikiextractorのオプション`-b 120m` of wikiextractorはデータのチャ�
 
 (4) Doc2Vecモデルの構築
 
-以下で、trim_vocab_by_min_occurrenceのオプション`-m 50`は単語の最小出現回数です。
-オプション`-c 400`はある単語について集める文の数の目標値です。
-これらのパラーメータを変えると、Doc2Vecのモデルのファイルサイズや語彙数が変化します。
-
 ```
-python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 20 -c 400 wc/**/*.tokenized
+python3 ../trim_docs.py -w 11 -o wiki_tokenized -m 20 -c 400 wc/**/*.tokenized
 python3 ../train.py wiki_tokenized -o jawiki-janome-m100-c400-d100.model -m 100 -e tmp.model
 ```
 
