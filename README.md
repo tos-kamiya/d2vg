@@ -87,9 +87,10 @@ Example of execution with indexes enabled:
 
 ## Development
 
-For instructions on how to create a Doc2Vec model, please refer to the script I used to create the English Doc2Vec model in `making_doc2vec_model/`.
-The attached model has a vocabulary of about 40K to 65K words, depending on the language, and represents documents as vectors of 100 dimensions.
-If you think this is not sufficient, you can run the scripts to create enhanced and better models.
+For instructions on how to create a Doc2Vec model, please refer to the script I used to create Doc2Vec models in `making_doc2vec_model/`. You might find the help messages in the scripts `trim_docs.py` and `train.py` helpful for the parameters when creating a model.
+
+Each of the attached models has a vocabulary of about 40K to 65K words, depending on the language, and represents documents as vectors of 100 dimensions.If you think this is not sufficient, you can run the scripts to create enhanced and better models.
+The parameters used to create each of the attached models were highly dependent on the amount of documents in the corpus available for the language and the amount of vocabulary contained. They were also adjusted to keep the size within the single file limit on the github release page.
 
 **Help wanted**: I am not sure that I have tuned the models well enough for anything other than my own native language, Japanese. If anyone is interested in creating a model, a pull request, a URL to publish the created file, or anything else is welcome. &#x1f647;
 
