@@ -42,7 +42,7 @@ def do_verify_archive_file(tar: tarfile.TarFile, model_root_dir: str):
             if fn.endswith('.ref'):
                 detected_lang = fn[:-4]
                 if detected_lang in installed_language_set:
-                    sys.exit("Error: a model already has been installed for language. Remove model with `d2vg-setup-model --delete -l %s` before installation." % detected_lang)
+                    sys.exit("Error: a model already has been installed for language. Remove the model with `d2vg-setup-model --delete -l %s` before installation." % detected_lang)
     if detected_lang is None:
         sys.exit("Error: not a model file (<lang>.ref not found).")
     

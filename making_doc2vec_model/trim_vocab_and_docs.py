@@ -22,7 +22,7 @@ def read_lines_safe_iter(input_file):
 
 
 __doc__ = """Usage:
-  trim_vocab_by_min_occurrence.py [-w WORKERS] -o OUTPUT -m MINOCCURRENCE -c DOCUMENTSCUTOFF <input>...
+  trim_vocab_and_docs [-w WORKERS] -o OUTPUT -m MINOCCURRENCE -c DOCUMENTSCUTOFF <input>...
 
 Options:
   -w WORKERS
@@ -42,8 +42,8 @@ assert documents_cutoff >= 1
 output_file = args['-o']
 worker_threads = int(args['-w']) if args['-w'] else max(1, multiprocessing.cpu_count() - 1)
 
-print("min_occurrence = %d" % min_occurrence, file=sys.stderr)
-print("documents_cutoff = %d" % documents_cutoff, file=sys.stderr)
+# print("min_occurrence = %d" % min_occurrence, file=sys.stderr)
+# print("documents_cutoff = %d" % documents_cutoff, file=sys.stderr)
 
 
 def count_save_occurrence(input_file, output_file):
@@ -138,12 +138,16 @@ for tf in temp_files:
 
 with open(output_file, 'w') as outp:
     wo = Counter()
+    doc_count = 0
     for L in read_lines_safe_iter(sorted_lines_file):
         words = L.split(" ")[1:]
         rarest_word_data = min((wc[w], w) for w in words)
         rw = rarest_word_data[1]
         if wo[rw] < documents_cutoff:
             print(L, file=outp)
+            doc_count += 1
         for w in words:
             wo[w] += 1
 
+
+print("docs = %d" % doc_count, file=sys.stderr)

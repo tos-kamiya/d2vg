@@ -53,6 +53,12 @@ The option `-b 100m` of wikiextractor is size of data chunks, and the option `-P
 Vocabulary size: 100K words
 
 ```
-python3 ../trim_vocab_to_size.py wiki_tokenized 100000 wiki_tokenized_w100k
-python3 ../train.py wiki_tokenized_w100k zhwiki-w100k-d100.model
+python3 ../train.py wiki_tokenized -m 50 -o zhwiki-m50-d100.model
 ```
+
+```
+python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 10 -c 400 wc/**/*.tokenized
+python3 ../train.py wiki_tokenized -o zhwiki-m100-c400-d100.model -m 100 -e tmp.model
+```
+
+Running the above command line, the vocabulary size was `46510`.

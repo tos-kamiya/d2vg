@@ -33,22 +33,8 @@ The option `-c 200` is a target number of sentences to be collected for a word.
 As you change these parameters, the file size and vocabulary size of the model will change.
 
 ```
-python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 420 -c 200 wc/**/*.tokenized
-python3 ../train.py wiki_tokenized enwiki-m420-c200-d100.model
-```
-
-Running the above command line given `enwiki-latest-pages-articles.xml.bz2` on `02-Nov-2021 06:04` above, the vocabulary size was `166487`.
-
-```
-python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 650 -c 400 wc/**/*.tokenized
-python3 ../train.py wiki_tokenized enwiki-m650-c400-d100.model tmp.model
-```
-
-Running the above command line given `enwiki-latest-pages-articles.xml.bz2` on `02-Nov-2021 06:04` above, the vocabulary size was `138340`.
-
-```
 python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 700 -c 380 wc/**/*.tokenized
-python3 ../train.py wiki_tokenized enwiki-m700-c380-d100.model tmp.model
+python3 ../train.py wiki_tokenized -o enwiki-m700-c380-d100.model -e tmp.model
 ```
 
-Running the above command line given `enwiki-latest-pages-articles.xml.bz2` on `02-Nov-2021 06:04` above, the vocabulary size was `116771`.
+Running the above command line, the vocabulary size was `54899`.

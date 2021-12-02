@@ -65,8 +65,8 @@ wikiextractorのオプション`-b 120m` of wikiextractorはデータのチャ�
 これらのパラーメータを変えると、Doc2Vecのモデルのファイルサイズや語彙数が変化します。
 
 ```
-python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 50 -c 400 wc/**/*.tokenized
-python3 ../train.py wiki_tokenized jawiki-janome-m50-c400-d100.model tmp.model
+python3 ../trim_vocab_and_docs.py -w 11 -o wiki_tokenized -m 20 -c 400 wc/**/*.tokenized
+python3 ../train.py wiki_tokenized -o jawiki-janome-m100-c400-d100.model -m 100 -e tmp.model
 ```
 
-上述の`01-Nov-2021 20:04`の`jawiki-latest-pages-articles.xml.bz2`を与えて上記のコマンドラインを実行すると、語彙数は`139488`になりました。
+上記のコマンドラインを実行すると、語彙数は`65296`になりました。
