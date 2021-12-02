@@ -42,7 +42,7 @@ Example:
 With the option `-K`, if there are unknown words (of the Doc2Vec model) in the query phrase, those words will be specified as keywords.
 If keywords are specified, only the part that contains all the keywords will be displayed in the search results.  Also, the specified keywords will be displayed in the line "`> keywords:`".
 
-Example: "debugging" was specified as a keyword  
+Example: "CHI" was specified as a keyword  
 ![](images/example3.png)
 
 ### Indexing
@@ -57,7 +57,7 @@ d2vg creates and refers to an index DB when the following conditions are satisfi
 So, you can start indexing by changing the directory of the document fies and making a `.d2vg` directory.
 
 ```sh
-cd <the/document/directory>
+cd the/document/directory
 mkdir .d2vg
 ```
 
@@ -67,12 +67,14 @@ That is, when a new document is added and becomes the target of the search, the 
 On the other hand, there is no function to automatically remove the index data of deleted documents from the database, so you should explicitly remove the `.d2vg` directory if necessary.
 
 ```sh
-cd <the/document/directory>
+cd the/document/directory
 rm -rf .d2vg
 ```
 
+For DOS prompt or Powershell, use `rd /s /q .d2vg` or `rm -r -fo .d2vg`, respectively.
+
 Example of execution with indexes enabled:  
-(In this example, it took 57 seconds without indexing, but it was reduced to 4 seconds.)  
+(In this example, it took 62 seconds without indexing, but it was reduced to 4 seconds.)  
 ![](images/example2.png)
 
 ## Troubleshootings
@@ -107,12 +109,12 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 ## Todo
 
 - [x] Optimization by indexing document files
-- [x] Prepare Doc2Vec models compatible to the latest gensim (v4) 
+- [x] Prepare Doc2Vec models compatible with the latest gensim (v4) 
 - [x] Check installation on Windows
 - [x] Combining keyword search
 - [x] Tuning models
 - [x] Easy installation
-- [ ] Support for more languages (experimental support: ko, zh)
+- [ ] Support and tune more languages (experimental support: ko, zh)
 
 ## Acknowledgements
 
