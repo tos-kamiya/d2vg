@@ -62,42 +62,44 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
         lt, ip = d2vg.extract_leading_text(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec)
         self.assertEqual(lt, "|".join(high_ip_token_subseq))
 
-    def test_extract_pos_vecs(self):
-        file_table = {
-            "a.txt": ["1", "2"],
-            "b.txt": ["3", "4"],
-        }
+    # def extract_pos_vecs(
+    # line_tokens: List[List[str]], 
+    # tokens_to_vector: Callable[[List[str]], Vec],
+    # window_size: int) -> List[Tuple[int, int, List[Vec]]]:
 
-        def text_to_tokens(text):
-            return re.split(r"\s+", text)
+    def test_extract_pos_vecs(self):
+        line_tokens = [
+            ["1", "2", "3"],
+            ["4", "5", "6"],
+            ["7", "8", "9"],
+        ]
 
         def tokens_to_vector(tokens):
-            return np.array([sum(float(v) for v in tokens), 0], dtype=np.float32)
+            return np.array([max([int(t) for t in tokens]), min([int(t) for t in tokens])], dtype=np.float32)
 
-        def parse(file_name):
-            return file_table[file_name]
-
-        r, lines = d2vg.extract_pos_vecs("a.txt", text_to_tokens, tokens_to_vector, 2, parse, index_db=None)
-        self.assertEqual(lines, file_table.get("a.txt"))
-        f = [
-            (0, 2, np.array([3, 0], dtype=np.float32)),
-            (1, 2, np.array([2, 0], dtype=np.float32)),
+        actual = d2vg.extract_pos_vecs(line_tokens, tokens_to_vector, 2)
+        expected = [
+            (0, 2, np.array([6., 1.], dtype=np.float32)), 
+            (1, 3, np.array([9., 4.], dtype=np.float32)), 
+            (2, 3, np.array([9., 7.], dtype=np.float32)),
         ]
-        for ri, fi in zip(r, f):
-            self.assertEqual(ri[0], fi[0])
-            self.assertEqual(ri[1], fi[1])
-            self.assertTrue(np.array_equal(ri[2], fi[2]))
+        for a, e in zip(actual, expected):
+            self.assertEqual(a[0], e[0])
+            self.assertEqual(a[1], e[1])
+            for a2i, e2i in zip(a[2], e[2]):
+                self.assertEqual(a2i, e2i)
 
-        r, lines = d2vg.extract_pos_vecs("a.txt", text_to_tokens, tokens_to_vector, 1, parse, index_db=None)
-        self.assertEqual(lines, file_table.get("a.txt"))
-        f = [
-            (0, 1, np.array([1, 0], dtype=np.float32)),
-            (1, 2, np.array([2, 0], dtype=np.float32)),
+        actual = d2vg.extract_pos_vecs(line_tokens, tokens_to_vector, 1)
+        expected = [
+            (0, 1, np.array([3., 1.], dtype=np.float32)), 
+            (1, 2, np.array([6., 4.], dtype=np.float32)), 
+            (2, 3, np.array([9., 7.], dtype=np.float32)),
         ]
-        for ri, fi in zip(r, f):
-            self.assertEqual(ri[0], fi[0])
-            self.assertEqual(ri[1], fi[1])
-            self.assertTrue(np.array_equal(ri[2], fi[2]))
+        for a, e in zip(actual, expected):
+            self.assertEqual(a[0], e[0])
+            self.assertEqual(a[1], e[1])
+            for a2i, e2i in zip(a[2], e[2]):
+                self.assertEqual(a2i, e2i)
 
 
 if __name__ == "__main__":
