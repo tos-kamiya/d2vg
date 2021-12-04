@@ -69,7 +69,7 @@ This may speed up searches, especially when searching from documents that have n
 ### Keyword Search
 
 With the option `-K`, if there are unknown words (of the Doc2Vec model) in the query phrase, those words will be specified as keywords.
-If keywords are specified, only the part that contains all the keywords will be displayed in the search results.  Also, the specified keywords will be displayed in the line "`> keywords:`".
+If keywords are specified, only the part that contains all the keywords will be displayed in the search results.  Also, the specified keywords will be displayed in the line `> keywords:`.
 
 Example: "CHI" was specified as a keyword  
 ![](images/example3.png)
@@ -83,7 +83,7 @@ d2vg creates and refers to an index DB when the following conditions are satisfi
 * The current directory of running d2vg has a subdirectory named `.d2vg`.
 * The target documents are specified as relative paths.
 
-So, you can start indexing by changing the directory of the document fies and making a `.d2vg` directory.
+So, you can start indexing by changing the directory of the document files and making a `.d2vg` directory.
 
 ```sh
 cd the/document/directory
@@ -103,7 +103,7 @@ rm -rf .d2vg
 For DOS prompt or Powershell, use `rd /s /q .d2vg` or `rm -r -fo .d2vg`, respectively.
 
 Example of execution with indexes enabled:  
-(In this example, it took 62 seconds without indexing, but it was reduced to 4 seconds.)  
+(In this example, it took 60+ seconds without indexing, but it was reduced to 4 seconds.)  
 ![](images/example2.png)
 
 ## Troubleshootings
@@ -118,7 +118,7 @@ Example of execution with indexes enabled:
 
 For instructions on how to create a Doc2Vec model, please refer to the script I used to create Doc2Vec models in `making_doc2vec_model/`. You might find the help messages in the scripts `trim_docs.py` and `train.py` helpful for the parameters when creating a model.
 
-Each of the attached models has a vocabulary of about 40K to 65K words, depending on the language, and represents documents as vectors of 100 dimensions.If you think this is not sufficient, you can run the scripts to create enhanced and better models.
+Each of the attached models has a vocabulary of about 40K to 65K words, depending on the language, and represents documents as vectors of 100 dimensions. If you think this is not sufficient, you can run the scripts to create enhanced and better models.
 The parameters used to create each of the attached models were highly dependent on the amount of documents in the corpus available for the language and the amount of vocabulary contained. They were also adjusted to keep the size within the single file limit on the github release page.
 
 **Help wanted**: I am not sure that I have tuned the models well enough for anything other than my own native language, Japanese. If anyone is interested in creating a model, a pull request, a URL to publish the created file, or anything else is welcome. &#x1f647;
