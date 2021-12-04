@@ -28,9 +28,7 @@ def do_check_compression_method(file_or_url: str) -> str:
 
 
 def do_verify_archive_file(tar: tarfile.TarFile, model_root_dir: str):
-    installed_language_set = frozenset(
-        l for l, _f in get_model_langs(model_root_dirs=[model_root_dir])
-    )
+    installed_language_set = frozenset(l for l, _f in get_model_langs(model_root_dirs=[model_root_dir]))
     members = tar.getmembers()
     file_dirs = set()
     detected_lang = None

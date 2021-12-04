@@ -31,11 +31,7 @@ def read_corpus(fname):
     with open(fname) as inp:
         r = []
         for i, line in enumerate(inp):
-            r.append(
-                gensim.models.doc2vec.TaggedDocument(
-                    gensim.utils.simple_preprocess(line, min_len=1), [i]
-                )
-            )
+            r.append(gensim.models.doc2vec.TaggedDocument(gensim.utils.simple_preprocess(line, min_len=1), [i]))
         return r
 
 

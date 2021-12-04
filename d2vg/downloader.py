@@ -12,9 +12,7 @@ def download_with_curl(dest_dir: str, url: str) -> Optional[str]:
     file_path = os.path.join(dest_dir, file_name)
     if os.path.exists(file_path):
         if os.path.isfile(file_path):
-            raise ValueError(
-                "download_with_curl: the destination directory has a non-regular file (subdirectory, symbolic link etc.) with the same name."
-            )
+            raise ValueError("download_with_curl: the destination directory has a non-regular file (subdirectory, symbolic link etc.) with the same name.")
     command = ["curl", "-O", "--retry", "5", "--retry-connrefused", url]
     subprocess.check_call(command, cwd=dest_dir)
     if os.path.exists(file_path):

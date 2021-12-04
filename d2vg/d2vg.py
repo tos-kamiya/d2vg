@@ -129,25 +129,25 @@ def extract_pos_vecs(
         pos_vecs = []
         lines = parse(file_name)
         len_lines = len(lines)
+        tokens_list = [text_to_tokens(L) for L in lines]
+        assert len(tokens_list) == len_lines
         if window_size == 1:
-            for pos, subtext in enumerate(lines):
-                tokens = text_to_tokens(subtext)
+            for pos, tokens in enumerate(tokens_list):
                 vec = tokens_to_vector(tokens)
                 pos_vecs.append((pos, pos + 1, vec))
         else:
             for pos in range(0, len_lines, window_size // 2):
                 end_pos = min(pos + window_size, len_lines)
-                subtext = "\n".join(lines[pos:end_pos])
-                tokens = text_to_tokens(subtext)
+                tokens = []
+                for t in tokens_list[pos:end_pos]:
+                    tokens.extend(t)
                 vec = tokens_to_vector(tokens)
                 pos_vecs.append((pos, end_pos, vec))
         return pos_vecs, lines
 
     lines = None
     if index_db is not None and file_name != "-" and not os.path.isabs(file_name):
-        keyb = (
-            "%s-%d" % (model_loaders.file_signature(file_name), window_size)
-        ).encode()
+        keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
         valueb = index_db.get(keyb, None)
         if valueb is None:
             pos_vecs, lines = read_pos_vecs(file_name)
@@ -193,13 +193,8 @@ def main():
         prevl = None
         for l, _m in lang_candidates:
             if l == prevl:
-                eprint(
-                    "> Warning: multiple Doc2Vec models are found for language: %s" % l
-                )
-                eprint(
-                    ">   Remove the models with `d2vg-setup-model --delete -l %s`, then"
-                    % l
-                )
+                eprint("> Warning: multiple Doc2Vec models are found for language: %s" % l)
+                eprint(">   Remove the models with `d2vg-setup-model --delete -l %s`, then" % l)
                 eprint(">   re-install a model for the language.")
             prevl = l
         sys.exit(0)
@@ -246,10 +241,7 @@ def main():
     assert lang_model_files
     if len(lang_model_files) >= 2:
         eprint("Error: multiple Doc2Vec models are found for language: %s" % language)
-        eprint(
-            "   Remove the models with `d2vg-setup-model --delete -l %s`, then"
-            % language
-        )
+        eprint("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % language)
         eprint("   re-install a model for the language.")
         sys.exit(1)
     lang_model_file = lang_model_files[0]
@@ -281,14 +273,10 @@ def main():
         ipsrl_inc_kws = []
         lines = None
         for ip, (sp, ep), ls in ip_srls:
-            if (
-                min_ip is not None and ip < min_ip
-            ):  # pruning by similarity (inner product)
+            if min_ip is not None and ip < min_ip:  # pruning by similarity (inner product)
                 continue  # ri
             if lines is None:
-                lines = (
-                    ls if ls is not None else parse(file_name)
-                )  # seems a little bit tricky...
+                lines = ls if ls is not None else parse(file_name)  # seems a little bit tricky...
             subtext = "\n".join(lines[sp:ep])
             tokens = text_to_tokens(subtext)
             if not keyword_set.issubset(tokens):
@@ -312,16 +300,8 @@ def main():
                 max_tf = heapq.nlargest(1, tf_data)
                 if max_tf:
                     _ip, f, sr, _ls = max_tf[0]
-                    top1_message = "Provisional top-1: %s:%d-%d" % (
-                        f,
-                        sr[0] + 1,
-                        sr[1] + 1,
-                    )
-                    eprint(
-                        "\x1b[1K\x1b[1G"
-                        + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message),
-                        end="",
-                    )
+                    top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
+                    eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
             try:
                 pos_vecs, lines = extract_pos_vecs(
                     tf,
@@ -331,17 +311,10 @@ def main():
                     parse,
                     index_db=db,
                 )
-                ip_srls = [
-                    (float(np.inner(vec, pattern_vec)), (pos, end_pos), lines)
-                    for pos, end_pos, vec in pos_vecs
-                ]  # ignore type mismatch
+                ip_srls = [(float(np.inner(vec, pattern_vec)) , (pos, end_pos), lines) for pos, end_pos, vec in pos_vecs]  # ignore type mismatch
 
                 if keyword_set:
-                    min_ip = (
-                        heapq.nsmallest(1, tf_data)[0][0]
-                        if len(tf_data) >= top_n
-                        else None
-                    )
+                    min_ip = heapq.nsmallest(1, tf_data)[0][0] if len(tf_data) >= top_n else None
                     ip_srls = prune_by_keywords(ip_srls, tf, min_ip)
 
                 if ip_srls and not search_paragraph:
@@ -357,10 +330,7 @@ def main():
     except KeyboardInterrupt:
         if verbose:
             eprint("\x1b[1K\x1b[1G")
-        eprint(
-            "> Warning: interrupted [%d/%d] in reading file: %s"
-            % (tfi + 1, len(target_files), tf)
-        )
+        eprint("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf))
         eprint("> Warning: shows the search results up to now.")
     finally:
         if db is not None:
@@ -372,9 +342,7 @@ def main():
             break  # for i
         if lines is None:
             lines = parse(tf)
-        leading_text, _max_sr = extract_leading_text(
-            lines, sr, text_to_tokens, tokens_to_vector, pattern_vec
-        )
+        leading_text, _max_sr = extract_leading_text(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec)
         print("%g\t%s:%d-%d\t%s" % (ip, tf, sr[0] + 1, sr[1] + 1, leading_text))
         if i >= top_n > 0:
             break  # for i

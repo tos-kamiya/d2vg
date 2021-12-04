@@ -40,9 +40,7 @@ def get_model_langs(
     model_root_dirs: Optional[List[str]] = None,
 ) -> List[Tuple[str, str]]:
     if model_root_dirs is None:
-        model_root_dirs = [
-            os.path.join(p) for p in [_user_config_dir, _user_data_dir, _script_dir]
-        ]
+        model_root_dirs = [os.path.join(p) for p in [_user_config_dir, _user_data_dir, _script_dir]]
 
     paths = []
     for d in model_root_dirs:
@@ -62,9 +60,7 @@ def get_model_files(
     if model_root_dir is not None:
         model_root_dirs = [model_root_dir]
     else:
-        model_root_dirs = [
-            os.path.join(p) for p in [_user_config_dir, _user_data_dir, _script_dir]
-        ]
+        model_root_dirs = [os.path.join(p) for p in [_user_config_dir, _user_data_dir, _script_dir]]
 
     for d in model_root_dirs:
         ps = glob(os.path.join(d, "**/%s.ref" % lang), recursive=True)
@@ -78,12 +74,9 @@ def get_model_files(
             assert len(lines) >= 1
 
             if exit_when_obsolete_model_found:
-                if (
-                    lines[0] == "jawiki-w100k-d100.model"
-                ):  # special error messages for those migrating from 0.7.0
+                if lines[0] == "jawiki-w100k-d100.model":  # special error messages for those migrating from 0.7.0
                     sys.exit(
-                        "Error: the model file is obsolete and incompatible.\nInstall a newer model file and remove the directory: %s"
-                        % os.path.dirname(ps[0])
+                        "Error: the model file is obsolete and incompatible.\nInstall a newer model file and remove the directory: %s" % os.path.dirname(ps[0])
                     )
 
             lmp = os.path.join(os.path.dirname(p), lines[0])
@@ -95,9 +88,7 @@ def get_model_files(
 def exit_with_installation_message(e: ModuleNotFoundError, lang: str):
     print("Error: %s" % e, file=sys.stderr)
     print(
-        "  Need to install d2vg with `{lang}` option: pip install d2vg[{lang}]".format(
-            lang=lang
-        ),
+        "  Need to install d2vg with `{lang}` option: pip install d2vg[{lang}]".format(lang=lang),
         file=sys.stderr,
     )
     sys.exit(1)
@@ -105,12 +96,7 @@ def exit_with_installation_message(e: ModuleNotFoundError, lang: str):
 
 def load_funcs(
     lang: str, lang_model_path: str
-) -> Tuple[
-    Callable[[str], List[str]],
-    Callable[[List[str]], Vec],
-    Callable[[Iterable[str]], List[str]],
-    Callable[[], str],
-]:
+) -> Tuple[Callable[[str], List[str]], Callable[[List[str]], Vec], Callable[[Iterable[str]], List[str]], Callable[[], str],]:
     model = Doc2Vec.load(lang_model_path)
 
     if lang == "ja":

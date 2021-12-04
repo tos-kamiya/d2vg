@@ -42,9 +42,7 @@ assert min_occurrence >= 1
 documents_cutoff = int(args["-c"])
 assert documents_cutoff >= 1
 output_file = args["-o"]
-worker_threads = (
-    int(args["-w"]) if args["-w"] else max(1, multiprocessing.cpu_count() - 1)
-)
+worker_threads = int(args["-w"]) if args["-w"] else max(1, multiprocessing.cpu_count() - 1)
 
 # print("min_occurrence = %d" % min_occurrence, file=sys.stderr)
 # print("documents_cutoff = %d" % documents_cutoff, file=sys.stderr)
@@ -115,9 +113,7 @@ def sort_lines_by_min_count(input_file, output_file):
             if two_smaller_counts[0] < min_occurrence:
                 continue  # L
 
-            c = sum(
-                two_smaller_counts
-            )  # Sorting entirely by the minimum frequency will give too much priority to the least frequent words,
+            c = sum(two_smaller_counts)  # Sorting entirely by the minimum frequency will give too much priority to the least frequent words,
             # so use sum of the frequencies of two words in order to shake up the order a bit.
 
             print(format % (c, L), file=outp)
