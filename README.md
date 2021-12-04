@@ -37,6 +37,35 @@ d2vg -l en -v <query_phrase> <files>...
 Example:  
 ![](images/example1.png)
 
+### Options
+
+`d2vg` has several options.  Here are some options that may be used frequently.
+
+`--verbose, -v`  
+Verbose option. If specified, it will show the progress and the documents that have the highest similarity up to that point while the search is in progress.
+
+`--lang=LANG, -l LANG`  
+Select the Doc2Vec model that corresponds to the language. The available languages are `en`, `ja`, `ko`, and `zh`.
+
+`--unknown-word-as-keyword, -K`  
+In the case of a pattern containing unknown words, such words are considered keywords, and only documents matching the pattern and containing the keywords are returned as search results.
+
+`--topn=NUM, -t NUM`  
+Show top NUM documents as results. The default value is 20.
+Specify `0` to show all the documents searched, sorted by the degree of match to the pattern.
+
+`--paragraph, -p`  
+If this option is specified, each paragraph in one document file will be considered as a document. Multiple paragraphs of a single document file will be output in the search results.
+If this option is not specified, one document file will be considered as one document. A single document file will be displayed in the search results only once at most.
+
+`--window=NUM, -w NUM`  
+A chunk of lines specified by this number will be recognized as a paragraph.
+The default value is 20.
+
+`--worker=NUM, -j NUM`
+Number of worker processes. `0` is interpreted as number of CPU cores.
+This may speed up searches, especially when searching from documents that have not been indexed.
+
 ### Keyword Search
 
 With the option `-K`, if there are unknown words (of the Doc2Vec model) in the query phrase, those words will be specified as keywords.
