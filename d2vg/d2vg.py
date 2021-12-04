@@ -74,33 +74,29 @@ def extract_headline(
         return "", (start_pos, start_pos)
 
     line_tokens = [[]] * start_pos
-    line_lens = [0] * start_pos
     for p in range(start_pos, end_pos):
-        L = lines[p]
-        line_tokens.append(text_to_tokens(L))
-        line_lens.append(len(L))
+        line_tokens.append(text_to_tokens(lines[p]))
 
-    max_sr_data = None
+    max_ip_data = None
     for p in range(start_pos, end_pos):
-        vec = tokens_to_vector(line_tokens[p])
-        ip = float(np.inner(vec, pattern_vec))
-        if max_sr_data is None or ip > max_sr_data[0]:
-            max_sr_data = ip, (p, p + 1)
-        len_sum = line_lens[p]
+        sublines_textlen = len(lines[p])
         q = p + 1
-        while q < end_pos and len_sum < headline_len:
-            len_sum += line_lens[q]
+        while q < end_pos and sublines_textlen < headline_len:
+            sublines_textlen += len(lines[q])
             q += 1
-        vec = tokens_to_vector(join_lists(line_tokens[p:q]))
+        subtokens = []
+        for i in range(p, q):
+            subtokens.extend(line_tokens[i])
+        vec = tokens_to_vector(subtokens)
         ip = float(np.inner(vec, pattern_vec))
-        if max_sr_data is None or ip > max_sr_data[0]:
-            max_sr_data = ip, (p, q)
-    assert max_sr_data is not None
+        if max_ip_data is None or ip > max_ip_data[0]:
+            max_ip_data = ip, (p, q)
+    assert max_ip_data is not None
 
-    sr = max_sr_data[1]
-    leading_text = "|".join(lines[sr[0] : sr[1]])
-    leading_text = leading_text[:headline_len]
-    return leading_text, sr
+    sr = max_ip_data[1]
+    headline_text = "|".join(lines[sr[0] : sr[1]])
+    headline_text = headline_text[:headline_len]
+    return headline_text, sr
 
 
 def pickle_dumps_pos_vecs(pos_vecs: Iterable[Tuple[int, int, List[Vec]]]) -> bytes:
@@ -237,9 +233,6 @@ def main():
     headline_len = int(args['--headline-length'])
     assert headline_len >= 8
 
-    parser = parsers.Parser()
-    parse = parser.parse
-
     lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
     if lng is not None:
         i = lng.find("_")
@@ -254,6 +247,9 @@ def main():
     target_files = expand_target_files(target_files)
     if not target_files:
         sys.exit("Error: no target files are given.")
+
+    parser = parsers.Parser()
+    parse = parser.parse
 
     if args["--pattern-from-file"]:
         lines = parse(pattern)
@@ -320,18 +316,25 @@ def main():
 
     files_stored = []
     files_not_stored = []
+    read_from_stdin = False
     if db:
         for tf in target_files:
-            if is_stored_in(tf, window_size, db):
+            if tf == '-':
+                read_from_stdin = True
+            elif is_stored_in(tf, window_size, db):
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
     else:
-        files_not_stored = target_files[:]
+        for tf in target_files:
+            if tf == '-':
+                read_from_stdin = True
+            else:
+                files_not_stored.append(tf)
 
     tf_data: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
-    def update_tf_data(pos_vecs, lines):
+    def update_tf_data(tf, pos_vecs, lines):
         ip_srls = [(float(np.inner(vec, pattern_vec)) , (s, e), lines) for s, e, vec in pos_vecs]  # ignore type mismatch
 
         if keyword_set:
@@ -353,8 +356,16 @@ def main():
         for tfi, tf in enumerate(files_stored):
             lines = None
             pos_vecs = lookup_pos_vecs(tf, window_size, db)
-            update_tf_data(pos_vecs, lines)
+            update_tf_data(tf, pos_vecs, lines)
         tfi = len(files_stored)
+
+        if read_from_stdin:
+            lines = parser.parse_text(sys.stdin.read())
+            line_tokens = [text_to_tokens(L) for L in lines]
+            pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+            update_tf_data('-', pos_vecs, lines)
+            tfi += 1
+
         chunks = [files_not_stored[ci:ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
         with concurrent.futures.ProcessPoolExecutor(max_workers=worker) as executor:
             for cr in executor.map(do_parse_and_tokenize_i, [(chunk, language, lang_model_file) for chunk in chunks]):
@@ -366,7 +377,7 @@ def main():
                     pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
                     if db is not None:
                         store_pos_vecs(tf, window_size, pos_vecs, db)
-                    update_tf_data(pos_vecs, lines)
+                    update_tf_data(tf, pos_vecs, lines)
                     if verbose and i == 0:
                         max_tf = heapq.nlargest(1, tf_data)
                         if max_tf:

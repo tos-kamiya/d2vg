@@ -38,15 +38,17 @@ class PraseError(Exception):
 
 
 class Parser:
-    def __init__(self):
-        self.__stdin_text = None
-
     def parse(self, file_name: str) -> List[str]:
         try:
             text = self._parse_i(file_name)
         except Exception as e:
             raise PraseError("ParseError: in parsing file: %s" % repr(file_name)) from e
+        return self.clean_text(text)
 
+    def parse_text(self, text: str) -> List[str]:
+        return self.clean_text(text)
+    
+    def clean_text(self, text: str) -> List[str]:
         lines = text.split("\n")
         r = []
         for L in lines:
@@ -56,10 +58,7 @@ class Parser:
         return r
 
     def _parse_i(self, file_name: str) -> str:
-        if file_name == "-":
-            if self.__stdin_text is None:
-                self.__stdin_text = sys.stdin.read()
-            return self.__stdin_text
+        assert file_name != '-'
 
         i = file_name.rfind(".")
         if i < 0:
