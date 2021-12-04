@@ -103,10 +103,10 @@ rm -rf .d2vg
 For DOS prompt or Powershell, use `rd /s /q .d2vg` or `rm -r -fo .d2vg`, respectively.
 
 Example of execution with indexes enabled:  
-(In this example, it took 60+ seconds without indexing, but it was reduced to 4 seconds.)  
+(In this example, it took 70+ seconds without indexing, but it was reduced to 4 seconds.)  
 ![](images/example2.png)
 
-## Troubleshootings
+## Troubleshooting
 
 **Q**: d2vg hangs.  
 **A**: When indexing is enabled (creating a directory `.d2vg`), force quitting may cause d2vg to hang because it cannot open the indexed DB the next time it is run. Please delete the directory `.d2vg`.
