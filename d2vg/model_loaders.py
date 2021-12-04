@@ -105,20 +105,10 @@ def load_funcs(
         except ModuleNotFoundError as e:
             exit_with_installation_message(e, lang)
 
-        janomet = Tokenizer()
+        janomet = Tokenizer(wakati=True)
 
         def text_to_tokens(text: str) -> List[str]:
-            tokens = []
-            for token in janomet.tokenize(text):
-                te = token.extra
-                if te is not None:
-                    tokens.append(te[3])
-                else:
-                    s = str(token)
-                    i = s.find("\t")
-                    if i:
-                        tokens.append(s[:i])
-            return tokens
+            return list(janomet.tokenize(text))
 
     elif lang == "ko":
         try:

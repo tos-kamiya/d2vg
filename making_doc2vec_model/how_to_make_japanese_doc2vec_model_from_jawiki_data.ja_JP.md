@@ -27,23 +27,14 @@ from janome.tokenizer import Tokenizer
 input_file = sys.argv[1]
 output_file = sys.argv[2]
 
-t = Tokenizer()
+t = Tokenizer(wakati=True)
 
 with open(output_file, 'w') as outp:
     with open(input_file) as inp:
         for L in inp:
             L = L.rstrip()
             try:
-                tokens = []
-                for token in t.tokenize(L):
-                    te = token.extra
-                    if te is not None:
-                        tokens.append(te[3])
-                    else:
-                        s = str(token)
-                        i = s.find('\t')
-                        if i:
-                            tokens.append(s[:i])
+                tokens = list(t.tokenize(L)
                 if tokens:
                     print(' '.join(tokens), file=outp)
             except UnicodeDecodeError:

@@ -22,7 +22,6 @@ from .types import Vec
 __version__ = importlib.metadata.version("d2vg")
 
 DB_DIR = ".d2vg"
-LEADING_TEXT_MAX_LEN = 80
 
 
 T = TypeVar("T")
@@ -62,12 +61,13 @@ def join_lists(lists: List[List[U]]) -> List[U]:
     return r
 
 
-def extract_leading_text(
+def extract_headline(
     lines: List[str],
     subrange: Tuple[int, int],
     text_to_tokens: Callable[[str], List[str]],
     tokens_to_vector: Callable[[List[str]], Vec],
     pattern_vec: Vec,
+    headline_len: int,
 ) -> Tuple[str, Tuple[int, int]]:
     start_pos, end_pos = subrange
     if start_pos == end_pos:
@@ -88,7 +88,7 @@ def extract_leading_text(
             max_sr_data = ip, (p, p + 1)
         len_sum = line_lens[p]
         q = p + 1
-        while q < end_pos and len_sum < LEADING_TEXT_MAX_LEN:
+        while q < end_pos and len_sum < headline_len:
             len_sum += line_lens[q]
             q += 1
         vec = tokens_to_vector(join_lists(line_tokens[p:q]))
@@ -99,7 +99,7 @@ def extract_leading_text(
 
     sr = max_sr_data[1]
     leading_text = "|".join(lines[sr[0] : sr[1]])
-    leading_text = leading_text[:LEADING_TEXT_MAX_LEN]
+    leading_text = leading_text[:headline_len]
     return leading_text, sr
 
 
@@ -200,6 +200,7 @@ Options:
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --list-lang                   Listing the languages in which the corresponding models are installed.
   --verbose, -v                 Verbose.
+  --headline-length NUM, -a NUM     Length of headline [default:80].
 """
 
 
@@ -233,6 +234,8 @@ def main():
     worker = int(args['--worker']) if args['--worker'] else 1
     if worker == 0:
         worker = multiprocessing.cpu_count()
+    headline_len = int(args['--headline-length'])
+    assert headline_len >= 8
 
     parser = parsers.Parser()
     parse = parser.parse
@@ -387,8 +390,8 @@ def main():
             break  # for i
         if lines is None:
             lines = parse(tf)
-        leading_text, _max_sr = extract_leading_text(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec)
-        print("%g\t%s:%d-%d\t%s" % (ip, tf, sr[0] + 1, sr[1] + 1, leading_text))
+        headline, _max_sr = extract_headline(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec, headline_len)
+        print("%g\t%s:%d-%d\t%s" % (ip, tf, sr[0] + 1, sr[1] + 1, headline))
         if i >= top_n > 0:
             break  # for i
 
