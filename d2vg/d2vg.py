@@ -200,7 +200,7 @@ Options:
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --list-lang                   Listing the languages in which the corresponding models are installed.
   --verbose, -v                 Verbose.
-  --headline-length NUM, -a NUM     Length of headline [default:80].
+  --headline-length NUM, -a NUM     Length of headline [default: 80].
 """
 
 
