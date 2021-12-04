@@ -71,7 +71,7 @@ This may speed up searches, especially when searching from documents that have n
 With the option `-K`, if there are unknown words (of the Doc2Vec model) in the query phrase, those words will be specified as keywords.
 If keywords are specified, only the part that contains all the keywords will be displayed in the search results.  Also, the specified keywords will be displayed in the line `> keywords:`.
 
-Example: "CHI" was specified as a keyword  
+Example: "HCI" was specified as a keyword  
 ![](images/example3.png)
 
 ### Indexing
@@ -150,7 +150,7 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 ## Acknowledgements
 
 I referred to the following sites to create the Doc2Vec model:  
-[Doc2vec model trained on Japanese Wikipedia](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
+[Doc2vec model trained on Japanese Wikipedia](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia) (in Japanese)
 
 To create the Doc2Vec model for `ko` and `zh`, I referred to the following sources:  
 https://github.com/Kyubyong/wordvectors/blob/master/build_corpus.py
