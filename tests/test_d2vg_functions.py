@@ -42,7 +42,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             r = d2vg.expand_target_files([tempdir + "/**/*.txt"])
             self.assertEqual(sorted(r), [str(p / f) for f in ["2/b.txt", "a.txt"]])
 
-    def test_extract_leading_text(self):
+    def test_extract_headline(self):
         lines = ["%d" % i for i in range(10)]
         sr = (3, 6)
         high_ip_token_subseq = lines[sr[0] : sr[1]]
@@ -59,7 +59,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
 
         pattern_vec = np.array([1.0, 0.0], dtype=np.float32)
 
-        lt, ip = d2vg.extract_leading_text(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec)
+        lt, ip = d2vg.extract_headline(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec, 80)
         self.assertEqual(lt, "|".join(high_ip_token_subseq))
 
     # def extract_pos_vecs(
