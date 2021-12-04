@@ -1,10 +1,12 @@
 from typing import *
 
+import concurrent.futures
 import dbm
 from glob import glob
 import heapq
 import importlib
 import locale
+import multiprocessing
 import os
 import pickle
 import sys
@@ -117,47 +119,67 @@ def pickle_loads_pos_vecs(b: bytes) -> List[Tuple[int, int, List[Vec]]]:
     return loaded
 
 
-def extract_pos_vecs(
-    file_name: str,
-    text_to_tokens: Callable[[str], List[str]],
-    tokens_to_vector: Callable[[List[str]], Vec],
-    window_size: int,
-    parse: Callable[[str], List[str]],
-    index_db=None,
-) -> Tuple[List[Tuple[int, int, List[Vec]]], Optional[List[str]]]:
-    def read_pos_vecs(file_name):
-        pos_vecs = []
-        lines = parse(file_name)
-        len_lines = len(lines)
-        tokens_list = [text_to_tokens(L) for L in lines]
-        assert len(tokens_list) == len_lines
-        if window_size == 1:
-            for pos, tokens in enumerate(tokens_list):
-                vec = tokens_to_vector(tokens)
-                pos_vecs.append((pos, pos + 1, vec))
-        else:
-            for pos in range(0, len_lines, window_size // 2):
-                end_pos = min(pos + window_size, len_lines)
-                tokens = []
-                for t in tokens_list[pos:end_pos]:
-                    tokens.extend(t)
-                vec = tokens_to_vector(tokens)
-                pos_vecs.append((pos, end_pos, vec))
-        return pos_vecs, lines
+def is_stored_in(file_name: str, window_size: int, index_db) -> bool:
+    if file_name == "-" or os.path.isabs(file_name):
+        return False
+    keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
+    valueb = index_db.get(keyb, None)
+    return valueb is not None
 
-    lines = None
-    if index_db is not None and file_name != "-" and not os.path.isabs(file_name):
-        keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
-        valueb = index_db.get(keyb, None)
-        if valueb is None:
-            pos_vecs, lines = read_pos_vecs(file_name)
-            index_db[keyb] = pickle_dumps_pos_vecs(pos_vecs)
-        else:
-            pos_vecs = pickle_loads_pos_vecs(valueb)
+
+def lookup_pos_vecs(file_name: str, window_size: int, index_db) -> List[Tuple[int, int, List[Vec]]]:
+    assert file_name != "-"
+    assert not os.path.isabs(file_name)
+
+    keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
+    valueb = index_db.get(keyb, None)
+    pos_vecs = pickle_loads_pos_vecs(valueb)
+    return pos_vecs
+
+
+def store_pos_vecs(tf, window_size, pos_vecs, index_db):
+    keyb = ("%s-%d" % (model_loaders.file_signature(tf), window_size)).encode()
+    valueb = pickle_dumps_pos_vecs(pos_vecs)
+    index_db[keyb] = valueb
+
+
+def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[List[str]], Vec], window_size: int) -> List[Tuple[int, int, List[Vec]]]:
+    pos_vecs = []
+    if window_size == 1:
+        for pos, tokens in enumerate(line_tokens):
+            vec = tokens_to_vector(tokens)
+            pos_vecs.append((pos, pos + 1, vec))
     else:
-        pos_vecs, lines = read_pos_vecs(file_name)
+        for pos in range(0, len(line_tokens), window_size // 2):
+            end_pos = min(pos + window_size, len(line_tokens))
+            tokens = []
+            for t in line_tokens[pos:end_pos]:
+                tokens.extend(t)
+            vec = tokens_to_vector(tokens)
+            pos_vecs.append((pos, end_pos, vec))
+    return pos_vecs
 
-    return pos_vecs, lines
+
+def do_parse_and_tokenize(file_names: List[str], language: str, lang_model_file: str) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
+    parser = parsers.Parser()
+    parse = parser.parse
+    text_to_tokens, _, _, _ = model_loaders.load_funcs(language, lang_model_file)
+
+    r = []
+    for tf in file_names:
+        try:
+            lines = parse(tf)
+        except parsers.PraseError as e:
+            print("> Warning: %s" % e, file=sys.stderr, flush=True)
+            r.append(None)
+        else:
+            line_tokens = [text_to_tokens(L) for L in lines]
+            r.append((tf, lines, line_tokens))
+    return r
+
+
+def do_parse_and_tokenize_i(d: Tuple[List[str], str, str]) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
+    return do_parse_and_tokenize(d[0], d[1], d[2])
 
 
 __doc__: str = """Doc2Vec Grep.
@@ -170,13 +192,14 @@ Usage:
 
 Options:
   --lang=LANG, -l LANG          Model language.
-  --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
-  --window=NUM, -w NUM          Line window size [default: 20].
   --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
   --paragraph, -p               Search paragraphs in documents.
-  --verbose, -v                 Verbose.
+  --window=NUM, -w NUM          Line window size [default: 20].
+  --worker=NUM, -j NUM          Number of worker processes. `0` is interpreted as number of CPU cores.
+  --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --list-lang                   Listing the languages in which the corresponding models are installed.
+  --verbose, -v                 Verbose.
 """
 
 
@@ -207,6 +230,9 @@ def main():
     verbose = args["--verbose"]
     search_paragraph = args["--paragraph"]
     unknown_word_as_keyword = args["--unknown-word-as-keyword"]
+    worker = int(args['--worker']) if args['--worker'] else 1
+    if worker == 0:
+        worker = multiprocessing.cpu_count()
 
     parser = parsers.Parser()
     parse = parser.parse
@@ -289,42 +315,61 @@ def main():
         db_file = os.path.join(DB_DIR, get_index_db_name())
         db = dbm.open(db_file, "c")
 
-    len_target_files = len(target_files)
+    files_stored = []
+    files_not_stored = []
+    if db:
+        for tf in target_files:
+            if is_stored_in(tf, window_size, db):
+                files_stored.append(tf)
+            else:
+                files_not_stored.append(tf)
+    else:
+        files_not_stored = target_files[:]
+
     tf_data: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
+
+    def update_tf_data(pos_vecs, lines):
+        ip_srls = [(float(np.inner(vec, pattern_vec)) , (s, e), lines) for s, e, vec in pos_vecs]  # ignore type mismatch
+
+        if keyword_set:
+            min_ip = heapq.nsmallest(1, tf_data)[0][0] if len(tf_data) >= top_n else None
+            ip_srls = prune_by_keywords(ip_srls, tf, min_ip)
+
+        if ip_srls and not search_paragraph:
+            ip_srls = [sorted(ip_srls).pop()]
+        for ip, subrange, lines in ip_srls:
+            heapq.heappush(tf_data, (ip, tf, subrange, lines))
+            if len(tf_data) > top_n:
+                _smallest = heapq.heappop(tf_data)
+
     tfi = -1
     tf = None
-    verbose_interval = max(10, min(len(target_files) // 200, 100))
+    chunk_size = max(10, min(len(target_files) // 200, 100))
+    len_target_files = len(target_files)
     try:
-        for tfi, tf in enumerate(target_files):
-            if verbose and tfi % verbose_interval == 0:
-                max_tf = heapq.nlargest(1, tf_data)
-                if max_tf:
-                    _ip, f, sr, _ls = max_tf[0]
-                    top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
-                    eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
-            try:
-                pos_vecs, lines = extract_pos_vecs(
-                    tf,
-                    text_to_tokens,
-                    tokens_to_vector,
-                    window_size,
-                    parse,
-                    index_db=db,
-                )
-                ip_srls = [(float(np.inner(vec, pattern_vec)) , (pos, end_pos), lines) for pos, end_pos, vec in pos_vecs]  # ignore type mismatch
-
-                if keyword_set:
-                    min_ip = heapq.nsmallest(1, tf_data)[0][0] if len(tf_data) >= top_n else None
-                    ip_srls = prune_by_keywords(ip_srls, tf, min_ip)
-
-                if ip_srls and not search_paragraph:
-                    ip_srls = [sorted(ip_srls).pop()]
-                for ip, subrange, lines in ip_srls:
-                    heapq.heappush(tf_data, (ip, tf, subrange, lines))
-                    if len(tf_data) > top_n:
-                        _smallest = heapq.heappop(tf_data)
-            except parsers.PraseError as e:
-                eprint("> Warning: %s" % e)
+        for tfi, tf in enumerate(files_stored):
+            lines = None
+            pos_vecs = lookup_pos_vecs(tf, window_size, db)
+            update_tf_data(pos_vecs, lines)
+        tfi = len(files_stored)
+        chunks = [files_not_stored[ci:ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
+        with concurrent.futures.ProcessPoolExecutor(max_workers=worker) as executor:
+            for cr in executor.map(do_parse_and_tokenize_i, [(chunk, language, lang_model_file) for chunk in chunks]):
+                for i, r in enumerate(cr):
+                    tfi += 1
+                    if r is None:
+                        continue
+                    tf, lines, line_tokens = r
+                    pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+                    if db is not None:
+                        store_pos_vecs(tf, window_size, pos_vecs, db)
+                    update_tf_data(pos_vecs, lines)
+                    if verbose and i == 0:
+                        max_tf = heapq.nlargest(1, tf_data)
+                        if max_tf:
+                            _ip, f, sr, _ls = max_tf[0]
+                            top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
+                            eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
         if verbose:
             eprint("\x1b[1K\x1b[1G")
     except KeyboardInterrupt:
