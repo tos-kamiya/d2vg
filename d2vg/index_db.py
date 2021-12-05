@@ -30,12 +30,6 @@ def pickle_loads_pos_vecs(b: bytes) -> List[PosVec]:
 
 
 class IndexDb:
-    @staticmethod
-    def open(db_file_name: str, window_size: int) -> "IndexDb":
-        db = dbm.open(db_file_name, "c")
-        index_db = IndexDb(db, window_size)
-        return index_db
-
     def close(self) -> None:
         self._index_db.close()
 
@@ -66,3 +60,9 @@ class IndexDb:
         keyb = ("%s-%d" % (model_loaders.file_signature(np), self._window_size)).encode()
         valueb = pickle_dumps_pos_vecs(pos_vecs)
         self._index_db[keyb] = valueb
+
+
+def open(db_file_name: str, window_size: int) -> IndexDb:
+    db = dbm.open(db_file_name, "c")
+    index_db = IndexDb(db, window_size)
+    return index_db

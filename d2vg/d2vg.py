@@ -15,8 +15,10 @@ from docopt import docopt
 from . import parsers
 from . import model_loaders
 from .types import Vec
-from .index_db import IndexDb, PosVec
+from . import index_db
 
+
+PosVec = index_db.PosVec
 
 __version__ = importlib.metadata.version("d2vg")
 
@@ -268,19 +270,19 @@ def main():
             ipsrl_inc_kws.append((ip, (sp, ep), lines))
         return ipsrl_inc_kws
 
-    index_db = None
+    db = None
     if os.path.isdir(DB_DIR):
         db_file = os.path.join(DB_DIR, get_index_db_name())
-        index_db = IndexDb.open(db_file, window_size)
+        db = db.open(db_file, window_size)
 
     files_stored = []
     files_not_stored = []
     read_from_stdin = False
-    if index_db is not None:
+    if db is not None:
         for tf in target_files:
             if tf == "-":
                 read_from_stdin = True
-            elif index_db.has(tf):
+            elif db.has(tf):
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
@@ -312,10 +314,10 @@ def main():
     chunk_size = max(10, min(len(target_files) // 200, 100))
     len_target_files = len(target_files)
     try:
-        if index_db is not None:
+        if db is not None:
             for tfi, tf in enumerate(files_stored):
                 lines = None
-                pos_vecs = index_db.lookup(tf)
+                pos_vecs = db.lookup(tf)
                 update_search_results(tf, pos_vecs, lines)
         tfi = len(files_stored)
 
@@ -335,8 +337,8 @@ def main():
                         continue
                     tf, lines, line_tokens = r
                     pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-                    if index_db is not None:
-                        index_db.store(tf, pos_vecs)
+                    if db is not None:
+                        db.store(tf, pos_vecs)
                     update_search_results(tf, pos_vecs, lines)
                     if verbose and i == 0:
                         max_tf = heapq.nlargest(1, search_results)
@@ -352,8 +354,8 @@ def main():
         eprint("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf))
         eprint("> Warning: shows the search results up to now.")
     finally:
-        if index_db is not None:
-            index_db.close()
+        if db is not None:
+            db.close()
 
     search_results = heapq.nlargest(top_n, search_results)
     for i, (ip, tf, sr, lines) in enumerate(search_results):
