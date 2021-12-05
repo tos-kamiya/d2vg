@@ -1,6 +1,7 @@
 from typing import *
 
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -8,14 +9,14 @@ import sys
 import bs4
 import docx2txt
 
-if os.name != "nt":
+if platform.system() != 'Windows':
     import pdftotext
 
 
 _script_dir: str = os.path.dirname(os.path.realpath(__file__))
 
 _ja_nkf_abspath: Optional[str] = None
-if os.name == "nt" and os.path.exists(os.path.join(_script_dir, "nkf32.exe")):
+if platform.system() == 'Windows' and os.path.exists(os.path.join(_script_dir, "nkf32.exe")):
     _ja_nkf_abspath = os.path.abspath(os.path.join(_script_dir, "nkf32.exe"))
 
 
@@ -76,7 +77,7 @@ class Parser:
             return read_text_file(file_name)
 
 
-if os.name != "nt":
+if platform.system() != 'Windows':
 
     def pdf_parse(file_name: str) -> str:
         with open(file_name, "rb") as f:
