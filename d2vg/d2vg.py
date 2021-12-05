@@ -186,10 +186,10 @@ def main():
     verbose = args["--verbose"]
     search_paragraph = args["--paragraph"]
     unknown_word_as_keyword = args["--unknown-word-as-keyword"]
-    worker = int(args['--worker']) if args['--worker'] else 1
+    worker = int(args["--worker"]) if args["--worker"] else 1
     if worker == 0:
         worker = multiprocessing.cpu_count()
-    headline_len = int(args['--headline-length'])
+    headline_len = int(args["--headline-length"])
     assert headline_len >= 8
 
     lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
@@ -278,7 +278,7 @@ def main():
     read_from_stdin = False
     if index_db is not None:
         for tf in target_files:
-            if tf == '-':
+            if tf == "-":
                 read_from_stdin = True
             elif index_db.has(tf):
                 files_stored.append(tf)
@@ -286,7 +286,7 @@ def main():
                 files_not_stored.append(tf)
     else:
         for tf in target_files:
-            if tf == '-':
+            if tf == "-":
                 read_from_stdin = True
             else:
                 files_not_stored.append(tf)
@@ -294,7 +294,7 @@ def main():
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
     def update_search_results(tf, pos_vecs, lines):
-        ip_srls = [(float(np.inner(vec, pattern_vec)) , (s, e), lines) for s, e, vec in pos_vecs]  # ignore type mismatch
+        ip_srls = [(float(np.inner(vec, pattern_vec)), (s, e), lines) for s, e, vec in pos_vecs]  # ignore type mismatch
 
         if keyword_set:
             min_ip = heapq.nsmallest(1, search_results)[0][0] if len(search_results) >= top_n else None
@@ -323,10 +323,10 @@ def main():
             lines = parser.parse_text(sys.stdin.read())
             line_tokens = [text_to_tokens(L) for L in lines]
             pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-            update_search_results('-', pos_vecs, lines)
+            update_search_results("-", pos_vecs, lines)
             tfi += 1
 
-        chunks = [files_not_stored[ci:ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
+        chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
         with concurrent.futures.ProcessPoolExecutor(max_workers=worker) as executor:
             for cr in executor.map(do_parse_and_tokenize_i, [(chunk, language, lang_model_file) for chunk in chunks]):
                 for i, r in enumerate(cr):

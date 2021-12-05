@@ -43,14 +43,12 @@ class IndexDb:
         self._index_db = index_db
         self._window_size = window_size
 
-
     def has(self, file_name: str) -> bool:
         if file_name == "-" or os.path.isabs(file_name):
             return False
         np = os.path.normpath(file_name)
         keyb = ("%s-%d" % (model_loaders.file_signature(np), self._window_size)).encode()
         return keyb in self._index_db
-
 
     def lookup(self, file_name: str) -> List[PosVec]:
         assert file_name != "-"
@@ -60,7 +58,6 @@ class IndexDb:
         valueb = self._index_db.get(keyb, None)
         pos_vecs = pickle_loads_pos_vecs(valueb)
         return pos_vecs
-
 
     def store(self, file_name: str, pos_vecs: List[PosVec]) -> None:
         assert file_name != "-"

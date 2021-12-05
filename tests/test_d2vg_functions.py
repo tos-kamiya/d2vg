@@ -64,7 +64,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
         self.assertEqual(lt, "|".join(high_ip_token_subseq))
 
     # def extract_pos_vecs(
-    # line_tokens: List[List[str]], 
+    # line_tokens: List[List[str]],
     # tokens_to_vector: Callable[[List[str]], Vec],
     # window_size: int) -> List[Tuple[int, int, List[Vec]]]:
 
@@ -80,9 +80,9 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
 
         actual = d2vg.extract_pos_vecs(line_tokens, tokens_to_vector, 2)
         expected = [
-            (0, 2, np.array([6., 1.], dtype=np.float32)), 
-            (1, 3, np.array([9., 4.], dtype=np.float32)), 
-            (2, 3, np.array([9., 7.], dtype=np.float32)),
+            (0, 2, np.array([6.0, 1.0], dtype=np.float32)),
+            (1, 3, np.array([9.0, 4.0], dtype=np.float32)),
+            (2, 3, np.array([9.0, 7.0], dtype=np.float32)),
         ]
         for a, e in zip_longest(actual, expected):
             self.assertEqual(a[0], e[0])
@@ -92,9 +92,9 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
 
         actual = d2vg.extract_pos_vecs(line_tokens, tokens_to_vector, 1)
         expected = [
-            (0, 1, np.array([3., 1.], dtype=np.float32)), 
-            (1, 2, np.array([6., 4.], dtype=np.float32)), 
-            (2, 3, np.array([9., 7.], dtype=np.float32)),
+            (0, 1, np.array([3.0, 1.0], dtype=np.float32)),
+            (1, 2, np.array([6.0, 4.0], dtype=np.float32)),
+            (2, 3, np.array([9.0, 7.0], dtype=np.float32)),
         ]
         for a, e in zip_longest(actual, expected):
             self.assertEqual(a[0], e[0])
