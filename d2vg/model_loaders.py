@@ -2,6 +2,7 @@ from typing import *
 
 from glob import glob
 import os
+import platform
 import sys
 
 import appdirs
@@ -30,7 +31,7 @@ def file_signature(file_name) -> str:
 
 def get_model_root_dir() -> str:
     models = "models"
-    if os.name == "nt":
+    if platform.system() == 'Windows':
         return os.path.join(appdirs.user_data_dir(_app_name, _author), models)
     else:
         return os.path.join(appdirs.user_config_dir(_app_name), models)
