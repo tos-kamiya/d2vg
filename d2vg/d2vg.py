@@ -118,7 +118,8 @@ def pickle_loads_pos_vecs(b: bytes) -> List[Tuple[int, int, List[Vec]]]:
 def is_stored_in(file_name: str, window_size: int, index_db) -> bool:
     if file_name == "-" or os.path.isabs(file_name):
         return False
-    keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
+    np = os.path.normpath(file_name)
+    keyb = ("%s-%d" % (model_loaders.file_signature(np), window_size)).encode()
     valueb = index_db.get(keyb, None)
     return valueb is not None
 
@@ -126,15 +127,18 @@ def is_stored_in(file_name: str, window_size: int, index_db) -> bool:
 def lookup_pos_vecs(file_name: str, window_size: int, index_db) -> List[Tuple[int, int, List[Vec]]]:
     assert file_name != "-"
     assert not os.path.isabs(file_name)
-
-    keyb = ("%s-%d" % (model_loaders.file_signature(file_name), window_size)).encode()
+    np = os.path.normpath(file_name)
+    keyb = ("%s-%d" % (model_loaders.file_signature(np), window_size)).encode()
     valueb = index_db.get(keyb, None)
     pos_vecs = pickle_loads_pos_vecs(valueb)
     return pos_vecs
 
 
-def store_pos_vecs(tf, window_size, pos_vecs, index_db):
-    keyb = ("%s-%d" % (model_loaders.file_signature(tf), window_size)).encode()
+def store_pos_vecs(file_name, window_size, pos_vecs, index_db):
+    assert file_name != "-"
+    assert not os.path.isabs(file_name)
+    np = os.path.normpath(file_name)
+    keyb = ("%s-%d" % (model_loaders.file_signature(np), window_size)).encode()
     valueb = pickle_dumps_pos_vecs(pos_vecs)
     index_db[keyb] = valueb
 
