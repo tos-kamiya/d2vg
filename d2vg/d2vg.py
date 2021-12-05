@@ -139,6 +139,31 @@ def do_parse_and_tokenize_i(d: Tuple[List[str], str, str]) -> List[Optional[Tupl
     return do_parse_and_tokenize(d[0], d[1], d[2])
 
 
+def prune_by_keywords(
+    ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]],
+    keyword_set: FrozenSet[str],
+    min_ip: Optional[float] = None
+) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
+    ipsrll_inc_kws: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]] = []
+    lines: Optional[List[str]] = None
+    line_tokens: Optional[List[List[str]]] = None
+    for ip, (sp, ep), ls, lts in ip_srlls:
+        if min_ip is not None and ip < min_ip:  # pruning by similarity (inner product)
+            continue  # ip
+        if line_tokens is None:
+            assert ls is not None
+            assert lts is not None
+            lines = ls
+            line_tokens = lts
+        assert line_tokens is not None
+        tokens = join_lists(line_tokens[sp:ep])
+        if not keyword_set.issubset(tokens):
+            continue  # ip
+        assert lines is not None
+        ipsrll_inc_kws.append((ip, (sp, ep), lines, line_tokens))
+    return ipsrll_inc_kws
+
+
 __doc__: str = """Doc2Vec Grep.
 
 Usage:
@@ -251,34 +276,6 @@ def main():
         if oov_tokens:
             eprint("> Warning: unknown words: %s" % ", ".join(oov_tokens))
 
-    def prune_by_keywords(
-        ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]],
-        file_name: str,
-        min_ip: Optional[float],
-    ) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
-        ipsrll_inc_kws: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]] = []
-        lines: Optional[List[str]] = None
-        line_tokens: Optional[List[List[str]]] = None
-        for ip, (sp, ep), ls, lts in ip_srlls:
-            if min_ip is not None and ip < min_ip:  # pruning by similarity (inner product)
-                continue  # ri
-            if line_tokens is None:
-                if lts is not None:
-                    assert ls is not None
-                    lines = ls
-                    line_tokens = lts
-                else:
-                    lines = parse(file_name)
-                    line_tokens = [text_to_tokens(L) for L in lines]
-            assert line_tokens is not None
-            tokens = join_lists(line_tokens[sp:ep])
-            if not keyword_set.issubset(tokens):
-                continue  # ri
-            assert lines is not None
-            assert line_tokens is not None
-            ipsrll_inc_kws.append((ip, (sp, ep), lines, line_tokens))
-        return ipsrll_inc_kws
-
     db = None
     if os.path.isdir(DB_DIR):
         db_file = os.path.join(DB_DIR, get_index_db_name())
@@ -309,10 +306,11 @@ def main():
 
         if keyword_set:
             min_ip = heapq.nsmallest(1, search_results)[0][0] if len(search_results) >= top_n else None
-            ip_srlls = prune_by_keywords(ip_srlls, tf, min_ip)
+            ip_srlls = prune_by_keywords(ip_srlls, keyword_set, min_ip)
 
         if ip_srlls and not search_paragraph:
-            ip_srlls = [sorted(ip_srlls).pop()]
+            ip_srlls = [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
+
         for ip, subrange, lines, _line_tokens in ip_srlls:
             heapq.heappush(search_results, (ip, tf, subrange, lines))
             if len(search_results) > top_n:
