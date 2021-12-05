@@ -9,5 +9,6 @@ from . import model_loaders
 from . import parsers
 from . import d2vg_setup_model
 from . import types
+from . import index_db
 
 setup_model_main = d2vg_setup_model.main
