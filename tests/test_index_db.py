@@ -22,8 +22,8 @@ def back_to_curdir():
 
 
 def touch(file_name: str):
-    with open(file_name, 'w') as outp:
-        print('', end='', file=outp)
+    with open(file_name, "w") as outp:
+        print("", end="", file=outp)
 
 
 class IndexDbTest(unittest.TestCase):
@@ -35,10 +35,10 @@ class IndexDbTest(unittest.TestCase):
         with back_to_curdir():
             with tempfile.TemporaryDirectory() as tempdir:
                 os.chdir(tempdir)
-                file_a = os.path.join('a')
+                file_a = os.path.join("a")
                 touch(file_a)
 
-                file_index_db = ('index_db')
+                file_index_db = "index_db"
                 index_db = IndexDb.open(file_index_db, 1)
 
                 self.assertFalse(index_db.has(file_a))
@@ -54,7 +54,6 @@ class IndexDbTest(unittest.TestCase):
                 abs_file_a = os.path.abspath(file_a)
                 self.assertFalse(index_db.has(abs_file_a))
 
-
     def test_lookup(self):
         pos_vecs: List[PosVec] = [
             (0, 1, np.array([2, 3], dtype=np.float32)),
@@ -63,10 +62,10 @@ class IndexDbTest(unittest.TestCase):
         with back_to_curdir():
             with tempfile.TemporaryDirectory() as tempdir:
                 os.chdir(tempdir)
-                file_a = os.path.join('a')
+                file_a = os.path.join("a")
                 touch(file_a)
 
-                file_index_db = ('index_db')
+                file_index_db = "index_db"
                 index_db = IndexDb.open(file_index_db, 1)
 
                 index_db.store(file_a, pos_vecs)

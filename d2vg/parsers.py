@@ -47,7 +47,7 @@ class Parser:
 
     def parse_text(self, text: str) -> List[str]:
         return self.clean_text(text)
-    
+
     def clean_text(self, text: str) -> List[str]:
         lines = text.split("\n")
         r = []
@@ -58,7 +58,7 @@ class Parser:
         return r
 
     def _parse_i(self, file_name: str) -> str:
-        assert file_name != '-'
+        assert file_name != "-"
 
         i = file_name.rfind(".")
         if i < 0:
