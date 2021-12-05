@@ -1,14 +1,12 @@
 from typing import *
 
 import concurrent.futures
-import dbm
 from glob import glob
 import heapq
 import importlib
 import locale
 import multiprocessing
 import os
-import pickle
 import sys
 
 import numpy as np
@@ -17,6 +15,7 @@ from docopt import docopt
 from . import parsers
 from . import model_loaders
 from .types import Vec
+from .index_db import IndexDb, PosVec
 
 
 __version__ = importlib.metadata.version("d2vg")
@@ -99,51 +98,7 @@ def extract_headline(
     return headline_text, sr
 
 
-def pickle_dumps_pos_vecs(pos_vecs: Iterable[Tuple[int, int, List[Vec]]]) -> bytes:
-    dumped = []
-    for pos_start, pos_end, vecs in pos_vecs:
-        vecs = [float(d) for d in vecs]
-        dumped.append((pos_start, pos_end, vecs))
-    return pickle.dumps(dumped)
-
-
-def pickle_loads_pos_vecs(b: bytes) -> List[Tuple[int, int, List[Vec]]]:
-    loaded = []
-    for pos_start, pos_end, vecs in pickle.loads(b):
-        vecs = np.array(vecs, dtype=np.float32)
-        loaded.append((pos_start, pos_end, vecs))
-    return loaded
-
-
-def is_stored_in(file_name: str, window_size: int, index_db) -> bool:
-    if file_name == "-" or os.path.isabs(file_name):
-        return False
-    np = os.path.normpath(file_name)
-    keyb = ("%s-%d" % (model_loaders.file_signature(np), window_size)).encode()
-    valueb = index_db.get(keyb, None)
-    return valueb is not None
-
-
-def lookup_pos_vecs(file_name: str, window_size: int, index_db) -> List[Tuple[int, int, List[Vec]]]:
-    assert file_name != "-"
-    assert not os.path.isabs(file_name)
-    np = os.path.normpath(file_name)
-    keyb = ("%s-%d" % (model_loaders.file_signature(np), window_size)).encode()
-    valueb = index_db.get(keyb, None)
-    pos_vecs = pickle_loads_pos_vecs(valueb)
-    return pos_vecs
-
-
-def store_pos_vecs(file_name, window_size, pos_vecs, index_db):
-    assert file_name != "-"
-    assert not os.path.isabs(file_name)
-    np = os.path.normpath(file_name)
-    keyb = ("%s-%d" % (model_loaders.file_signature(np), window_size)).encode()
-    valueb = pickle_dumps_pos_vecs(pos_vecs)
-    index_db[keyb] = valueb
-
-
-def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[List[str]], Vec], window_size: int) -> List[Tuple[int, int, List[Vec]]]:
+def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[List[str]], Vec], window_size: int) -> List[PosVec]:
     pos_vecs = []
     if window_size == 1:
         for pos, tokens in enumerate(line_tokens):
@@ -313,19 +268,19 @@ def main():
             ipsrl_inc_kws.append((ip, (sp, ep), lines))
         return ipsrl_inc_kws
 
-    db = None
+    index_db = None
     if os.path.isdir(DB_DIR):
         db_file = os.path.join(DB_DIR, get_index_db_name())
-        db = dbm.open(db_file, "c")
+        index_db = IndexDb.open(db_file, window_size)
 
     files_stored = []
     files_not_stored = []
     read_from_stdin = False
-    if db:
+    if index_db is not None:
         for tf in target_files:
             if tf == '-':
                 read_from_stdin = True
-            elif is_stored_in(tf, window_size, db):
+            elif index_db.has(tf):
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
@@ -336,38 +291,39 @@ def main():
             else:
                 files_not_stored.append(tf)
 
-    tf_data: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
+    search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
-    def update_tf_data(tf, pos_vecs, lines):
+    def update_search_results(tf, pos_vecs, lines):
         ip_srls = [(float(np.inner(vec, pattern_vec)) , (s, e), lines) for s, e, vec in pos_vecs]  # ignore type mismatch
 
         if keyword_set:
-            min_ip = heapq.nsmallest(1, tf_data)[0][0] if len(tf_data) >= top_n else None
+            min_ip = heapq.nsmallest(1, search_results)[0][0] if len(search_results) >= top_n else None
             ip_srls = prune_by_keywords(ip_srls, tf, min_ip)
 
         if ip_srls and not search_paragraph:
             ip_srls = [sorted(ip_srls).pop()]
         for ip, subrange, lines in ip_srls:
-            heapq.heappush(tf_data, (ip, tf, subrange, lines))
-            if len(tf_data) > top_n:
-                _smallest = heapq.heappop(tf_data)
+            heapq.heappush(search_results, (ip, tf, subrange, lines))
+            if len(search_results) > top_n:
+                _smallest = heapq.heappop(search_results)
 
     tfi = -1
     tf = None
     chunk_size = max(10, min(len(target_files) // 200, 100))
     len_target_files = len(target_files)
     try:
-        for tfi, tf in enumerate(files_stored):
-            lines = None
-            pos_vecs = lookup_pos_vecs(tf, window_size, db)
-            update_tf_data(tf, pos_vecs, lines)
+        if index_db is not None:
+            for tfi, tf in enumerate(files_stored):
+                lines = None
+                pos_vecs = index_db.lookup(tf)
+                update_search_results(tf, pos_vecs, lines)
         tfi = len(files_stored)
 
         if read_from_stdin:
             lines = parser.parse_text(sys.stdin.read())
             line_tokens = [text_to_tokens(L) for L in lines]
             pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-            update_tf_data('-', pos_vecs, lines)
+            update_search_results('-', pos_vecs, lines)
             tfi += 1
 
         chunks = [files_not_stored[ci:ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
@@ -379,14 +335,14 @@ def main():
                         continue
                     tf, lines, line_tokens = r
                     pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-                    if db is not None:
-                        store_pos_vecs(tf, window_size, pos_vecs, db)
-                    update_tf_data(tf, pos_vecs, lines)
+                    if index_db is not None:
+                        index_db.store(tf, pos_vecs)
+                    update_search_results(tf, pos_vecs, lines)
                     if verbose and i == 0:
-                        max_tf = heapq.nlargest(1, tf_data)
+                        max_tf = heapq.nlargest(1, search_results)
                         if max_tf:
                             _ip, f, sr, _ls = max_tf[0]
-                            top1_message = "Provisional top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
+                            top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
                             eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
         if verbose:
             eprint("\x1b[1K\x1b[1G")
@@ -396,11 +352,11 @@ def main():
         eprint("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf))
         eprint("> Warning: shows the search results up to now.")
     finally:
-        if db is not None:
-            db.close()
+        if index_db is not None:
+            index_db.close()
 
-    tf_data = heapq.nlargest(top_n, tf_data)
-    for i, (ip, tf, sr, lines) in enumerate(tf_data):
+    search_results = heapq.nlargest(top_n, search_results)
+    for i, (ip, tf, sr, lines) in enumerate(search_results):
         if ip < 0:
             break  # for i
         if lines is None:
