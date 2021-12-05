@@ -252,33 +252,42 @@ def main():
             eprint("> Warning: unknown words: %s" % ", ".join(oov_tokens))
 
     def prune_by_keywords(
-        ip_srls: Iterable[Tuple[float, Tuple[int, int], Optional[List[str]]]],
+        ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]],
         file_name: str,
         min_ip: Optional[float],
-    ) -> List[Tuple[float, Tuple[int, int], Optional[List[str]]]]:
-        ipsrl_inc_kws = []
-        lines = None
-        for ip, (sp, ep), ls in ip_srls:
+    ) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
+        ipsrll_inc_kws: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]] = []
+        lines: Optional[List[str]] = None
+        line_tokens: Optional[List[List[str]]] = None
+        for ip, (sp, ep), ls, lts in ip_srlls:
             if min_ip is not None and ip < min_ip:  # pruning by similarity (inner product)
                 continue  # ri
-            if lines is None:
-                lines = ls if ls is not None else parse(file_name)  # seems a little bit tricky...
-            subtext = "\n".join(lines[sp:ep])
-            tokens = text_to_tokens(subtext)
+            if line_tokens is None:
+                if lts is not None:
+                    assert ls is not None
+                    lines = ls
+                    line_tokens = lts
+                else:
+                    lines = parse(file_name)
+                    line_tokens = [text_to_tokens(L) for L in lines]
+            assert line_tokens is not None
+            tokens = join_lists(line_tokens[sp:ep])
             if not keyword_set.issubset(tokens):
                 continue  # ri
-            ipsrl_inc_kws.append((ip, (sp, ep), lines))
-        return ipsrl_inc_kws
+            assert lines is not None
+            assert line_tokens is not None
+            ipsrll_inc_kws.append((ip, (sp, ep), lines, line_tokens))
+        return ipsrll_inc_kws
 
     db = None
     if os.path.isdir(DB_DIR):
         db_file = os.path.join(DB_DIR, get_index_db_name())
-        db = db.open(db_file, window_size)
+        db = index_db.open(db_file, window_size)
 
     files_stored = []
     files_not_stored = []
     read_from_stdin = False
-    if db is not None:
+    if db is not None and not keyword_set:
         for tf in target_files:
             if tf == "-":
                 read_from_stdin = True
@@ -295,16 +304,16 @@ def main():
 
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
-    def update_search_results(tf, pos_vecs, lines):
-        ip_srls = [(float(np.inner(vec, pattern_vec)), (s, e), lines) for s, e, vec in pos_vecs]  # ignore type mismatch
+    def update_search_results(tf, pos_vecs, lines, line_tokens):
+        ip_srlls = [(float(np.inner(vec, pattern_vec)), (s, e), lines, line_tokens) for s, e, vec in pos_vecs]  # ignore type mismatch
 
         if keyword_set:
             min_ip = heapq.nsmallest(1, search_results)[0][0] if len(search_results) >= top_n else None
-            ip_srls = prune_by_keywords(ip_srls, tf, min_ip)
+            ip_srlls = prune_by_keywords(ip_srlls, tf, min_ip)
 
-        if ip_srls and not search_paragraph:
-            ip_srls = [sorted(ip_srls).pop()]
-        for ip, subrange, lines in ip_srls:
+        if ip_srlls and not search_paragraph:
+            ip_srlls = [sorted(ip_srlls).pop()]
+        for ip, subrange, lines, _line_tokens in ip_srlls:
             heapq.heappush(search_results, (ip, tf, subrange, lines))
             if len(search_results) > top_n:
                 _smallest = heapq.heappop(search_results)
@@ -314,18 +323,17 @@ def main():
     chunk_size = max(10, min(len(target_files) // 200, 100))
     len_target_files = len(target_files)
     try:
-        if db is not None:
-            for tfi, tf in enumerate(files_stored):
-                lines = None
-                pos_vecs = db.lookup(tf)
-                update_search_results(tf, pos_vecs, lines)
+        for tfi, tf in enumerate(files_stored):
+            assert db is not None
+            pos_vecs = db.lookup(tf)
+            update_search_results(tf, pos_vecs, None, None)
         tfi = len(files_stored)
 
         if read_from_stdin:
             lines = parser.parse_text(sys.stdin.read())
             line_tokens = [text_to_tokens(L) for L in lines]
             pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-            update_search_results("-", pos_vecs, lines)
+            update_search_results("-", pos_vecs, lines, line_tokens)
             tfi += 1
 
         chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
@@ -336,10 +344,15 @@ def main():
                     if r is None:
                         continue
                     tf, lines, line_tokens = r
-                    pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-                    if db is not None:
-                        db.store(tf, pos_vecs)
-                    update_search_results(tf, pos_vecs, lines)
+                    if db is None:
+                        pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+                    else:
+                        if db.has(tf):
+                            pos_vecs = db.lookup(tf)
+                        else:
+                            pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+                            db.store(tf, pos_vecs)
+                    update_search_results(tf, pos_vecs, lines, line_tokens)
                     if verbose and i == 0:
                         max_tf = heapq.nlargest(1, search_results)
                         if max_tf:
