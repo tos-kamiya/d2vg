@@ -2,6 +2,7 @@ from typing import *
 
 import unittest
 
+from itertools import zip_longest
 from pathlib import Path
 import re
 import tempfile
@@ -83,10 +84,10 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             (1, 3, np.array([9., 4.], dtype=np.float32)), 
             (2, 3, np.array([9., 7.], dtype=np.float32)),
         ]
-        for a, e in zip(actual, expected):
+        for a, e in zip_longest(actual, expected):
             self.assertEqual(a[0], e[0])
             self.assertEqual(a[1], e[1])
-            for a2i, e2i in zip(a[2], e[2]):
+            for a2i, e2i in zip_longest(a[2], e[2]):
                 self.assertEqual(a2i, e2i)
 
         actual = d2vg.extract_pos_vecs(line_tokens, tokens_to_vector, 1)
@@ -95,10 +96,10 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             (1, 2, np.array([6., 4.], dtype=np.float32)), 
             (2, 3, np.array([9., 7.], dtype=np.float32)),
         ]
-        for a, e in zip(actual, expected):
+        for a, e in zip_longest(actual, expected):
             self.assertEqual(a[0], e[0])
             self.assertEqual(a[1], e[1])
-            for a2i, e2i in zip(a[2], e[2]):
+            for a2i, e2i in zip_longest(a[2], e[2]):
                 self.assertEqual(a2i, e2i)
 
 
