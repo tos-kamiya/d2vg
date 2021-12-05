@@ -5,7 +5,6 @@ import unittest
 import contextlib
 from itertools import zip_longest
 import os
-import platform
 import tempfile
 
 import numpy as np
@@ -28,14 +27,13 @@ def touch(file_name: str):
 
 
 class IndexDbTest(unittest.TestCase):
-    @unittest.skipIf(platform.system() != 'Linux', "changing directory not working on other than linux")
     def test_has(self):
         pos_vecs: List[index_db.PosVec] = [
             (0, 1, np.array([2, 3], dtype=np.float32)),
             (1, 2, np.array([3, 4], dtype=np.float32)),
         ]
-        with back_to_curdir():
-            with tempfile.TemporaryDirectory() as tempdir:
+        with tempfile.TemporaryDirectory() as tempdir:
+            with back_to_curdir():
                 os.chdir(tempdir)
                 file_a = os.path.join("a")
                 touch(file_a)
@@ -56,14 +54,13 @@ class IndexDbTest(unittest.TestCase):
                 abs_file_a = os.path.abspath(file_a)
                 self.assertFalse(db.has(abs_file_a))
 
-    @unittest.skipIf(platform.system() != 'Linux', "changing directory not working on other than linux")
     def test_lookup(self):
         pos_vecs: List[index_db.PosVec] = [
             (0, 1, np.array([2, 3], dtype=np.float32)),
             (1, 2, np.array([3, 4], dtype=np.float32)),
         ]
-        with back_to_curdir():
-            with tempfile.TemporaryDirectory() as tempdir:
+        with tempfile.TemporaryDirectory() as tempdir:
+            with back_to_curdir():
                 os.chdir(tempdir)
                 file_a = os.path.join("a")
                 touch(file_a)
