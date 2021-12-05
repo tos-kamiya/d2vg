@@ -50,12 +50,13 @@ class IndexDb:
         np = os.path.normpath(file_name)
         keyb = ("%s-%d" % (model_loaders.file_signature(np), self._window_size)).encode()
         valueb = self._index_db.get(keyb, None)
+        assert valueb is not None
         pos_vecs = pickle_loads_pos_vecs(valueb)
         return pos_vecs
 
     def store(self, file_name: str, pos_vecs: List[PosVec]) -> None:
-        assert file_name != "-"
-        assert not os.path.isabs(file_name)
+        if file_name == "-" or os.path.isabs(file_name):
+            return
         np = os.path.normpath(file_name)
         keyb = ("%s-%d" % (model_loaders.file_signature(np), self._window_size)).encode()
         valueb = pickle_dumps_pos_vecs(pos_vecs)
