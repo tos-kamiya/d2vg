@@ -118,7 +118,7 @@ def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[L
     return pos_vecs
 
 
-def do_parse_and_tokenize(file_names: List[str], language: str, lang_model_file: str) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
+def do_parse_and_tokenize(file_names: List[str], language: str, lang_model_file: str, verbose: bool) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
     parser = parsers.Parser()
     parse = parser.parse
     text_to_tokens, _, _, _ = model_loaders.load_funcs(language, lang_model_file)
@@ -127,7 +127,9 @@ def do_parse_and_tokenize(file_names: List[str], language: str, lang_model_file:
     for tf in file_names:
         try:
             lines = parse(tf)
-        except parsers.PraseError as e:
+        except parsers.ParseError as e:
+            if verbose:
+                print('', file=sys.stderr)
             print("> Warning: %s" % e, file=sys.stderr, flush=True)
             r.append(None)
         else:
@@ -136,8 +138,8 @@ def do_parse_and_tokenize(file_names: List[str], language: str, lang_model_file:
     return r
 
 
-def do_parse_and_tokenize_i(d: Tuple[List[str], str, str]) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
-    return do_parse_and_tokenize(d[0], d[1], d[2])
+def do_parse_and_tokenize_i(d: Tuple[List[str], str, str, bool]) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
+    return do_parse_and_tokenize(d[0], d[1], d[2], d[3])
 
 
 def prune_by_keywords(
@@ -362,7 +364,7 @@ def main():
 
         chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
         with concurrent.futures.ProcessPoolExecutor(max_workers=worker) as executor:
-            for cr in executor.map(do_parse_and_tokenize_i, [(chunk, language, lang_model_file) for chunk in chunks]):
+            for cr in executor.map(do_parse_and_tokenize_i, [(chunk, language, lang_model_file, verbose) for chunk in chunks]):
                 for i, r in enumerate(cr):
                     tfi += 1
                     if r is None:

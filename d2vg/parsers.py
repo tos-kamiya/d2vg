@@ -5,6 +5,7 @@ import platform
 import re
 import subprocess
 import sys
+import zipfile
 
 import bs4
 import docx2txt
@@ -34,7 +35,7 @@ else:
             return inp.read()
 
 
-class PraseError(Exception):
+class ParseError(Exception):
     pass
 
 
@@ -42,8 +43,10 @@ class Parser:
     def parse(self, file_name: str) -> List[str]:
         try:
             text = self._parse_i(file_name)
+        except ParseError as e:
+            raise e
         except Exception as e:
-            raise PraseError("ParseError: in parsing file: %s" % repr(file_name)) from e
+            raise ParseError("ParseError: in parsing file: %s" % repr(file_name)) from e
         return self.clean_text(text)
 
     def parse_text(self, text: str) -> List[str]:
@@ -63,7 +66,7 @@ class Parser:
 
         i = file_name.rfind(".")
         if i < 0:
-            raise PraseError("ParseError: file has NO extension: %s" % repr(file_name))
+            raise ParseError("ParseError: file has NO extension: %s" % repr(file_name))
 
         extension = file_name[i:].lower()
 
@@ -80,8 +83,11 @@ class Parser:
 if platform.system() != 'Windows':
 
     def pdf_parse(file_name: str) -> str:
-        with open(file_name, "rb") as f:
-            pdf = pdftotext.PDF(f)
+        try:
+            with open(file_name, "rb") as f:
+                pdf = pdftotext.PDF(f)
+        except pdftotext.Error as e:
+            raise ParseError("ParseError: %s, file: %s" % (str(e), repr(file_name)))
 
         page_texts = [page for page in pdf]
         text = "".join(page_texts)
@@ -122,4 +128,7 @@ def html_parse(file_name: str) -> str:
 
 
 def docx_parse(file_name: str) -> str:
-    return docx2txt.process(file_name)
+    try:
+        return docx2txt.process(file_name)
+    except zipfile.BadZipFile as _e:
+        raise ParseError("ParseError: encrypted or corrupted .docx file: %s" % repr(file_name))
