@@ -102,6 +102,61 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             for a2i, e2i in zip_longest(a[2], e[2]):
                 self.assertEqual(a2i, e2i)
 
+    def test_prune_by_keywords(self):
+        lines = ["a b", "c d", "e f", "b a"]
+        line_tokens = [L.split(' ') for L in lines]
+        ip_srlls = [
+            (0.1, (0, 2), lines, line_tokens),  # a b, c d
+            (0.3, (1, 3), lines, line_tokens),  # c d, e f
+            (0.2, (2, 4), lines, line_tokens),  # e f, b a
+        ]
+
+        actual = d2vg.prune_by_keywords(ip_srlls, frozenset(["a", "b"]), min_ip=None)
+        expected = [ip_srlls[0], ip_srlls[2]]
+        self.assertEqual(actual, expected)
+
+        actual = d2vg.prune_by_keywords(ip_srlls, frozenset(["a", "b"]), min_ip=0.15)
+        expected = [ip_srlls[2]]
+        self.assertEqual(actual, expected)
+
+        actual = d2vg.prune_by_keywords(ip_srlls, frozenset(["d", "e"]), min_ip=None)
+        expected = [ip_srlls[1]]
+        self.assertEqual(actual, expected)
+
+
+    def test_prune_overlapped_paragraphs(self):
+        lines = ["a b", "c d", "e f", "b a"]
+        line_tokens = [L.split(' ') for L in lines]
+        ip_srlls = [
+            (0.1, (0, 2), lines, line_tokens),
+            (0.3, (1, 3), lines, line_tokens),
+            (0.2, (2, 4), lines, line_tokens),
+        ]
+
+        actual = d2vg.prune_overlapped_paragraphs(ip_srlls)
+        expected = [ip_srlls[1]]
+        self.assertEqual(actual, expected)
+
+        ip_srlls = [
+            (0.3, (0, 2), lines, line_tokens),
+            (0.2, (1, 3), lines, line_tokens),
+            (0.1, (2, 4), lines, line_tokens),
+        ]
+
+        actual = d2vg.prune_overlapped_paragraphs(ip_srlls)
+        expected = [ip_srlls[0]]
+        self.assertEqual(actual, expected)
+
+        ip_srlls = [
+            (0.3, (0, 2), lines, line_tokens),
+            (0.1, (1, 3), lines, line_tokens),
+            (0.2, (2, 4), lines, line_tokens),
+        ]
+
+        actual = d2vg.prune_overlapped_paragraphs(ip_srlls)
+        expected = [ip_srlls[0], ip_srlls[2]]
+        self.assertEqual(actual, expected)
+
 
 if __name__ == "__main__":
     unittest.main()
