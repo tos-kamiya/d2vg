@@ -9,6 +9,7 @@ import multiprocessing
 import os
 import sys
 
+from gensim.matutils import unitvec
 import numpy as np
 from docopt import docopt
 
@@ -191,6 +192,7 @@ Options:
   --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
   --paragraph, -p               Search paragraphs in documents.
   --window=NUM, -w NUM          Line window size [default: 20].
+  --normalize-by-length, -n     Normalize by length of document when calculating similarity.
   --worker=NUM, -j NUM          Number of worker processes. `0` is interpreted as number of CPU cores.
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --list-lang                   Listing the languages in which the corresponding models are installed.
@@ -231,6 +233,7 @@ def main():
         worker = multiprocessing.cpu_count()
     headline_len = int(args["--headline-length"])
     assert headline_len >= 8
+    normalize_by_length = args['--normalize-by-length']
 
     lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
     if lng is not None:
@@ -312,10 +315,17 @@ def main():
             else:
                 files_not_stored.append(tf)
 
+    if normalize_by_length:
+        def inner_product(dv: Vec, pv: Vec) -> float:
+            return float(np.inner(unitvec(dv), pv))
+    else:
+        def inner_product(dv: Vec, pv: Vec) -> float:
+            return float(np.inner(dv, pv))
+
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
     def update_search_results(tf, pos_vecs, lines, line_tokens):
-        ip_srlls = [(float(np.inner(vec, pattern_vec)), (s, e), lines, line_tokens) for s, e, vec in pos_vecs]  # ignore type mismatch
+        ip_srlls = [(inner_product(vec, pattern_vec), (s, e), lines, line_tokens) for s, e, vec in pos_vecs]  # ignore type mismatch
 
         if keyword_set:
             min_ip = heapq.nsmallest(1, search_results)[0][0] if len(search_results) >= top_n else None
