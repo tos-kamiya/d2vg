@@ -364,27 +364,31 @@ def main():
 
         chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
         with concurrent.futures.ProcessPoolExecutor(max_workers=worker) as executor:
-            for cr in executor.map(do_parse_and_tokenize_i, [(chunk, language, lang_model_file, verbose) for chunk in chunks]):
-                for i, r in enumerate(cr):
-                    tfi += 1
-                    if r is None:
-                        continue
-                    tf, lines, line_tokens = r
-                    if db is None:
-                        pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-                    else:
-                        if db.has(tf):
-                            pos_vecs = db.lookup(tf)
-                        else:
+            try:
+                for cr in executor.map(do_parse_and_tokenize_i, [(chunk, language, lang_model_file, verbose) for chunk in chunks]):
+                    for i, r in enumerate(cr):
+                        tfi += 1
+                        if r is None:
+                            continue
+                        tf, lines, line_tokens = r
+                        if db is None:
                             pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-                            db.store(tf, pos_vecs)
-                    update_search_results(tf, pos_vecs, lines, line_tokens)
-                    if verbose and i == 0:
-                        max_tf = heapq.nlargest(1, search_results)
-                        if max_tf:
-                            _ip, f, sr, _ls = max_tf[0]
-                            top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
-                            eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
+                        else:
+                            if db.has(tf):
+                                pos_vecs = db.lookup(tf)
+                            else:
+                                pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+                                db.store(tf, pos_vecs)
+                        update_search_results(tf, pos_vecs, lines, line_tokens)
+                        if verbose and i == 0:
+                            max_tf = heapq.nlargest(1, search_results)
+                            if max_tf:
+                                _ip, f, sr, _ls = max_tf[0]
+                                top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
+                                eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
+            except KeyboardInterrupt as e:
+                executor.shutdown()
+                raise e
         if verbose:
             eprint("\x1b[1K\x1b[1G")
     except KeyboardInterrupt:
