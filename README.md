@@ -62,6 +62,9 @@ If this option is not specified, one document file will be considered as one doc
 A chunk of lines specified by this number will be recognized as a paragraph.
 The default value is 20.
 
+`--normalize-by-length, -n`  
+When calculating similarity to a query, normalize by document length. When the length difference between paragraphs is large, the shorter paragraphs will be given priority in the search results. 
+
 `--worker=NUM, -j NUM`
 Number of worker processes. `0` is interpreted as number of CPU cores.
 This may speed up searches, especially when searching from documents that have not been indexed.
