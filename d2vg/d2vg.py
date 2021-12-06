@@ -164,6 +164,19 @@ def prune_by_keywords(
     return ipsrll_inc_kws
 
 
+def prune_overlapped_paragraphs(ip_srlls: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
+    dropped_indice_set = set()
+    for i, (ip_srll1, ip_srll2) in enumerate(zip(ip_srlls, ip_srlls[1:])):
+        ip1, sr1 = ip_srll1[0], ip_srll1[1] 
+        ip2, sr2 = ip_srll2[0], ip_srll2[1]
+        if sr2[0] < sr1[1] < sr2[1]:  # if two subranges are overlapped 
+            if ip1 < ip2:
+                dropped_indice_set.add(i)
+            else:
+                dropped_indice_set.add(i + 1)
+    return [ip_srll for i, ip_srll in enumerate(ip_srlls) if i not in dropped_indice_set]
+
+
 __doc__: str = """Doc2Vec Grep.
 
 Usage:
@@ -308,8 +321,11 @@ def main():
             min_ip = heapq.nsmallest(1, search_results)[0][0] if len(search_results) >= top_n else None
             ip_srlls = prune_by_keywords(ip_srlls, keyword_set, min_ip)
 
-        if ip_srlls and not search_paragraph:
-            ip_srlls = [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
+        if ip_srlls:
+            if search_paragraph:
+                ip_srlls = prune_overlapped_paragraphs(ip_srlls)
+            else:
+                ip_srlls = [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
 
         for ip, subrange, lines, _line_tokens in ip_srlls:
             heapq.heappush(search_results, (ip, tf, subrange, lines))
