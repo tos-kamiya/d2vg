@@ -9,7 +9,7 @@ import tempfile
 
 from docopt import docopt
 
-from .model_loaders import get_model_root_dir, get_model_files, get_model_langs
+from .model_loader import get_model_root_dir, get_model_files, get_model_langs
 
 
 TAR_COMPRESSION_METHODS = ["gz", "bz2", "xz"]

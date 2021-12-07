@@ -6,7 +6,7 @@ import pickle
 
 import numpy as np
 
-from . import model_loaders
+from . import model_loader
 from .types import Vec
 
 
@@ -41,14 +41,14 @@ class IndexDb:
         if file_name == "-" or os.path.isabs(file_name):
             return False
         np = os.path.normpath(file_name)
-        keyb = ("%s-%d" % (model_loaders.file_signature(np), self._window_size)).encode()
+        keyb = ("%s-%d" % (model_loader.file_signature(np), self._window_size)).encode()
         return keyb in self._index_db
 
     def lookup(self, file_name: str) -> List[PosVec]:
         assert file_name != "-"
         assert not os.path.isabs(file_name)
         np = os.path.normpath(file_name)
-        keyb = ("%s-%d" % (model_loaders.file_signature(np), self._window_size)).encode()
+        keyb = ("%s-%d" % (model_loader.file_signature(np), self._window_size)).encode()
         valueb = self._index_db.get(keyb, None)
         assert valueb is not None
         pos_vecs = pickle_loads_pos_vecs(valueb)
@@ -58,7 +58,7 @@ class IndexDb:
         if file_name == "-" or os.path.isabs(file_name):
             return
         np = os.path.normpath(file_name)
-        keyb = ("%s-%d" % (model_loaders.file_signature(np), self._window_size)).encode()
+        keyb = ("%s-%d" % (model_loader.file_signature(np), self._window_size)).encode()
         valueb = pickle_dumps_pos_vecs(pos_vecs)
         self._index_db[keyb] = valueb
 

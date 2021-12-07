@@ -14,7 +14,7 @@ import numpy as np
 from docopt import docopt
 
 from . import parsers
-from . import model_loaders
+from . import model_loader
 from .types import Vec
 from . import index_db
 
@@ -121,7 +121,7 @@ def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[L
 def do_parse_and_tokenize(file_names: List[str], language: str, lang_model_file: str, verbose: bool) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
     parser = parsers.Parser()
     parse = parser.parse
-    text_to_tokens, _, _, _ = model_loaders.load_funcs(language, lang_model_file)
+    text_to_tokens, _, _, _ = model_loader.load_funcs(language, lang_model_file)
 
     r = []
     for tf in file_names:
@@ -209,7 +209,7 @@ def main():
 
     args = docopt(__doc__, version="d2vg %s" % __version__)
 
-    lang_candidates = model_loaders.get_model_langs()
+    lang_candidates = model_loader.get_model_langs()
     if args["--list-lang"]:
         lang_candidates.sort()
         print("\n".join("%s %s" % (l, repr(m)) for l, m in lang_candidates))
@@ -266,7 +266,7 @@ def main():
         eprint("Error: not found Doc2Vec model for language: %s" % language)
         sys.exit("  Specify either: %s" % ", ".join(l for l, _d in lang_candidates))
 
-    lang_model_files = model_loaders.get_model_files(language)
+    lang_model_files = model_loader.get_model_files(language)
     assert lang_model_files
     if len(lang_model_files) >= 2:
         eprint("Error: multiple Doc2Vec models are found for language: %s" % language)
@@ -279,7 +279,7 @@ def main():
         tokens_to_vector,
         find_oov_tokens,
         get_index_db_name,
-    ) = model_loaders.load_funcs(language, lang_model_file)
+    ) = model_loader.load_funcs(language, lang_model_file)
 
     tokens = text_to_tokens(pattern)
     oov_tokens = find_oov_tokens(tokens)
