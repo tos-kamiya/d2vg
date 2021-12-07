@@ -108,8 +108,10 @@ else:
         )
         try:
             cmd = ["pdftotext.exe", file_name, tempf]
-            subprocess.check_call(cmd, stderr=subprocess.DEVNULL)
-            with open(tempf, "r", encoding="utf8") as f:
+            p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if p.returncode != 0:
+                raise ParseError('ParseError: %s, file: %s' % (p.stderr.decode('utf-8').rstrip(), repr(file_name)))
+            with open(tempf, "r", encoding="utf-8") as f:
                 text = f.read()
         finally:
             if os.path.exists(tempf):
