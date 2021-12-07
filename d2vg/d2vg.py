@@ -118,10 +118,10 @@ def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[L
     return pos_vecs
 
 
-def do_parse_and_tokenize(file_names: List[str], language: str, lang_model_file: str, verbose: bool) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
+def do_parse_and_tokenize(file_names: List[str], language: str, verbose: bool) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
     parser = parsers.Parser()
     parse = parser.parse
-    text_to_tokens, _, _, _ = model_loader.load_funcs(language, lang_model_file)
+    text_to_tokens = model_loader.load_tokenize_func(language)
 
     r = []
     for tf in file_names:
@@ -138,8 +138,8 @@ def do_parse_and_tokenize(file_names: List[str], language: str, lang_model_file:
     return r
 
 
-def do_parse_and_tokenize_i(d: Tuple[List[str], str, str, bool]) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
-    return do_parse_and_tokenize(d[0], d[1], d[2], d[3])
+def do_parse_and_tokenize_i(d: Tuple[List[str], str, bool]) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
+    return do_parse_and_tokenize(d[0], d[1], d[2])
 
 
 def prune_by_keywords(
@@ -266,6 +266,8 @@ def main():
         eprint("Error: not found Doc2Vec model for language: %s" % language)
         sys.exit("  Specify either: %s" % ", ".join(l for l, _d in lang_candidates))
 
+    text_to_tokens = model_loader.load_tokenize_func(language)
+
     lang_model_files = model_loader.get_model_files(language)
     assert lang_model_files
     if len(lang_model_files) >= 2:
@@ -274,35 +276,16 @@ def main():
         eprint("   re-install a model for the language.")
         sys.exit(1)
     lang_model_file = lang_model_files[0]
-    (
-        text_to_tokens,
-        tokens_to_vector,
-        find_oov_tokens,
-        get_index_db_name,
-    ) = model_loader.load_funcs(language, lang_model_file)
-
-    tokens = text_to_tokens(pattern)
-    oov_tokens = find_oov_tokens(tokens)
-    if set(tokens) == set(oov_tokens) and not unknown_word_as_keyword:
-        sys.exit("Error: <pattern> not including any known words")
-    pattern_vec = tokens_to_vector(tokens)
-    keyword_set = frozenset(oov_tokens if unknown_word_as_keyword else [])
-    if unknown_word_as_keyword:
-        if oov_tokens:
-            eprint("> keywords: %s" % ", ".join(sorted(keyword_set)))
-    else:
-        if oov_tokens:
-            eprint("> Warning: unknown words: %s" % ", ".join(oov_tokens))
 
     db = None
     if os.path.isdir(DB_DIR):
-        db_file = os.path.join(DB_DIR, get_index_db_name())
+        db_file = os.path.join(DB_DIR, model_loader.get_index_db_name(language, lang_model_file))
         db = index_db.open(db_file, window_size)
 
     files_stored = []
     files_not_stored = []
     read_from_stdin = False
-    if db is not None and not keyword_set:
+    if db is not None and not unknown_word_as_keyword:
         for tf in target_files:
             if tf == "-":
                 read_from_stdin = True
@@ -323,6 +306,26 @@ def main():
     else:
         def inner_product(dv: Vec, pv: Vec) -> float:
             return float(np.inner(dv, pv))
+
+    chunk_size = max(10, min(len(target_files) // 200, 100))
+    chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
+    tokenize_it = executor.map(do_parse_and_tokenize_i, [(chunk, language, verbose) for chunk in chunks])
+
+    tokens_to_vector, find_oov_tokens = model_loader.load_embedding_funcs(language, lang_model_file)
+
+    tokens = text_to_tokens(pattern)
+    oov_tokens = find_oov_tokens(tokens)
+    if set(tokens) == set(oov_tokens) and not unknown_word_as_keyword:
+        sys.exit("Error: <pattern> not including any known words")
+    pattern_vec = tokens_to_vector(tokens)
+    keyword_set = frozenset(oov_tokens if unknown_word_as_keyword else [])
+    if unknown_word_as_keyword:
+        if oov_tokens:
+            eprint("> keywords: %s" % ", ".join(sorted(keyword_set)))
+    else:
+        if oov_tokens:
+            eprint("> Warning: unknown words: %s" % ", ".join(oov_tokens))
 
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
@@ -346,7 +349,6 @@ def main():
 
     tfi = -1
     tf = None
-    chunk_size = max(10, min(len(target_files) // 200, 100))
     len_target_files = len(target_files)
     try:
         for tfi, tf in enumerate(files_stored):
@@ -362,33 +364,33 @@ def main():
             update_search_results("-", pos_vecs, lines, line_tokens)
             tfi += 1
 
-        chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
-        with concurrent.futures.ProcessPoolExecutor(max_workers=worker) as executor:
-            try:
-                for cr in executor.map(do_parse_and_tokenize_i, [(chunk, language, lang_model_file, verbose) for chunk in chunks]):
-                    for i, r in enumerate(cr):
-                        tfi += 1
-                        if r is None:
-                            continue
-                        tf, lines, line_tokens = r
-                        if db is None:
-                            pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+        try:
+            for cr in tokenize_it:
+                for i, r in enumerate(cr):
+                    tfi += 1
+                    if r is None:
+                        continue
+                    tf, lines, line_tokens = r
+                    if db is None:
+                        pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+                    else:
+                        if db.has(tf):
+                            pos_vecs = db.lookup(tf)
                         else:
-                            if db.has(tf):
-                                pos_vecs = db.lookup(tf)
-                            else:
-                                pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-                                db.store(tf, pos_vecs)
-                        update_search_results(tf, pos_vecs, lines, line_tokens)
-                        if verbose and i == 0:
-                            max_tf = heapq.nlargest(1, search_results)
-                            if max_tf:
-                                _ip, f, sr, _ls = max_tf[0]
-                                top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
-                                eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
-            except KeyboardInterrupt as e:
-                executor.shutdown()
-                raise e
+                            pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+                            db.store(tf, pos_vecs)
+                    update_search_results(tf, pos_vecs, lines, line_tokens)
+                    if verbose and i == 0:
+                        max_tf = heapq.nlargest(1, search_results)
+                        if max_tf:
+                            _ip, f, sr, _ls = max_tf[0]
+                            top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
+                            eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
+        except KeyboardInterrupt as e:
+            executor.shutdown(wait=False)
+            raise e
+        else:
+            executor.shutdown()
         if verbose:
             eprint("\x1b[1K\x1b[1G")
     except KeyboardInterrupt:

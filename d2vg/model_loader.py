@@ -95,11 +95,7 @@ def exit_with_installation_message(e: ModuleNotFoundError, lang: str):
     sys.exit(1)
 
 
-def load_funcs(
-    lang: str, lang_model_path: str
-) -> Tuple[Callable[[str], List[str]], Callable[[List[str]], Vec], Callable[[Iterable[str]], List[str]], Callable[[], str],]:
-    model = Doc2Vec.load(lang_model_path)
-
+def load_tokenize_func(lang: str) -> Callable[[str], List[str]]:
     if lang == "ja":
         try:
             from janome.tokenizer import Tokenizer
@@ -139,8 +135,17 @@ def load_funcs(
             tokens = list(tokenize(text))
             return tokens
 
-    def get_index_db_name() -> str:
-        return "%s-%s-%s" % (lang, file_signature(lang_model_path), INDEXER_VERSION)
+    return text_to_tokens
+
+
+def get_index_db_name(lang: str, lang_model_path: str):
+    return "%s-%s-%s" % (lang, file_signature(lang_model_path), INDEXER_VERSION)
+
+
+def load_embedding_funcs(
+    _lang: str, lang_model_path: str
+) -> Tuple[Callable[[List[str]], Vec], Callable[[Iterable[str]], List[str]]]:
+    model = Doc2Vec.load(lang_model_path)
 
     def find_oov_tokens(tokens: Iterable[str]) -> List[str]:
         return [t for t in tokens if model.wv.key_to_index.get(t, None) is None]
@@ -148,4 +153,4 @@ def load_funcs(
     def tokens_to_vec(tokens: List[str]) -> Vec:
         return model.infer_vector(tokens)
 
-    return text_to_tokens, tokens_to_vec, find_oov_tokens, get_index_db_name
+    return tokens_to_vec, find_oov_tokens
