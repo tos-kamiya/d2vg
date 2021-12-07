@@ -240,7 +240,7 @@ def main():
     verbose = args["--verbose"]
     search_paragraph = args["--paragraph"]
     unknown_word_as_keyword = args["--unknown-word-as-keyword"]
-    worker = int(args["--worker"]) if args["--worker"] else 1
+    worker = int(args["--worker"]) if args["--worker"] else None
     if worker == 0:
         worker = multiprocessing.cpu_count()
     headline_len = int(args["--headline-length"])
@@ -319,8 +319,12 @@ def main():
 
     chunk_size = max(10, min(len(target_files) // 200, 100))
     chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-    tokenize_it = executor.map(do_parse_and_tokenize_i, [(chunk, language, verbose) for chunk in chunks])
+    if worker is not None:
+        executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
+        tokenize_it = executor.map(do_parse_and_tokenize_i, [(chunk, language, verbose) for chunk in chunks])
+    else:
+        executor = None
+        tokenize_it = map(do_parse_and_tokenize_i, [(chunk, language, verbose) for chunk in chunks])
 
     tokens_to_vector, find_oov_tokens = model_loader.load_embedding_funcs(language, lang_model_file)
 
@@ -397,11 +401,13 @@ def main():
                             top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
                             eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
         except KeyboardInterrupt as e:
-            executor.shutdown(wait=False)
-            kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
+            if executor is not None:
+                executor.shutdown(wait=False)
+                kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
             raise e
         else:
-            executor.shutdown()
+            if executor is not None:
+                executor.shutdown()
         if verbose:
             eprint("\x1b[1K\x1b[1G")
     except KeyboardInterrupt:
