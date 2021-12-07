@@ -146,6 +146,6 @@ def load_funcs(
         return [t for t in tokens if model.wv.key_to_index.get(t, None) is None]
 
     def tokens_to_vec(tokens: List[str]) -> Vec:
-        return model.infer_vector(tokens, epochs=10)
+        return model.infer_vector(tokens)
 
     return text_to_tokens, tokens_to_vec, find_oov_tokens, get_index_db_name
