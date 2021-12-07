@@ -4,13 +4,18 @@ import unittest
 
 from itertools import zip_longest
 from pathlib import Path
-import re
 import tempfile
+import time
 
 import numpy as np
 
 from d2vg import types
 from d2vg import d2vg
+
+
+# def wait_1sec(*args):
+#     time.sleep(1)
+#     return None
 
 
 class D2vgHelperFunctionsTest(unittest.TestCase):
@@ -156,6 +161,17 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
         actual = d2vg.prune_overlapped_paragraphs(ip_srlls)
         expected = [ip_srlls[0], ip_srlls[2]]
         self.assertEqual(actual, expected)
+    
+    # def test_kill_child_processes(self):
+    #     executor = concurrent.futures.ProcessPoolExecutor(max_workers=2)
+    #     t1 = time.time()
+    #     for i, _r in enumerate(executor.map(wait_1sec, [None in range(100)])):
+    #         if i == 2:
+    #             executor.shutdown(wait=False)
+    #             d2vg.kill_all_subprocesses()
+    #             break  # for i
+    #     t2 = time.time()
+    #     self.assertTrue(t2 <= t1 + 4)
 
 
 if __name__ == "__main__":

@@ -180,6 +180,16 @@ def prune_overlapped_paragraphs(ip_srlls: List[Tuple[float, Tuple[int, int], Lis
     return [ip_srll for i, ip_srll in enumerate(ip_srlls) if i not in dropped_indice_set]
 
 
+# ref: https://psutil.readthedocs.io/en/latest/index.html?highlight=Process#kill-process-tree
+def kill_all_subprocesses():
+    import psutil
+    for child in psutil.Process(os.getpid()).children(recursive=True):
+        try:
+            child.kill()
+        except psutil.NoSuchProcess:
+            pass
+
+
 __doc__: str = """Doc2Vec Grep.
 
 Usage:
@@ -388,6 +398,7 @@ def main():
                             eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
         except KeyboardInterrupt as e:
             executor.shutdown(wait=False)
+            kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
             raise e
         else:
             executor.shutdown()
