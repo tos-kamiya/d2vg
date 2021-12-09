@@ -1,5 +1,7 @@
 ![test workflow](https://github.com/tos-kamiya/d2vg/workflows/Tests/badge.svg)
 
+&rarr; [Japanese doc](https://github.com/tos-kamiya/d2vg/blob/main/README.ja_JP.md)
+
 # d2vg
 
 d2vg, a Doc2Vec grep.
@@ -12,8 +14,8 @@ Use Doc2Vec models to search document files that contain similar parts to the ph
 
 ## Installation
 
-* &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.md)
-* &rarr; [Installation on Windows](docs/installation-on-windows.md)
+&rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.md)  
+&rarr; [Installation on Windows](docs/installation-on-windows.md)  
 
 For installation of Chinese Doc2Vec model, replace `d2vg` with `d2vg[zh]` in the line of the installation instructions.
 Similarly, for Japanese or Korean, replace `d2vg` with `d2vg[ja]` or `d2vg[ko]`, respectively.
@@ -149,6 +151,7 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 - [x] Combining keyword search
 - [x] Easy installation
 - [ ] Support and tune more languages (experimental support: ko, zh)
+- [ ] Explicit indexing control command in case millions of files to search
 
 ## Acknowledgements
 

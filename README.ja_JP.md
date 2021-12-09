@@ -12,8 +12,8 @@ Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む�
 
 ## インストール
 
-* &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.ja_JP.md)
-* &rarr; [Installation on Windows](docs/installation-on-windows.ja_JP.md)
+&rarr; [Ubuntuでのインストール](docs/installation-on-ubuntu.ja_JP.md)  
+&rarr; [Windowsでのインストール](docs/installation-on-windows.ja_JP.md)  
 
 中文の場合は、インストールの手順で、次の行の`d2vg[ja]`を`d2vg[zh]`に変更してください。
 韓国語の場合は、同様に、`d2vg[ja]`を`d2vg[ko]`に変更してください。
@@ -150,6 +150,7 @@ Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 - [x] キーワード検索の併用
 - [x] インストールを容易に
 - [ ] より多くの言語サポートおよびチューニング(実験的サポート: ko, zh)
+- [ ] 検索対象のファイルが数百万個になったときのための明示的なインデックス化コマンド
 
 ## 謝辞
 
