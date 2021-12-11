@@ -85,27 +85,25 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
 
         actual = d2vg.extract_pos_vecs(line_tokens, tokens_to_vector, 2)
         expected = [
-            (0, 2, np.array([6.0, 1.0], dtype=np.float32)),
-            (1, 3, np.array([9.0, 4.0], dtype=np.float32)),
-            (2, 3, np.array([9.0, 7.0], dtype=np.float32)),
+            ((0, 2), np.array([6.0, 1.0], dtype=np.float32)),
+            ((1, 3), np.array([9.0, 4.0], dtype=np.float32)),
+            ((2, 3), np.array([9.0, 7.0], dtype=np.float32)),
         ]
         for a, e in zip_longest(actual, expected):
             self.assertEqual(a[0], e[0])
-            self.assertEqual(a[1], e[1])
-            for a2i, e2i in zip_longest(a[2], e[2]):
-                self.assertEqual(a2i, e2i)
+            for a1i, e1i in zip_longest(a[1], e[1]):
+                self.assertEqual(a1i, e1i)
 
         actual = d2vg.extract_pos_vecs(line_tokens, tokens_to_vector, 1)
         expected = [
-            (0, 1, np.array([3.0, 1.0], dtype=np.float32)),
-            (1, 2, np.array([6.0, 4.0], dtype=np.float32)),
-            (2, 3, np.array([9.0, 7.0], dtype=np.float32)),
+            ((0, 1), np.array([3.0, 1.0], dtype=np.float32)),
+            ((1, 2), np.array([6.0, 4.0], dtype=np.float32)),
+            ((2, 3), np.array([9.0, 7.0], dtype=np.float32)),
         ]
         for a, e in zip_longest(actual, expected):
             self.assertEqual(a[0], e[0])
-            self.assertEqual(a[1], e[1])
-            for a2i, e2i in zip_longest(a[2], e[2]):
-                self.assertEqual(a2i, e2i)
+            for a1i, e1i in zip_longest(a[1], e[1]):
+                self.assertEqual(a1i, e1i)
 
     def test_prune_by_keywords(self):
         lines = ["a b", "c d", "e f", "b a"]

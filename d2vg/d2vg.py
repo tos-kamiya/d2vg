@@ -26,6 +26,20 @@ __version__ = importlib.metadata.version("d2vg")
 DB_DIR = ".d2vg"
 
 
+def eprint(message: str, end='\n'):
+    print(message, file=sys.stderr, end=end, flush=True)
+
+
+# ref: https://psutil.readthedocs.io/en/latest/index.html?highlight=Process#kill-process-tree
+def kill_all_subprocesses():
+    import psutil
+    for child in psutil.Process(os.getpid()).children(recursive=True):
+        try:
+            child.kill()
+        except psutil.NoSuchProcess:
+            pass
+
+
 T = TypeVar("T")
 
 
@@ -106,7 +120,7 @@ def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[L
     if window_size == 1:
         for pos, tokens in enumerate(line_tokens):
             vec = tokens_to_vector(tokens)
-            pos_vecs.append((pos, pos + 1, vec))
+            pos_vecs.append(((pos, pos + 1), vec))
     else:
         for pos in range(0, len(line_tokens), window_size // 2):
             end_pos = min(pos + window_size, len(line_tokens))
@@ -114,7 +128,7 @@ def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[L
             for t in line_tokens[pos:end_pos]:
                 tokens.extend(t)
             vec = tokens_to_vector(tokens)
-            pos_vecs.append((pos, end_pos, vec))
+            pos_vecs.append(((pos, end_pos), vec))
     return pos_vecs
 
 
@@ -130,7 +144,7 @@ def do_parse_and_tokenize(file_names: List[str], language: str, verbose: bool) -
         except parsers.ParseError as e:
             if verbose:
                 print('', file=sys.stderr)
-            print("> Warning: %s" % e, file=sys.stderr, flush=True)
+            eprint("> Warning: %s" % e)
             r.append(None)
         else:
             line_tokens = [text_to_tokens(L) for L in lines]
@@ -180,59 +194,7 @@ def prune_overlapped_paragraphs(ip_srlls: List[Tuple[float, Tuple[int, int], Lis
     return [ip_srll for i, ip_srll in enumerate(ip_srlls) if i not in dropped_indice_set]
 
 
-# ref: https://psutil.readthedocs.io/en/latest/index.html?highlight=Process#kill-process-tree
-def kill_all_subprocesses():
-    import psutil
-    for child in psutil.Process(os.getpid()).children(recursive=True):
-        try:
-            child.kill()
-        except psutil.NoSuchProcess:
-            pass
-
-
-__doc__: str = """Doc2Vec Grep.
-
-Usage:
-  d2vg [options] <pattern> <file>...
-  d2vg --list-lang
-  d2vg --help
-  d2vg --version
-
-Options:
-  --lang=LANG, -l LANG          Model language.
-  --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
-  --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
-  --paragraph, -p               Search paragraphs in documents.
-  --window=NUM, -w NUM          Line window size [default: 20].
-  --normalize-by-length, -n     Normalize by length of document when calculating similarity.
-  --worker=NUM, -j NUM          Number of worker processes. `0` is interpreted as number of CPU cores.
-  --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
-  --list-lang                   Listing the languages in which the corresponding models are installed.
-  --verbose, -v                 Verbose.
-  --headline-length NUM, -a NUM     Length of headline [default: 80].
-"""
-
-
-def main():
-    def eprint(message: str, end="\n"):
-        print(message, file=sys.stderr, end=end, flush=True)
-
-    args = docopt(__doc__, version="d2vg %s" % __version__)
-
-    lang_candidates = model_loader.get_model_langs()
-    if args["--list-lang"]:
-        lang_candidates.sort()
-        print("\n".join("%s %s" % (l, repr(m)) for l, m in lang_candidates))
-        prevl = None
-        for l, _m in lang_candidates:
-            if l == prevl:
-                eprint("> Warning: multiple Doc2Vec models are found for language: %s" % l)
-                eprint(">   Remove the models with `d2vg-setup-model --delete -l %s`, then" % l)
-                eprint(">   re-install a model for the language.")
-            prevl = l
-        sys.exit(0)
-
-    language = None
+def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, str]) -> None:
     pattern = args["<pattern>"]
     target_files = args["<file>"]
     top_n = int(args["--topn"])
@@ -246,17 +208,6 @@ def main():
     headline_len = int(args["--headline-length"])
     assert headline_len >= 8
     normalize_by_length = args['--normalize-by-length']
-
-    lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
-    if lng is not None:
-        i = lng.find("_")
-        if i >= 0:
-            lng = lng[:i]
-        language = lng
-    if args["--lang"]:
-        language = args["--lang"]
-    if language is None:
-        sys.exit("Error: specify the language with option -l")
 
     target_files = expand_target_files(target_files)
     if not target_files:
@@ -272,25 +223,12 @@ def main():
     if not pattern:
         sys.exit("Error: pattern string is empty.")
 
-    if not any(language == l for l, _d in lang_candidates):
-        eprint("Error: not found Doc2Vec model for language: %s" % language)
-        sys.exit("  Specify either: %s" % ", ".join(l for l, _d in lang_candidates))
-
     text_to_tokens = model_loader.load_tokenize_func(language)
-
-    lang_model_files = model_loader.get_model_files(language)
-    assert lang_model_files
-    if len(lang_model_files) >= 2:
-        eprint("Error: multiple Doc2Vec models are found for language: %s" % language)
-        eprint("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % language)
-        eprint("   re-install a model for the language.")
-        sys.exit(1)
-    lang_model_file = lang_model_files[0]
 
     db = None
     if os.path.isdir(DB_DIR):
-        db_file = os.path.join(DB_DIR, model_loader.get_index_db_name(language, lang_model_file))
-        db = index_db.open(db_file, window_size)
+        db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+        db = index_db.open(db_base_path, 'c', window_size=window_size)
 
     files_stored = []
     files_not_stored = []
@@ -326,7 +264,9 @@ def main():
         executor = None
         tokenize_it = map(do_parse_and_tokenize_i, [(chunk, language, verbose) for chunk in chunks])
 
-    tokens_to_vector, find_oov_tokens = model_loader.load_embedding_funcs(language, lang_model_file)
+    model = model_loader.D2VModel(language, lang_model_file)
+    tokens_to_vector = model.tokens_to_vec
+    find_oov_tokens = model.find_oov_tokens
 
     tokens = text_to_tokens(pattern)
     oov_tokens = find_oov_tokens(tokens)
@@ -344,7 +284,7 @@ def main():
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
     def update_search_results(tf, pos_vecs, lines, line_tokens):
-        ip_srlls = [(inner_product(vec, pattern_vec), (s, e), lines, line_tokens) for s, e, vec in pos_vecs]  # ignore type mismatch
+        ip_srlls = [(inner_product(vec, pattern_vec), sr, lines, line_tokens) for sr, vec in pos_vecs]  # ignore type mismatch
 
         if keyword_set:
             min_ip = heapq.nsmallest(1, search_results)[0][0] if len(search_results) >= top_n else None
@@ -361,6 +301,13 @@ def main():
             if len(search_results) > top_n:
                 _smallest = heapq.heappop(search_results)
 
+    def verbose_print_cur_status(tfi):
+        max_tf = heapq.nlargest(1, search_results)
+        if max_tf:
+            _ip, f, sr, _ls = max_tf[0]
+            top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
+            eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
+    
     tfi = -1
     tf = None
     len_target_files = len(target_files)
@@ -369,6 +316,8 @@ def main():
             assert db is not None
             pos_vecs = db.lookup(tf)
             update_search_results(tf, pos_vecs, None, None)
+            if verbose and tfi % 100 == 1:
+                verbose_print_cur_status(tfi)
         tfi = len(files_stored)
 
         if read_from_stdin:
@@ -395,11 +344,7 @@ def main():
                             db.store(tf, pos_vecs)
                     update_search_results(tf, pos_vecs, lines, line_tokens)
                     if verbose and i == 0:
-                        max_tf = heapq.nlargest(1, search_results)
-                        if max_tf:
-                            _ip, f, sr, _ls = max_tf[0]
-                            top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
-                            eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
+                        verbose_print_cur_status(tfi)
         except KeyboardInterrupt as e:
             if executor is not None:
                 executor.shutdown(wait=False)
@@ -429,6 +374,169 @@ def main():
         print("%g\t%s:%d-%d\t%s" % (ip, tf, sr[0] + 1, sr[1] + 1, headline))
         if i >= top_n > 0:
             break  # for i
+
+
+def do_store_index(
+    file_names: List[str], 
+    language: str, 
+    lang_model_file: str, 
+    window_size: int, 
+    verbose: bool,
+) -> None:
+    parser = parsers.Parser()
+    parse = parser.parse
+    text_to_tokens = model_loader.load_tokenize_func(language)
+    model = model_loader.D2VModel(language, lang_model_file)
+    tokens_to_vector = model.tokens_to_vec
+
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    db = index_db.open(db_base_path, 'c', window_size=window_size)
+
+    try:
+        for tf in file_names:
+            if db.has(tf):
+                continue
+            try:
+                lines = parse(tf)
+            except parsers.ParseError as e:
+                if verbose:
+                    print('', file=sys.stderr)
+                eprint("> Warning: %s" % e)
+            else:
+                line_tokens = [text_to_tokens(L) for L in lines]
+                pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+                db.store(tf, pos_vecs)
+    finally:
+        db.close()
+
+
+def do_store_index_i(d: Tuple[List[str], str, str, int, bool]) -> None:
+    return do_store_index(d[0], d[1], d[2], d[3], d[4])
+
+
+def do_indexing(language: str, lang_model_file: str, args: Dict[str, str]) -> None:
+    target_files = args["<file>"]
+    window_size = int(args["--window"])
+    verbose = args["--verbose"]
+    worker = int(args["--worker"])
+
+    if not os.path.exists(DB_DIR):
+        eprint('> Create a `.d2vg` directory for index data.')
+        os.mkdir(DB_DIR)
+
+    cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    c = index_db.exists(db_base_path)
+    if c > 0:
+        if cluster_size != c:
+            sys.exit('Error: index db exists but incompatible. Remove `.d2vg` directory before indexing.')
+    else:
+        db = index_db.open(db_base_path, 'c', cluster_size, window_size)
+        db.close()
+
+    target_files = expand_target_files(target_files)
+    if not target_files:
+        sys.exit("Error: no target files are given.")
+
+    file_splits = [list() for _ in range(cluster_size)]
+    for tf in target_files:
+        c32 = index_db.file_name_crc(tf)
+        if c32 is None:
+            sys.exit("Error: Not a relative path: %s" % repr(tf))
+        file_splits[c32 % cluster_size].append(tf)
+    file_splits.sort(key=lambda file_list: len(file_list), reverse=True)  # prioritize chunks containing large number of files
+
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
+    indexing_it = executor.map(do_store_index_i, [(chunk, language, lang_model_file, window_size, verbose) for chunk in file_splits])
+    try:
+        if verbose:
+            print("\x1b[1K\x1b[1G" + "[%d/%d] indexing" % (0, len(file_splits)), end="", flush=True)
+        for i, _ in enumerate(indexing_it):
+            if verbose:
+                print("\x1b[1K\x1b[1G" + "[%d/%d] indexing" % (i + 1, len(file_splits)), end="", flush=True)
+    except KeyboardInterrupt as e:
+        executor.shutdown(wait=False)
+        kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
+        raise e
+    else:
+        if executor is not None:
+            executor.shutdown()
+    finally:
+        if verbose:
+            print("\x1b[1K\x1b[1G", flush=True)
+
+
+__doc__: str = """Doc2Vec Grep.
+
+Usage:
+  d2vg [-l LANG] [-K] [-t NUM] [-p] [-w NUM] [-n] [-j WORKER] [-f] [-v] [-a NUM] <pattern> <file>...
+  d2vg --indexing [-l LANG] -j WORKER [-w NUM] [-v] <file>...
+  d2vg --list-lang
+  d2vg --help
+  d2vg --version
+
+Options:
+  --lang=LANG, -l LANG          Model language.
+  --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
+  --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
+  --paragraph, -p               Search paragraphs in documents.
+  --window=NUM, -w NUM          Line window size [default: {default_window_size}].
+  --normalize-by-length, -n     Normalize by length of document when calculating similarity.
+  --worker=WORKER, -j WORKER    Number of worker processes. `0` is interpreted as number of CPU cores.
+  --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
+  --list-lang                   Listing the languages in which the corresponding models are installed.
+  --verbose, -v                 Verbose.
+  --headline-length NUM, -a NUM     Length of headline [default: 80].
+  --indexing                    Create index data for the files and save it in `.d2vg` directory.
+""".format(default_window_size = model_loader.DEFAULT_WINDOW_SIZE)
+
+
+def main():
+    args = docopt(__doc__, version="d2vg %s" % __version__)
+
+    lang_candidates = model_loader.get_model_langs()
+    if args["--list-lang"]:
+        lang_candidates.sort()
+        print("\n".join("%s %s" % (l, repr(m)) for l, m in lang_candidates))
+        prevl = None
+        for l, _m in lang_candidates:
+            if l == prevl:
+                eprint("> Warning: multiple Doc2Vec models are found for language: %s" % l)
+                eprint(">   Remove the models with `d2vg-setup-model --delete -l %s`, then" % l)
+                eprint(">   re-install a model for the language.")
+            prevl = l
+        sys.exit(0)
+
+    language = None
+    lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
+    if lng is not None:
+        i = lng.find("_")
+        if i >= 0:
+            lng = lng[:i]
+        language = lng
+    if args["--lang"]:
+        language = args["--lang"]
+    if language is None:
+        sys.exit("Error: specify the language with option -l")
+
+    if not any(language == l for l, _d in lang_candidates):
+        eprint("Error: not found Doc2Vec model for language: %s" % language)
+        sys.exit("  Specify either: %s" % ", ".join(l for l, _d in lang_candidates))
+
+    lang_model_files = model_loader.get_model_files(language)
+    assert lang_model_files
+    if len(lang_model_files) >= 2:
+        eprint("Error: multiple Doc2Vec models are found for language: %s" % language)
+        eprint("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % language)
+        eprint("   re-install a model for the language.")
+        sys.exit(1)
+    lang_model_file = lang_model_files[0]
+
+    if args['--indexing']:
+        do_indexing(language, lang_model_file, args)
+    else:
+        do_incremental_search(language, lang_model_file, args)
+
 
 
 if __name__ == "__main__":
