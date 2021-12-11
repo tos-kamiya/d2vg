@@ -376,6 +376,151 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, s
             break  # for i
 
 
+def sub_search(
+    pattern_vec: Vec, 
+    db_base_path: str, 
+    db_index: int, 
+    top_n: int, 
+    normalize_by_length: bool, 
+    search_paragraph: bool
+) -> List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]]:
+    if normalize_by_length:
+        def inner_product(dv: Vec, pv: Vec) -> float:
+            return float(np.inner(unitvec(dv), pv))
+    else:
+        def inner_product(dv: Vec, pv: Vec) -> float:
+            return float(np.inner(dv, pv))
+
+    search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
+    it = index_db.open_item_iterator(db_base_path, db_index)
+    for fsig, _window_size, pos_vecs in it:
+        ip_srlls = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
+        if ip_srlls:
+            if search_paragraph:
+                ip_srlls = prune_overlapped_paragraphs(ip_srlls)
+            else:
+                ip_srlls = [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
+
+        for ip, subrange, lines, _line_tokens in ip_srlls:
+            heapq.heappush(search_results, (ip, fsig, subrange, lines))
+            if len(search_results) > top_n:
+                _smallest = heapq.heappop(search_results)
+    it.close()
+
+    search_results = heapq.nlargest(top_n, search_results)
+    return search_results
+
+
+def sub_search_i(a: Tuple[Vec, str, int, int, bool, bool]) -> List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]]:
+    return sub_search(*a)
+
+
+def do_index_search(language: str, lang_model_file: str, args: Dict[str, str]) -> None:
+    pattern = args["<pattern>"]
+    top_n = int(args["--topn"])
+    verbose = args["--verbose"]
+    search_paragraph = args["--paragraph"]
+    worker = int(args["--worker"]) if args["--worker"] else None
+    if worker == 0:
+        worker = multiprocessing.cpu_count()
+    headline_len = int(args["--headline-length"])
+    assert headline_len >= 8
+    normalize_by_length = args['--normalize-by-length']
+
+    if args["<file>"] or args["--unknown-word-as-keyword"]:
+        sys.exit("Error: invalid option with --cached")
+
+    parser = parsers.Parser()
+    parse = parser.parse
+
+    if args["--pattern-from-file"]:
+        lines = parse(pattern)
+        pattern = "\n".join(lines)
+
+    if not pattern:
+        sys.exit("Error: pattern string is empty.")
+
+    text_to_tokens = model_loader.load_tokenize_func(language)
+
+    if not os.path.isdir(DB_DIR):
+        sys.exit("Error: no index DB (directory `.d2vg`)")
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    r = index_db.exists(db_base_path)
+    if r == 0:
+        sys.exit("Error: no index DB (directory `.d2vg`)")
+    cluster_size = r
+
+    model = model_loader.D2VModel(language, lang_model_file)
+
+    tokens = text_to_tokens(pattern)
+    oov_tokens = model.find_oov_tokens(tokens)
+    if set(tokens) == set(oov_tokens):
+        sys.exit("Error: <pattern> not including any known words")
+    if oov_tokens:
+        eprint("> Warning: unknown words: %s" % ", ".join(oov_tokens))
+    pattern_vec = model.tokens_to_vec(tokens)
+    del model
+
+    search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
+
+    if verbose:
+        eprint("\x1b[1K\x1b[1G" + "[0/%d]" % cluster_size, end="")
+    if worker is not None:
+        executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
+        subit = executor.map(sub_search_i, [(pattern_vec, db_base_path, i, top_n, normalize_by_length, search_paragraph) for i in range(cluster_size)])
+    else:
+        executor = None
+        subit = (sub_search(pattern_vec, db_base_path, i, top_n, normalize_by_length, search_paragraph) for i in range(cluster_size))
+    try:
+        for subi, sub_search_results in enumerate(subit):
+            for item in sub_search_results:
+                ip, fsig, sr, lines = item
+                fn, fs, fmt = model_loader.decode_file_signature(fsig)
+                existing_file_signature = model_loader.file_signature(fn)
+                if existing_file_signature != fsig:
+                    if verbose:
+                        eprint("\x1b[1K\x1b[1G")
+                    eprint("> Warning: obsolete index data. Skip file: %s" % fn)
+                    continue  # for item
+                heapq.heappush(search_results, item)
+                if len(search_results) > top_n:
+                    _smallest = heapq.heappop(search_results)
+
+            if verbose:
+                max_tf = heapq.nlargest(1, search_results)
+                if max_tf:
+                    _ip, fsig, sr, _ls = max_tf[0]
+                    fn, fs, fmt = model_loader.decode_file_signature(fsig)
+                    top1_message = "Tentative top-1: %s:%d-%d" % (fn, sr[0] + 1, sr[1] + 1)
+                    eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (subi + 1, cluster_size, top1_message), end="")
+    except KeyboardInterrupt as e:
+        if executor is not None:
+            executor.shutdown(wait=False)
+            kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
+        raise e
+    else:
+        if executor is not None:
+            executor.shutdown()
+    finally:
+        if verbose:
+            print("\x1b[1K\x1b[1G", flush=True)
+
+    model = model_loader.D2VModel(language, lang_model_file)
+
+    search_results = heapq.nlargest(top_n, search_results)
+    for i, (ip, fsig, sr, lines) in enumerate(search_results):
+        if ip < 0:
+            break  # for i
+        fn, fs, fmt = model_loader.decode_file_signature(fsig)
+        existing_file_signature = model_loader.file_signature(fn)
+        assert existing_file_signature == fsig
+        lines = parse(fn)
+        headline, _max_sr = extract_headline(lines, sr, text_to_tokens, model.tokens_to_vec, pattern_vec, headline_len)
+        print("%g\t%s:%d-%d\t%s" % (ip, fn, sr[0] + 1, sr[1] + 1, headline))
+        if i >= top_n > 0:
+            break  # for i
+
+
 def do_store_index(
     file_names: List[str], 
     language: str, 
@@ -459,8 +604,7 @@ def do_indexing(language: str, lang_model_file: str, args: Dict[str, str]) -> No
         kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
         raise e
     else:
-        if executor is not None:
-            executor.shutdown()
+        executor.shutdown()
     finally:
         if verbose:
             print("\x1b[1K\x1b[1G", flush=True)
@@ -469,7 +613,8 @@ def do_indexing(language: str, lang_model_file: str, args: Dict[str, str]) -> No
 __doc__: str = """Doc2Vec Grep.
 
 Usage:
-  d2vg [-l LANG] [-K] [-t NUM] [-p] [-w NUM] [-n] [-j WORKER] [-f] [-v] [-a NUM] <pattern> <file>...
+  d2vg [-l LANG] [-K] [-t NUM] [-p] [-w NUM] [-n] [-j WORKER] [-v] [-a WIDTH] [-f] <pattern> <file>...
+  d2vg --cached [-l LANG] [-t NUM] [-p] [-w NUM] [-n] [-j WORKER] [-v] [-a WIDTH] [-f] <pattern>
   d2vg --indexing [-l LANG] -j WORKER [-w NUM] [-v] <file>...
   d2vg --list-lang
   d2vg --help
@@ -486,9 +631,12 @@ Options:
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --list-lang                   Listing the languages in which the corresponding models are installed.
   --verbose, -v                 Verbose.
-  --headline-length NUM, -a NUM     Length of headline [default: 80].
+  --headline-length WIDTH, -a WIDTH     Length of headline [default: 80].
   --indexing                    Create index data for the files and save it in `.d2vg` directory.
+  --cached, -C                  Search only the files in the index data.
 """.format(default_window_size = model_loader.DEFAULT_WINDOW_SIZE)
+
+# todo: should rename --normalize-by-length to --normalize-vector ?
 
 
 def main():
@@ -534,6 +682,8 @@ def main():
 
     if args['--indexing']:
         do_indexing(language, lang_model_file, args)
+    elif args['--cached']:
+        do_index_search(language, lang_model_file, args)
     else:
         do_incremental_search(language, lang_model_file, args)
 

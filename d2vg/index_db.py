@@ -153,10 +153,54 @@ def open(
             raise IndexDbError('DB not found')
         for i in range(cluster_size):
             db_fn = '%s-%do%d%s' % (db_base_path, i, cluster_size, DB_FILE_EXTENSION)
-            db = sqldbm.open(db_fn, sqldbm.Mode.OPEN_CREATE)
+            db = sqldbm.open(db_fn, sqldbm.Mode.OPEN_CREATE_NEW)
             db.close()
         index_db = IndexDb(db_base_path, mode, cluster_size, window_size)
     else:
         cluster_size = r
         index_db = IndexDb(db_base_path, mode, cluster_size, window_size)
     return index_db
+
+
+class IndexDbItemIterator:
+    def close(self) -> None:
+        if self._db is not None:
+            self._db.close()
+
+    def __init__(self, base_path: str, index: int, cluster_size: int):
+        assert 0 <= index < cluster_size
+        self._base_path = base_path
+        self._cluster_size = cluster_size
+        db_fn = '%s-%do%d%s' % (self._base_path, index, self._cluster_size, DB_FILE_EXTENSION)
+        try:
+            db = sqldbm.open(db_fn, sqldbm.Mode.OPEN_READ_ONLY)
+        except sqlite3.OperationalError as e:
+            raise IndexDbError('fail to open slite3 db file: %s' % repr(db_fn)) from e
+        self._db = db
+        self._keys = db.keys()
+        self._i = -1
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> Tuple[str, int, List[PosVec]]:
+        if self._i + 1 >= len(self._keys):
+            raise StopIteration()
+        self._i += 1
+
+        key = self._keys[self._i]
+        i = key.rfind('-')
+        fsig = key[:i]
+        window_size = int(key[i+1:])
+        valueb = self._db[key]
+        pos_vecs = loads_pos_vecs(valueb)
+        return fsig, window_size, pos_vecs
+
+
+def open_item_iterator(db_base_path: str, db_index: int):
+    r = exists(db_base_path)
+    if r == 0:
+        raise IndexDbError('DB not found')
+    
+    cluster_size = r
+    return IndexDbItemIterator(db_base_path, db_index, cluster_size)

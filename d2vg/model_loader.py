@@ -23,12 +23,20 @@ _user_data_dir = appdirs.user_data_dir(_app_name, _author)
 _user_config_dir = appdirs.user_config_dir(_app_name)
 
 
-def file_signature(file_name) -> str:
-    return "%s-%s-%d" % (
-        os.path.basename(file_name),
-        os.path.getsize(file_name),
-        floor(os.path.getmtime(file_name)),
-    )
+def file_signature(file_name: str) -> str:
+    return "%s-%s-%d" % (file_name, os.path.getsize(file_name), floor(os.path.getmtime(file_name)))
+
+
+def decode_file_signature(fsig: str) -> Tuple[str, int, int]:
+    i = fsig.rfind('-')
+    assert i > 0
+    fs2 = fsig[:i - 1]
+    j = fs2.rfind('-')
+    assert j > 0
+    fn = fs2[:j]
+    size_str = fs2[j + 1]
+    mtime_str = fsig[i + 1:]
+    return fn, int(size_str), int(mtime_str)
 
 
 def get_model_root_dir() -> str:
@@ -141,7 +149,8 @@ def load_tokenize_func(lang: str) -> Callable[[str], List[str]]:
 
 
 def get_index_db_base_name(lang: str, lang_model_path: str):
-    return "%s-%s-%s" % (lang, file_signature(lang_model_path), INDEXER_VERSION)
+    fn = os.path.basename(lang_model_path)
+    return "%s-%s-%s" % (lang, fn, INDEXER_VERSION)
 
 
 class D2VModel:
