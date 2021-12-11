@@ -613,30 +613,28 @@ def do_indexing(language: str, lang_model_file: str, args: Dict[str, str]) -> No
 __doc__: str = """Doc2Vec Grep.
 
 Usage:
-  d2vg [-l LANG] [-K] [-t NUM] [-p] [-w NUM] [-n] [-j WORKER] [-v] [-a WIDTH] [-f] <pattern> <file>...
-  d2vg --cached [-l LANG] [-t NUM] [-p] [-w NUM] [-n] [-j WORKER] [-v] [-a WIDTH] [-f] <pattern>
-  d2vg --indexing [-l LANG] -j WORKER [-w NUM] [-v] <file>...
+  d2vg [-v] [-j WORKER] [-l LANG] [-K] [-t NUM] [-p] [-n] [-w NUM] [-a WIDTH] [-f] <pattern> <file>...
+  d2vg --cached [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-n] [-a WIDTH] [-f] <pattern>
+  d2vg --indexing [-v] -j WORKER [-l LANG] [-w NUM] <file>...
   d2vg --list-lang
   d2vg --help
   d2vg --version
 
 Options:
+  --verbose, -v                 Verbose.
+  --worker=WORKER, -j WORKER    Number of worker processes. `0` is interpreted as number of CPU cores.
   --lang=LANG, -l LANG          Model language.
   --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
   --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
   --paragraph, -p               Search paragraphs in documents.
+  --normalize-vector, -n        Normalize vector when calculating similarity.
   --window=NUM, -w NUM          Line window size [default: {default_window_size}].
-  --normalize-by-length, -n     Normalize by length of document when calculating similarity.
-  --worker=WORKER, -j WORKER    Number of worker processes. `0` is interpreted as number of CPU cores.
-  --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
-  --list-lang                   Listing the languages in which the corresponding models are installed.
-  --verbose, -v                 Verbose.
   --headline-length WIDTH, -a WIDTH     Length of headline [default: 80].
-  --indexing                    Create index data for the files and save it in `.d2vg` directory.
+  --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
   --cached, -C                  Search only the files in the index data.
+  --indexing                    Create index data for the files and save it in `.d2vg` directory.
+  --list-lang                   Listing the languages in which the corresponding models are installed.
 """.format(default_window_size = model_loader.DEFAULT_WINDOW_SIZE)
-
-# todo: should rename --normalize-by-length to --normalize-vector ?
 
 
 def main():

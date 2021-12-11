@@ -50,11 +50,11 @@ Verbose option. If specified, it will show the progress and the documents that h
 Select the Doc2Vec model that corresponds to the language. The available languages are `en`, `ja`, `ko`, and `zh`.
 
 `--unknown-word-as-keyword, -K`  
-In the case of a pattern containing unknown words, such words are considered keywords, and only documents matching the pattern and containing the keywords are returned as search results.
+If the query contains unknown words, the included unknown words are considered keywords. Only documents that match the query and contain the keywords will be returned as search results.
 
 `--topn=NUM, -t NUM`  
 Show top NUM documents as results. The default value is 20.
-Specify `0` to show all the documents searched, sorted by the degree of match to the pattern.
+Specify `0` to show all the documents searched, sorted by the degree of match to the query.
 
 `--paragraph, -p`  
 If this option is specified, each paragraph in one document file will be considered as a document. Multiple paragraphs of a single document file will be output in the search results.
@@ -64,8 +64,8 @@ If this option is not specified, one document file will be considered as one doc
 A chunk of lines specified by this number will be recognized as a paragraph.
 The default value is 20.
 
-`--normalize-by-length, -n`  
-When calculating similarity to a query, normalize by document length. When the length difference between paragraphs is large, the shorter paragraphs will be given priority in the search results. 
+`--normalize-vector, -n`  
+Normalize vectors, which are distributed representations of documents, to unit vectors when calculating similarity to query phrases. When the length difference between paragraphs is large, the shorter paragraphs will be given priority in the search results. 
 
 `--worker=NUM, -j NUM`
 Number of worker processes. `0` is interpreted as number of CPU cores.
@@ -79,7 +79,7 @@ If keywords are specified, only the part that contains all the keywords will be 
 Example: "HCI" was specified as a keyword  
 ![](images/example3.png)
 
-### Indexing
+### Incremental Indexing
 
 By letting d2vg create indexes of document files, you can improve the speed of the second and later searches from the same set of documents.
 
@@ -96,9 +96,9 @@ mkdir .d2vg
 ```
 
 The index DB is updated incrementally each time you perform a search.
-That is, when a new document is added and becomes the target of the search, the index data of that document is created and added to the index DB.
+That is, at the timing when a new document file has been added and gets searched, the index of that document file is created and added to the index DB.
 
-On the other hand, there is no function to automatically remove the index data of deleted documents from the database, so you should explicitly remove the `.d2vg` directory if necessary.
+On the other hand, there is no function to automatically remove the index data of deleted document files from the database, so you should explicitly remove the `.d2vg` directory if necessary.
 
 ```sh
 cd the/document/directory
@@ -110,6 +110,31 @@ For DOS prompt or Powershell, use `rd /s /q .d2vg` or `rm -r -fo .d2vg`, respect
 Example of execution with indexes enabled:  
 (In this example, it took 70+ seconds without indexing, but it was reduced to 4 seconds.)  
 ![](images/example2.png)
+
+### Explicit indexing and searching within the index
+
+There is a method to explicitly create an index and search within the index, especially assuming searching millions of document files.
+
+The index DB created by explicit indexing is exactly the same as the one created by normal incremental indexing.
+Therefore, explicit index creation and searching within an index can be mixed with incremental indexing. For example, index creation can be done by incremental indexing, and search can be done within the index.
+
+(1) Creating an index
+
+In this explicit index creation, the Doc2Vec model is loaded as many times as the number of worker processes, and the index data are created in parallel and stored in the index DB. Note that it requires a large amount of memory.
+
+```sh
+cd directory of document files
+d2vg --indexing -j <worker_processes> <files>...
+```
+
+(2) Searching within the index
+
+Query the index DB in a parallel way. Document files which is not in the index DB will not be searched, and the index DB will not be updated.
+
+```sh
+cd directory of document files
+d2vg --cached -j <worker_processes> <query_phrase>
+```
 
 ## Troubleshooting
 
