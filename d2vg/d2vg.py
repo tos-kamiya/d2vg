@@ -221,7 +221,7 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
         worker = multiprocessing.cpu_count()
     headline_len = int(args["--headline-length"])
     assert headline_len >= 8
-    normalize_vector = args['--normalize-vector']
+    unit_vector = args['--unit-vector']
 
     target_files = expand_target_files(target_files)
     if not target_files:
@@ -262,7 +262,7 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
             else:
                 files_not_stored.append(tf)
 
-    if normalize_vector:
+    if unit_vector:
         def inner_product(dv: Vec, pv: Vec) -> float:
             return float(np.inner(unitvec(dv), pv))
     else:
@@ -395,10 +395,10 @@ def sub_search(
     db_base_path: str, 
     db_index: int, 
     top_n: int, 
-    normalize_by_length: bool, 
+    unit_vector: bool, 
     search_paragraph: bool
 ) -> List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]]:
-    if normalize_by_length:
+    if unit_vector:
         def inner_product(dv: Vec, pv: Vec) -> float:
             return float(np.inner(unitvec(dv), pv))
     else:
@@ -439,7 +439,7 @@ def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -
         worker = multiprocessing.cpu_count()
     headline_len = int(args["--headline-length"])
     assert headline_len >= 8
-    normalize_vector = args['--normalize-vector']
+    unit_vector = args['--unit-vector']
 
     if args["<file>"] or args["--unknown-word-as-keyword"]:
         sys.exit("Error: invalid option with --cached")
@@ -481,10 +481,10 @@ def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -
         eprint("\x1b[1K\x1b[1G" + "[0/%d]" % cluster_size, end="")
     if worker is not None:
         executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-        subit = executor.map(sub_search_i, [(pattern_vec, db_base_path, i, top_n, normalize_vector, search_paragraph) for i in range(cluster_size)])
+        subit = executor.map(sub_search_i, [(pattern_vec, db_base_path, i, top_n, unit_vector, search_paragraph) for i in range(cluster_size)])
     else:
         executor = None
-        subit = (sub_search(pattern_vec, db_base_path, i, top_n, normalize_vector, search_paragraph) for i in range(cluster_size))
+        subit = (sub_search(pattern_vec, db_base_path, i, top_n, unit_vector, search_paragraph) for i in range(cluster_size))
     try:
         for subi, sub_search_results in enumerate(subit):
             for item in sub_search_results:
@@ -678,8 +678,8 @@ def do_indexing(language: str, lang_model_file: str, args: Dict[str, str]) -> No
 __doc__: str = """Doc2Vec Grep.
 
 Usage:
-  d2vg [-v] [-j WORKER] [-l LANG] [-K] [-t NUM] [-p] [-n] [-w NUM] [-a WIDTH] [-f] <pattern> <file>...
-  d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-n] [-a WIDTH] [-f] <pattern>
+  d2vg [-v] [-j WORKER] [-l LANG] [-K] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] [-f] <pattern> <file>...
+  d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-u] [-a WIDTH] [-f] <pattern>
   d2vg --build-index [-v] -j WORKER [-l LANG] [-w NUM] <file>...
   d2vg --list-lang
   d2vg --list-indexed [-l LANG] [-j WORKER]
@@ -693,7 +693,7 @@ Options:
   --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
   --topn=NUM, -t NUM            Show top NUM files [default: 20]. Specify `0` to show all files.
   --paragraph, -p               Search paragraphs in documents.
-  --normalize-vector, -n        Normalize vector when calculating similarity.
+  --unit-vector, -u             Convert discrete representations to unit vectors before comparison.
   --window=NUM, -w NUM          Line window size [default: {default_window_size}].
   --headline-length WIDTH, -a WIDTH     Length of headline [default: 80].
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
@@ -705,7 +705,12 @@ Options:
 
 
 def main():
-    args = docopt(__doc__, version="d2vg %s" % __version__)
+    argv = sys.argv[1:]
+    for i, a in enumerate(argv):
+        if a in ['-n', '--normalize-by-length']:
+            eprint('> Warning: option --normalize-by-length is now deprecated. Use --unit-vector')
+            argv[i] = '--unit-vector'
+    args = docopt(__doc__, argv=argv, version="d2vg %s" % __version__)
 
     lang_candidates = model_loader.get_model_langs()
     if args["--list-lang"]:
