@@ -1,6 +1,7 @@
 from typing import *
 
 import concurrent.futures
+from datetime import datetime
 from glob import glob
 import heapq
 import importlib
@@ -182,19 +183,19 @@ def prune_by_keywords(
 
 
 def prune_overlapped_paragraphs(ip_srlls: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
-    dropped_indice_set = set()
+    dropped_index_set = set()
     for i, (ip_srll1, ip_srll2) in enumerate(zip(ip_srlls, ip_srlls[1:])):
         ip1, sr1 = ip_srll1[0], ip_srll1[1] 
         ip2, sr2 = ip_srll2[0], ip_srll2[1]
         if sr2[0] < sr1[1] < sr2[1]:  # if two subranges are overlapped 
             if ip1 < ip2:
-                dropped_indice_set.add(i)
+                dropped_index_set.add(i)
             else:
-                dropped_indice_set.add(i + 1)
-    return [ip_srll for i, ip_srll in enumerate(ip_srlls) if i not in dropped_indice_set]
+                dropped_index_set.add(i + 1)
+    return [ip_srll for i, ip_srll in enumerate(ip_srlls) if i not in dropped_index_set]
 
 
-def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, str]) -> None:
+def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, Any]) -> None:
     pattern = args["<pattern>"]
     target_files = args["<file>"]
     top_n = int(args["--topn"])
@@ -415,7 +416,7 @@ def sub_search_i(a: Tuple[Vec, str, int, int, bool, bool]) -> List[Tuple[float, 
     return sub_search(*a)
 
 
-def do_index_search(language: str, lang_model_file: str, args: Dict[str, str]) -> None:
+def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -> None:
     pattern = args["<pattern>"]
     top_n = int(args["--topn"])
     verbose = args["--verbose"]
@@ -521,6 +522,57 @@ def do_index_search(language: str, lang_model_file: str, args: Dict[str, str]) -
             break  # for i
 
 
+def sub_list_file_indexed(db_base_path: str, db_index: int) -> List[Tuple[str, int, int, int]]:
+    file_data: List[Tuple[str, int, int, int]] = []
+    it = index_db.open_item_iterator(db_base_path, db_index)
+    for fsig, window_size, _pos_vecs in it:
+        fn, fs, fmt = model_loader.decode_file_signature(fsig)
+        file_data.append((fn, fmt, fs, window_size))
+    file_data.sort()
+    return file_data
+
+
+def sub_list_file_indexed_i(args: Tuple[str, int]) -> List[Tuple[str, int, int, int]]:
+    return sub_list_file_indexed(*args)
+
+
+def do_list_file_indexed(language: str, lang_model_file: str, args: Dict[str, Any]) -> None:
+    worker = int(args["--worker"]) if args["--worker"] else None
+    assert worker is None or worker >= 1
+
+    if not os.path.isdir(DB_DIR):
+        sys.exit("Error: no index DB (directory `.d2vg`)")
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    r = index_db.exists(db_base_path)
+    if r == 0:
+        sys.exit("Error: no index DB (directory `.d2vg`)")
+    cluster_size = r
+
+    sis = []
+    for db_index in range(cluster_size):
+        it = index_db.open_item_iterator(db_base_path, db_index)
+        sis.append((len(it), db_index))
+    sis.sort(reverse=True)
+
+    if worker is not None:
+        executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
+        subit = executor.map(sub_list_file_indexed_i, [(db_base_path, i) for _s, i in sis])
+    else:
+        executor = None
+        subit = (sub_list_file_indexed(db_base_path, i) for _s, i in sis)
+
+    file_data: List[Tuple[str, int, int, int]] = []
+    for fd in subit:
+        file_data.extend(fd)
+    file_data.sort()
+
+    print('name\tsize\tmtime\twindow_size')
+    for fn, fmt, fs, window_size in file_data:
+        dt = datetime.fromtimestamp(fmt)
+        t = dt.strftime('%Y-%m-%d %H:%M:%S')
+        print('%s\t%s\t%d\t%d' % (fn, t, fs, window_size))
+
+
 def do_store_index(
     file_names: List[str], 
     language: str, 
@@ -614,9 +666,10 @@ __doc__: str = """Doc2Vec Grep.
 
 Usage:
   d2vg [-v] [-j WORKER] [-l LANG] [-K] [-t NUM] [-p] [-n] [-w NUM] [-a WIDTH] [-f] <pattern> <file>...
-  d2vg --cached [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-n] [-a WIDTH] [-f] <pattern>
-  d2vg --indexing [-v] -j WORKER [-l LANG] [-w NUM] <file>...
+  d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-n] [-a WIDTH] [-f] <pattern>
+  d2vg --build-index [-v] -j WORKER [-l LANG] [-w NUM] <file>...
   d2vg --list-lang
+  d2vg --list-indexed [-l LANG] [-j WORKER]
   d2vg --help
   d2vg --version
 
@@ -631,9 +684,10 @@ Options:
   --window=NUM, -w NUM          Line window size [default: {default_window_size}].
   --headline-length WIDTH, -a WIDTH     Length of headline [default: 80].
   --pattern-from-file, -f       Consider <pattern> a file name and read a pattern from the file.
-  --cached, -C                  Search only the files in the index data.
-  --indexing                    Create index data for the files and save it in `.d2vg` directory.
+  --within-indexed, -C          Search only within the document files whose indexes are stored in the DB.
+  --build-index                 Create index data for the document files and save it in the DB of `.d2vg` directory.
   --list-lang                   Listing the languages in which the corresponding models are installed.
+  --list-indexed                List the document files (whose indexes are stored) in the DB.
 """.format(default_window_size = model_loader.DEFAULT_WINDOW_SIZE)
 
 
@@ -678,10 +732,12 @@ def main():
         sys.exit(1)
     lang_model_file = lang_model_files[0]
 
-    if args['--indexing']:
+    if args['--build-index']:
         do_indexing(language, lang_model_file, args)
-    elif args['--cached']:
+    elif args['--within-indexed']:
         do_index_search(language, lang_model_file, args)
+    elif args['--list-indexed']:
+        do_list_file_indexed(language, lang_model_file, args)
     else:
         do_incremental_search(language, lang_model_file, args)
 

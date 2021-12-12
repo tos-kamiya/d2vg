@@ -55,7 +55,7 @@ class IndexDb:
     def __init__(self, base_path: str, mode: str, cluster_size: int, window_size: Optional[int] = None):
         self._base_path = base_path
         self._mode = mode
-        self._dbs = [None] * cluster_size
+        self._dbs: List[Optional[sqldbm.SqliteDbm]] = [None] * cluster_size
         if window_size is None:
             self._window_size = DEFAULT_WINDOW_SIZE
         else:
@@ -64,9 +64,12 @@ class IndexDb:
     def _db_for_file(self, file_name: str):
         c32 = crc32(file_name.encode('utf-8')) & 0xffffffff
         i = c32 % len(self._dbs)
-        db = self._dbs[i]
+        return self._db_open(i)
+    
+    def _db_open(self, db_index: int) -> sqldbm.SqliteDbm:
+        db = self._dbs[db_index]
         if db is None:
-            db_fn = '%s-%do%d%s' % (self._base_path, i, len(self._dbs), DB_FILE_EXTENSION)
+            db_fn = '%s-%do%d%s' % (self._base_path, db_index, len(self._dbs), DB_FILE_EXTENSION)
             try:
                 if self._mode == 'r':
                     db = sqldbm.open(db_fn, sqldbm.Mode.OPEN_READ_ONLY)
@@ -74,7 +77,7 @@ class IndexDb:
                     db = sqldbm.open(db_fn, sqldbm.Mode.OPEN)
             except sqlite3.OperationalError as e:
                 raise IndexDbError('fail to open slite3 db file: %s' % repr(db_fn)) from e
-            self._dbs[i] = db
+            self._dbs[db_index] = db
         return db
 
     def set_window_size(self, window_size: int):
@@ -182,6 +185,9 @@ class IndexDbItemIterator:
 
     def __iter__(self):
         return self
+
+    def __len__(self) -> int:
+        return len(self._db)
 
     def __next__(self) -> Tuple[str, int, List[PosVec]]:
         if self._i + 1 >= len(self._keys):
