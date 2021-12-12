@@ -123,7 +123,7 @@ def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[L
             vec = tokens_to_vector(tokens)
             pos_vecs.append(((pos, pos + 1), vec))
     else:
-        for pos in range(0, len(line_tokens), window_size // 2):
+        for pos in range(0, len(line_tokens) - window_size // 2, window_size // 2):
             end_pos = min(pos + window_size, len(line_tokens))
             tokens = []
             for t in line_tokens[pos:end_pos]:
