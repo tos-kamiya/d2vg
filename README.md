@@ -124,7 +124,7 @@ In this explicit index creation, the Doc2Vec model is loaded as many times as th
 
 ```sh
 cd directory of document files
-d2vg --indexing -j <worker_processes> <files>...
+d2vg --build-index -j <worker_processes> <files>...
 ```
 
 (2) Searching within the index
@@ -133,7 +133,17 @@ Query the index DB in a parallel way. Document files which is not in the index D
 
 ```sh
 cd directory of document files
-d2vg --cached -j <worker_processes> <query_phrase>
+d2vg -C -j <worker_processes> <query_phrase>
+```
+
+(3) Show a list of indexed document files
+
+Outputs a list of document files whose index data is stored in the database.
+Note that if you have a large number of files, it is recommended to run the program in parallel using the -j option.
+
+```sh
+cd directory of document files
+d2vg --list-indexed -j <worker_processes>
 ```
 
 ## Troubleshooting
