@@ -20,6 +20,13 @@ from .types import Vec
 from . import index_db
 
 
+def normalize_vec(vec: Vec) -> Vec:
+    veclen = np.linalg.norm(vec)
+    if veclen == 0.0:
+        return vec
+    return 1.0 / np.sqrt(veclen) * vec
+
+
 PosVec = index_db.PosVec
 
 __version__ = importlib.metadata.version("d2vg")
@@ -123,6 +130,12 @@ def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[L
             vec = tokens_to_vector(tokens)
             pos_vecs.append(((pos, pos + 1), vec))
     else:
+        if len(line_tokens) < window_size // 2:
+            tokens = []
+            for t in line_tokens:
+                tokens.extend(t)
+            vec = tokens_to_vector(tokens)
+            pos_vecs.append(((0, len(line_tokens)), vec))
         for pos in range(0, len(line_tokens) - window_size // 2, window_size // 2):
             end_pos = min(pos + window_size, len(line_tokens))
             tokens = []
@@ -254,7 +267,7 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
             return float(np.inner(unitvec(dv), pv))
     else:
         def inner_product(dv: Vec, pv: Vec) -> float:
-            return float(np.inner(dv, pv))
+            return float(np.inner(normalize_vec(dv), pv))
 
     chunk_size = max(10, min(len(target_files) // 200, 100))
     chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
@@ -390,7 +403,7 @@ def sub_search(
             return float(np.inner(unitvec(dv), pv))
     else:
         def inner_product(dv: Vec, pv: Vec) -> float:
-            return float(np.inner(dv, pv))
+            return float(np.inner(normalize_vec(dv), pv))
 
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
     it = index_db.open_item_iterator(db_base_path, db_index)
