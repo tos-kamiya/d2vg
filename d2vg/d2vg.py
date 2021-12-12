@@ -208,7 +208,7 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
         worker = multiprocessing.cpu_count()
     headline_len = int(args["--headline-length"])
     assert headline_len >= 8
-    normalize_by_length = args['--normalize-by-length']
+    normalize_vector = args['--normalize-vector']
 
     target_files = expand_target_files(target_files)
     if not target_files:
@@ -249,7 +249,7 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
             else:
                 files_not_stored.append(tf)
 
-    if normalize_by_length:
+    if normalize_vector:
         def inner_product(dv: Vec, pv: Vec) -> float:
             return float(np.inner(unitvec(dv), pv))
     else:
@@ -426,7 +426,7 @@ def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -
         worker = multiprocessing.cpu_count()
     headline_len = int(args["--headline-length"])
     assert headline_len >= 8
-    normalize_by_length = args['--normalize-by-length']
+    normalize_vector = args['--normalize-vector']
 
     if args["<file>"] or args["--unknown-word-as-keyword"]:
         sys.exit("Error: invalid option with --cached")
@@ -468,10 +468,10 @@ def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -
         eprint("\x1b[1K\x1b[1G" + "[0/%d]" % cluster_size, end="")
     if worker is not None:
         executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-        subit = executor.map(sub_search_i, [(pattern_vec, db_base_path, i, top_n, normalize_by_length, search_paragraph) for i in range(cluster_size)])
+        subit = executor.map(sub_search_i, [(pattern_vec, db_base_path, i, top_n, normalize_vector, search_paragraph) for i in range(cluster_size)])
     else:
         executor = None
-        subit = (sub_search(pattern_vec, db_base_path, i, top_n, normalize_by_length, search_paragraph) for i in range(cluster_size))
+        subit = (sub_search(pattern_vec, db_base_path, i, top_n, normalize_vector, search_paragraph) for i in range(cluster_size))
     try:
         for subi, sub_search_results in enumerate(subit):
             for item in sub_search_results:
