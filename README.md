@@ -64,8 +64,8 @@ If this option is not specified, one document file will be considered as one doc
 A chunk of lines specified by this number will be recognized as a paragraph.
 The default value is 20.
 
-`--normalize-vector, -n`  
-Normalize vectors, which are distributed representations of documents, to unit vectors when calculating similarity to query phrases. When the length difference between paragraphs is large, the shorter paragraphs will be given priority in the search results. 
+`--unit-vector, -u`  
+Normalize distributed representations of documents into unit vectors when calculating similarity to query phrases. When the length difference between paragraphs is large, the shorter paragraphs will be given priority in the search results. 
 
 `--worker=NUM, -j NUM`
 Number of worker processes. `0` is interpreted as number of CPU cores.
