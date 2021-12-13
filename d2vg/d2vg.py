@@ -6,6 +6,7 @@ from glob import glob
 import heapq
 import importlib
 import locale
+from math import pow
 import multiprocessing
 import os
 import sys
@@ -26,7 +27,15 @@ def normalize_vec(vec: Vec) -> Vec:
     veclen = np.linalg.norm(vec)
     if veclen == 0.0:
         return vec
-    return 1.0 / np.sqrt(veclen) * vec
+    return pow(veclen, -0.5) * vec
+
+
+def inner_product_u(dv: Vec, pv: Vec) -> float:
+    return float(np.inner(unitvec(dv), pv))
+
+
+def inner_product_n(dv: Vec, pv: Vec) -> float:
+    return float(np.inner(normalize_vec(dv), pv))
 
 
 PosVec = index_db.PosVec
@@ -89,25 +98,22 @@ def join_lists(lists: List[List[U]]) -> List[U]:
 
 def extract_headline(
     lines: List[str],
-    subrange: Tuple[int, int],
     text_to_tokens: Callable[[str], List[str]],
     tokens_to_vector: Callable[[List[str]], Vec],
     pattern_vec: Vec,
     headline_len: int,
-) -> Tuple[str, Tuple[int, int]]:
-    start_pos, end_pos = subrange
-    if start_pos == end_pos:
-        return "", (start_pos, start_pos)
+) -> str:
+    if not lines:
+        return ''
 
-    line_tokens = [[]] * start_pos
-    for p in range(start_pos, end_pos):
-        line_tokens.append(text_to_tokens(lines[p]))
+    line_tokens = [text_to_tokens(L) for L in lines]
 
+    len_lines = len(lines)
     max_ip_data = None
-    for p in range(start_pos, end_pos):
+    for p in range(len_lines):
         sublines_textlen = len(lines[p])
         q = p + 1
-        while q < end_pos and sublines_textlen < headline_len:
+        while q < len_lines and sublines_textlen < headline_len:
             sublines_textlen += len(lines[q])
             q += 1
         subtokens = []
@@ -122,7 +128,7 @@ def extract_headline(
     sr = max_ip_data[1]
     headline_text = "|".join(lines[sr[0] : sr[1]])
     headline_text = headline_text[:headline_len]
-    return headline_text, sr
+    return headline_text
 
 
 def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[List[str]], Vec], window_size: int) -> List[PosVec]:
@@ -158,7 +164,7 @@ def do_parse_and_tokenize(file_names: List[str], language: str, esession: ESessi
         try:
             lines = parse(tf)
         except parsers.ParseError as e:
-            esession.still("> Warning: %s" % e)
+            esession.print("> Warning: %s" % e)
             r.append(None)
         else:
             line_tokens = [text_to_tokens(L) for L in lines]
@@ -171,7 +177,8 @@ def do_parse_and_tokenize_i(d: Tuple[List[str], str, ESession]) -> List[Optional
 
 
 def prune_by_keywords(
-    ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]], keyword_set: FrozenSet[str], min_ip: Optional[float] = None
+    ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]], 
+    keyword_set: FrozenSet[str], min_ip: Optional[float] = None
 ) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
     ipsrll_inc_kws: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]] = []
     lines: Optional[List[str]] = None
@@ -194,19 +201,24 @@ def prune_by_keywords(
 
 
 def prune_overlapped_paragraphs(
-    ip_srlls: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]
+    ip_srlls: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]],
+    search_paragraph: bool,
 ) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
-    dropped_index_set = set()
-    for i, (ip_srll1, ip_srll2) in enumerate(zip(ip_srlls, ip_srlls[1:])):
-        ip1, sr1 = ip_srll1[0], ip_srll1[1]
-        ip2, sr2 = ip_srll2[0], ip_srll2[1]
-        if sr2[0] < sr1[1] < sr2[1]:  # if two subranges are overlapped
-            if ip1 < ip2:
-                dropped_index_set.add(i)
-            else:
-                dropped_index_set.add(i + 1)
-    return [ip_srll for i, ip_srll in enumerate(ip_srlls) if i not in dropped_index_set]
-
+    if not ip_srlls:
+        return ip_srlls
+    elif search_paragraph:
+        dropped_index_set = set()
+        for i, (ip_srll1, ip_srll2) in enumerate(zip(ip_srlls, ip_srlls[1:])):
+            ip1, sr1 = ip_srll1[0], ip_srll1[1]
+            ip2, sr2 = ip_srll2[0], ip_srll2[1]
+            if sr2[0] < sr1[1] < sr2[1]:  # if two subranges are overlapped
+                if ip1 < ip2:
+                    dropped_index_set.add(i)
+                else:
+                    dropped_index_set.add(i + 1)
+        return [ip_srll for i, ip_srll in enumerate(ip_srlls) if i not in dropped_index_set]
+    else:
+        return [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
 
 def do_incremental_search(language: str, lang_model_file: str, esession: ESession, args: Dict[str, Any]) -> None:
     pattern = args["<pattern>"]
@@ -254,15 +266,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     else:
         files_not_stored = target_files
 
-    if unit_vector:
-
-        def inner_product(dv: Vec, pv: Vec) -> float:
-            return float(np.inner(unitvec(dv), pv))
-
-    else:
-
-        def inner_product(dv: Vec, pv: Vec) -> float:
-            return float(np.inner(normalize_vec(dv), pv))
+    inner_product = inner_product_u if unit_vector else inner_product_n
 
     chunk_size = max(10, min(len(target_files) // 200, 100))
     chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
@@ -282,28 +286,22 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     if set(tokens) == set(oov_tokens) and not unknown_word_as_keyword:
         sys.exit("Error: <pattern> not including any known words")
     pattern_vec = tokens_to_vector(tokens)
-    keyword_set = frozenset(oov_tokens if unknown_word_as_keyword else [])
-    if unknown_word_as_keyword:
-        if oov_tokens:
-            esession.still("> keywords: %s" % ", ".join(sorted(keyword_set)), force=True)
-    else:
-        if oov_tokens:
-            esession.still("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
+    keyword_set = frozenset([])
+    if oov_tokens:
+        if unknown_word_as_keyword:
+            keyword_set = frozenset(oov_tokens)
+            esession.print("> keywords: %s" % ", ".join(sorted(keyword_set)), force=True)
+        else:
+            esession.print("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
 
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
     def update_search_results(tf, pos_vecs, lines, line_tokens):
         ip_srlls = [(inner_product(vec, pattern_vec), sr, lines, line_tokens) for sr, vec in pos_vecs]  # ignore type mismatch
-
         if keyword_set:
             min_ip = heapq.nsmallest(1, search_results)[0][0] if len(search_results) >= top_n else None
             ip_srlls = prune_by_keywords(ip_srlls, keyword_set, min_ip)
-
-        if ip_srlls:
-            if search_paragraph:
-                ip_srlls = prune_overlapped_paragraphs(ip_srlls)
-            else:
-                ip_srlls = [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
+        ip_srlls = prune_overlapped_paragraphs(ip_srlls, search_paragraph)
 
         for ip, subrange, lines, _line_tokens in ip_srlls:
             heapq.heappush(search_results, (ip, tf, subrange, lines))
@@ -356,8 +354,8 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
                 if i == 0:
                     verbose_print_cur_status(tfi)
     except KeyboardInterrupt:
-        esession.still("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), force=True)
-        esession.still("> Warning: shows the search results up to now.", force=True)
+        esession.print("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), force=True)
+        esession.print("> Warning: shows the search results up to now.", force=True)
         if executor is not None:
             executor.shutdown(wait=False)
             kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
@@ -375,22 +373,14 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
             break  # for i
         if lines is None:
             lines = parse(tf)
-        headline, _max_sr = extract_headline(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec, headline_len)
+        headline = extract_headline(lines[sr[0] : sr[1]], text_to_tokens, tokens_to_vector, pattern_vec, headline_len)
         print("%g\t%s:%d-%d\t%s" % (ip, tf, sr[0] + 1, sr[1] + 1, headline))
 
 
 def sub_search(
     pattern_vec: Vec, db_base_path: str, db_index: int, fnmatch_func: Optional[Callable[[str], bool]], top_n: int, unit_vector: bool, search_paragraph: bool
 ) -> List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]]:
-    if unit_vector:
-
-        def inner_product(dv: Vec, pv: Vec) -> float:
-            return float(np.inner(unitvec(dv), pv))
-
-    else:
-
-        def inner_product(dv: Vec, pv: Vec) -> float:
-            return float(np.inner(normalize_vec(dv), pv))
+    inner_product = inner_product_u if unit_vector else inner_product_n
 
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
     with index_db.open_item_iterator(db_base_path, db_index) as it:
@@ -401,11 +391,7 @@ def sub_search(
                     continue  # for fsig
 
             ip_srlls = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
-            if ip_srlls:
-                if search_paragraph:
-                    ip_srlls = prune_overlapped_paragraphs(ip_srlls)
-                else:
-                    ip_srlls = [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
+            ip_srlls = prune_overlapped_paragraphs(ip_srlls, search_paragraph)
 
             for ip, subrange, lines, _line_tokens in ip_srlls:
                 heapq.heappush(search_results, (ip, fsig, subrange, lines))
@@ -467,7 +453,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     if set(tokens) == set(oov_tokens):
         sys.exit("Error: <pattern> not including any known words")
     if oov_tokens:
-        esession.still("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
+        esession.print("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
     pattern_vec = model.tokens_to_vec(tokens)
     del model
 
@@ -488,7 +474,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
                 fn, fs, fmt = model_loader.decode_file_signature(fsig)
                 existing_file_signature = model_loader.file_signature(fn)
                 if existing_file_signature != fsig:
-                    esession.still("> Warning: obsolete index data. Skip file: %s" % fn, force=True)
+                    esession.print("> Warning: obsolete index data. Skip file: %s" % fn, force=True)
                     continue  # for item
                 heapq.heappush(search_results, item)
                 if len(search_results) > top_n:
@@ -505,8 +491,8 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         if executor is not None:
             executor.shutdown(wait=False)
             kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
-        esession.still("> Warning: interrupted [%d/%d] in looking up index DB" % (subi + 1, cluster_size), force=True)
-        esession.still("> Warning: shows the search results up to now.", force=True)
+        esession.print("> Warning: interrupted [%d/%d] in looking up index DB" % (subi + 1, cluster_size), force=True)
+        esession.print("> Warning: shows the search results up to now.", force=True)
     else:
         if executor is not None:
             executor.shutdown()
@@ -518,11 +504,11 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     for i, (ip, fsig, sr, lines) in enumerate(search_results):
         if ip < 0:
             break  # for i
-        fn, fs, fmt = model_loader.decode_file_signature(fsig)
+        fn, _fs, _fmt = model_loader.decode_file_signature(fsig)
         existing_file_signature = model_loader.file_signature(fn)
-        assert existing_file_signature == fsig
+        assert existing_file_signature == fsig  # because this check has already done in the `for subi` loop above.
         lines = parse(fn)
-        headline, _max_sr = extract_headline(lines, sr, text_to_tokens, model.tokens_to_vec, pattern_vec, headline_len)
+        headline = extract_headline(lines[sr[0] : sr[1]], text_to_tokens, model.tokens_to_vec, pattern_vec, headline_len)
         print("%g\t%s:%d-%d\t%s" % (ip, fn, sr[0] + 1, sr[1] + 1, headline))
 
 
@@ -594,7 +580,7 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
             try:
                 lines = parse(tf)
             except parsers.ParseError as e:
-                esession.still("> Warning: %s" % e, force=True)
+                esession.print("> Warning: %s" % e, force=True)
             else:
                 line_tokens = [text_to_tokens(L) for L in lines]
                 pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
@@ -611,7 +597,7 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     worker = int(args["--worker"])
 
     if not os.path.exists(DB_DIR):
-        esession.still("> Create a `.d2vg` directory for index data.", force=True)
+        esession.print("> Create a `.d2vg` directory for index data.", force=True)
         os.mkdir(DB_DIR)
 
     cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
@@ -628,7 +614,7 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     if not target_files:
         sys.exit("Error: no target files are given.")
     if including_stdin:
-        esession.still("> Warning: skip stdin contents.", force=True)
+        esession.print("> Warning: skip stdin contents.", force=True)
 
     file_splits = [list() for _ in range(cluster_size)]
     for tf in target_files:

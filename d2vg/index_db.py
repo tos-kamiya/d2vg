@@ -28,17 +28,17 @@ def file_name_crc(file_name: str) -> Optional[int]:
 
 def dumps_pos_vecs(pos_vecs: Iterable[PosVec]) -> bytes:
     dumped = []
-    for sr, vecs in pos_vecs:
-        vecs = [float(d) for d in vecs]
-        dumped.append((sr, vecs))
+    for sr, vec in pos_vecs:
+        vec = [float(d) for d in vec]
+        dumped.append((sr, vec))
     return bson.dumps({"pos_vecs": dumped})
 
 
 def loads_pos_vecs(b: bytes) -> List[PosVec]:
     loaded = []
-    for sr, vecs in bson.loads(b).get("pos_vecs"):
-        vecs = np.array(vecs, dtype=np.float32)
-        loaded.append((tuple(sr), vecs))
+    for sr, vec in bson.loads(b).get("pos_vecs"):
+        vec = np.array(vec, dtype=np.float32)
+        loaded.append((tuple(sr), vec))
     return loaded
 
 
@@ -64,7 +64,7 @@ class IndexDb:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, _exc_type, _exc_value, _traceback):
         self.close()
 
     def _db_for_file(self, file_name: str):
@@ -187,7 +187,7 @@ class IndexDbItemIterator:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, _exc_type, _exc_value, _traceback):
         self.close()
 
     def __iter__(self):

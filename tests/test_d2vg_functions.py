@@ -66,7 +66,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
 
         pattern_vec = np.array([1.0, 0.0], dtype=np.float32)
 
-        lt, ip = d2vg.extract_headline(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec, 80)
+        lt = d2vg.extract_headline(lines[sr[0] : sr[1]], text_to_tokens, tokens_to_vector, pattern_vec, 80)
         self.assertEqual(lt, "|".join(high_ip_token_subseq))
 
     # def extract_pos_vecs(
@@ -135,7 +135,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             (0.2, (2, 4), lines, line_tokens),
         ]
 
-        actual = d2vg.prune_overlapped_paragraphs(ip_srlls)
+        actual = d2vg.prune_overlapped_paragraphs(ip_srlls, True)
         expected = [ip_srlls[1]]
         self.assertEqual(actual, expected)
 
@@ -145,7 +145,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             (0.1, (2, 4), lines, line_tokens),
         ]
 
-        actual = d2vg.prune_overlapped_paragraphs(ip_srlls)
+        actual = d2vg.prune_overlapped_paragraphs(ip_srlls, True)
         expected = [ip_srlls[0]]
         self.assertEqual(actual, expected)
 
@@ -155,8 +155,12 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             (0.2, (2, 4), lines, line_tokens),
         ]
 
-        actual = d2vg.prune_overlapped_paragraphs(ip_srlls)
+        actual = d2vg.prune_overlapped_paragraphs(ip_srlls, True)
         expected = [ip_srlls[0], ip_srlls[2]]
+        self.assertEqual(actual, expected)
+
+        actual = d2vg.prune_overlapped_paragraphs(ip_srlls, False)
+        expected = [ip_srlls[0]]
         self.assertEqual(actual, expected)
 
     # def test_kill_child_processes(self):

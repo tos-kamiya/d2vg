@@ -15,7 +15,7 @@ class ESession:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, _exc_type, _exc_value, _traceback):
         self.close()
 
     def close(self):
@@ -57,7 +57,7 @@ class ESession:
         print(message_callback(), file=sys.stderr, end="", flush=True)
         self._showing_flash_message = True
 
-    def still(self, message: str, force: bool = False):
+    def print(self, message: str, force: bool = False):
         if not force and not self._activated:
             return
         if self._showing_flash_message:
@@ -65,7 +65,7 @@ class ESession:
         print(message, file=sys.stderr, flush=True)
         self._showing_flash_message = False
 
-    def still_eval(self, message_callback: Callable[[], str], force: bool = False):
+    def print_eval(self, message_callback: Callable[[], str], force: bool = False):
         if not force and not self._activated:
             return
         if self._showing_flash_message:
@@ -78,9 +78,9 @@ if __name__ == "__main__":
     from time import sleep
 
     with ESession() as essesion:
-        essesion.still("This sample shows the usage of ESession.")
+        essesion.print("This sample shows the usage of ESession.")
         sleep(1)
-        essesion.still("still() method shows a message to stderr.")
+        essesion.print("still() method shows a message to stderr.")
         sleep(1)
         essesion.flash("flash() method also shows a message to stderr,")
         sleep(2)
@@ -90,4 +90,4 @@ if __name__ == "__main__":
         sleep(2)
         essesion.flash("or will be removed when leaving the session...")
         sleep(2)
-        essesion.still("You saw all flash'ed messages gone.")
+        essesion.print("You saw all flash'ed messages gone.")
