@@ -18,6 +18,7 @@ from . import parsers
 from . import model_loader
 from .types import Vec
 from . import index_db
+from .esesion import ESession
 
 
 def normalize_vec(vec: Vec) -> Vec:
@@ -32,10 +33,6 @@ PosVec = index_db.PosVec
 __version__ = importlib.metadata.version("d2vg")
 
 DB_DIR = ".d2vg"
-
-
-def eprint(message: str, end='\n'):
-    print(message, file=sys.stderr, end=end, flush=True)
 
 
 # ref: https://psutil.readthedocs.io/en/latest/index.html?highlight=Process#kill-process-tree
@@ -146,7 +143,7 @@ def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[L
     return pos_vecs
 
 
-def do_parse_and_tokenize(file_names: List[str], language: str, verbose: bool) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
+def do_parse_and_tokenize(file_names: List[str], language: str, esession: ESession) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
     parser = parsers.Parser()
     parse = parser.parse
     text_to_tokens = model_loader.load_tokenize_func(language)
@@ -156,9 +153,7 @@ def do_parse_and_tokenize(file_names: List[str], language: str, verbose: bool) -
         try:
             lines = parse(tf)
         except parsers.ParseError as e:
-            if verbose:
-                print('', file=sys.stderr)
-            eprint("> Warning: %s" % e)
+            esession.still("> Warning: %s" % e)
             r.append(None)
         else:
             line_tokens = [text_to_tokens(L) for L in lines]
@@ -166,7 +161,7 @@ def do_parse_and_tokenize(file_names: List[str], language: str, verbose: bool) -
     return r
 
 
-def do_parse_and_tokenize_i(d: Tuple[List[str], str, bool]) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
+def do_parse_and_tokenize_i(d: Tuple[List[str], str, ESession]) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
     return do_parse_and_tokenize(d[0], d[1], d[2])
 
 
@@ -208,12 +203,11 @@ def prune_overlapped_paragraphs(ip_srlls: List[Tuple[float, Tuple[int, int], Lis
     return [ip_srll for i, ip_srll in enumerate(ip_srlls) if i not in dropped_index_set]
 
 
-def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, Any]) -> None:
+def do_incremental_search(language: str, lang_model_file: str, esession: ESession, args: Dict[str, Any]) -> None:
     pattern = args["<pattern>"]
     target_files = args["<file>"]
     top_n = int(args["--topn"])
     window_size = int(args["--window"])
-    verbose = args["--verbose"]
     search_paragraph = args["--paragraph"]
     unknown_word_as_keyword = args["--unknown-word-as-keyword"]
     worker = int(args["--worker"]) if args["--worker"] else None
@@ -273,10 +267,10 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
     chunks = [files_not_stored[ci : ci + chunk_size] for ci in range(0, len(files_not_stored), chunk_size)]
     if worker is not None:
         executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-        tokenize_it = executor.map(do_parse_and_tokenize_i, [(chunk, language, verbose) for chunk in chunks])
+        tokenize_it = executor.map(do_parse_and_tokenize_i, [(chunk, language, esession) for chunk in chunks])
     else:
         executor = None
-        tokenize_it = map(do_parse_and_tokenize_i, [(chunk, language, verbose) for chunk in chunks])
+        tokenize_it = map(do_parse_and_tokenize_i, [(chunk, language, esession) for chunk in chunks])
 
     model = model_loader.D2VModel(language, lang_model_file)
     tokens_to_vector = model.tokens_to_vec
@@ -290,10 +284,10 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
     keyword_set = frozenset(oov_tokens if unknown_word_as_keyword else [])
     if unknown_word_as_keyword:
         if oov_tokens:
-            eprint("> keywords: %s" % ", ".join(sorted(keyword_set)))
+            esession.still("> keywords: %s" % ", ".join(sorted(keyword_set)), force=True)
     else:
         if oov_tokens:
-            eprint("> Warning: unknown words: %s" % ", ".join(oov_tokens))
+            esession.still("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
 
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
@@ -316,11 +310,13 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
                 _smallest = heapq.heappop(search_results)
 
     def verbose_print_cur_status(tfi):
+        if not esession.is_active():
+            return
         max_tf = heapq.nlargest(1, search_results)
         if max_tf:
             _ip, f, sr, _ls = max_tf[0]
             top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
-            eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (tfi + 1, len_target_files, top1_message), end="")
+            esession.flash("[%d/%d] %s" % (tfi + 1, len_target_files, top1_message))
     
     tfi = -1
     tf = None
@@ -330,7 +326,7 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
             assert db is not None
             pos_vecs = db.lookup(tf)
             update_search_results(tf, pos_vecs, None, None)
-            if verbose and tfi % 100 == 1:
+            if tfi % 100 == 1:
                 verbose_print_cur_status(tfi)
         tfi = len(files_stored)
 
@@ -357,7 +353,7 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
                             pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
                             db.store(tf, pos_vecs)
                     update_search_results(tf, pos_vecs, lines, line_tokens)
-                    if verbose and i == 0:
+                    if i == 0:
                         verbose_print_cur_status(tfi)
         except KeyboardInterrupt as e:
             if executor is not None:
@@ -367,17 +363,14 @@ def do_incremental_search(language: str, lang_model_file: str, args: Dict[str, A
         else:
             if executor is not None:
                 executor.shutdown()
-        if verbose:
-            eprint("\x1b[1K\x1b[1G")
     except KeyboardInterrupt:
-        if verbose:
-            eprint("\x1b[1K\x1b[1G")
-        eprint("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf))
-        eprint("> Warning: shows the search results up to now.")
+        esession.still("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), force=True)
+        esession.still("> Warning: shows the search results up to now.", force=True)
     finally:
         if db is not None:
             db.close()
 
+    esession.activate(False)
     search_results = heapq.nlargest(top_n, search_results)
     for i, (ip, tf, sr, lines) in enumerate(search_results):
         if ip < 0:
@@ -429,10 +422,9 @@ def sub_search_i(a: Tuple[Vec, str, int, int, bool, bool]) -> List[Tuple[float, 
     return sub_search(*a)
 
 
-def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -> None:
+def do_index_search(language: str, lang_model_file: str, esession: ESession, args: Dict[str, Any]) -> None:
     pattern = args["<pattern>"]
     top_n = int(args["--topn"])
-    verbose = args["--verbose"]
     search_paragraph = args["--paragraph"]
     worker = int(args["--worker"]) if args["--worker"] else None
     if worker == 0:
@@ -441,8 +433,11 @@ def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -
     assert headline_len >= 8
     unit_vector = args['--unit-vector']
 
-    if args["<file>"] or args["--unknown-word-as-keyword"]:
-        sys.exit("Error: invalid option with --cached")
+    if args["--unknown-word-as-keyword"]:
+        sys.exit("Error: invalid option with --within-indexed")
+
+    if args['<file>']:
+        file_patterns = args['<file>']
 
     parser = parsers.Parser()
     parse = parser.parse
@@ -471,14 +466,13 @@ def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -
     if set(tokens) == set(oov_tokens):
         sys.exit("Error: <pattern> not including any known words")
     if oov_tokens:
-        eprint("> Warning: unknown words: %s" % ", ".join(oov_tokens))
+        esession.still("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
     pattern_vec = model.tokens_to_vec(tokens)
     del model
 
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
-    if verbose:
-        eprint("\x1b[1K\x1b[1G" + "[0/%d]" % cluster_size, end="")
+    esession.flash("[0/%d]" % cluster_size)
     if worker is not None:
         executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
         subit = executor.map(sub_search_i, [(pattern_vec, db_base_path, i, top_n, unit_vector, search_paragraph) for i in range(cluster_size)])
@@ -492,21 +486,19 @@ def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -
                 fn, fs, fmt = model_loader.decode_file_signature(fsig)
                 existing_file_signature = model_loader.file_signature(fn)
                 if existing_file_signature != fsig:
-                    if verbose:
-                        eprint("\x1b[1K\x1b[1G")
-                    eprint("> Warning: obsolete index data. Skip file: %s" % fn)
+                    esession.still("> Warning: obsolete index data. Skip file: %s" % fn, force=True)
                     continue  # for item
                 heapq.heappush(search_results, item)
                 if len(search_results) > top_n:
                     _smallest = heapq.heappop(search_results)
 
-            if verbose:
+            if esession.is_active():
                 max_tf = heapq.nlargest(1, search_results)
                 if max_tf:
                     _ip, fsig, sr, _ls = max_tf[0]
                     fn, fs, fmt = model_loader.decode_file_signature(fsig)
                     top1_message = "Tentative top-1: %s:%d-%d" % (fn, sr[0] + 1, sr[1] + 1)
-                    eprint("\x1b[1K\x1b[1G" + "[%d/%d] %s" % (subi + 1, cluster_size, top1_message), end="")
+                    esession.flash("[%d/%d] %s" % (subi + 1, cluster_size, top1_message))
     except KeyboardInterrupt as e:
         if executor is not None:
             executor.shutdown(wait=False)
@@ -516,11 +508,11 @@ def do_index_search(language: str, lang_model_file: str, args: Dict[str, Any]) -
         if executor is not None:
             executor.shutdown()
     finally:
-        if verbose:
-            print("\x1b[1K\x1b[1G", flush=True)
+        esession.close()
 
     model = model_loader.D2VModel(language, lang_model_file)
 
+    esession.activate(False)
     search_results = heapq.nlargest(top_n, search_results)
     for i, (ip, fsig, sr, lines) in enumerate(search_results):
         if ip < 0:
@@ -549,7 +541,7 @@ def sub_list_file_indexed_i(args: Tuple[str, int]) -> List[Tuple[str, int, int, 
     return sub_list_file_indexed(*args)
 
 
-def do_list_file_indexed(language: str, lang_model_file: str, args: Dict[str, Any]) -> None:
+def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession, args: Dict[str, Any]) -> None:
     worker = int(args["--worker"]) if args["--worker"] else None
     assert worker is None or worker >= 1
 
@@ -579,6 +571,7 @@ def do_list_file_indexed(language: str, lang_model_file: str, args: Dict[str, An
         file_data.extend(fd)
     file_data.sort()
 
+    esession.activate(False)
     print('name\tsize\tmtime\twindow_size')
     for fn, fmt, fs, window_size in file_data:
         dt = datetime.fromtimestamp(fmt)
@@ -586,13 +579,7 @@ def do_list_file_indexed(language: str, lang_model_file: str, args: Dict[str, An
         print('%s\t%s\t%d\t%d' % (fn, t, fs, window_size))
 
 
-def do_store_index(
-    file_names: List[str], 
-    language: str, 
-    lang_model_file: str, 
-    window_size: int, 
-    verbose: bool,
-) -> None:
+def do_store_index(file_names: List[str], language: str, lang_model_file: str, window_size: int, esession: ESession) -> None:
     parser = parsers.Parser()
     parse = parser.parse
     text_to_tokens = model_loader.load_tokenize_func(language)
@@ -609,9 +596,7 @@ def do_store_index(
             try:
                 lines = parse(tf)
             except parsers.ParseError as e:
-                if verbose:
-                    print('', file=sys.stderr)
-                eprint("> Warning: %s" % e)
+                esession.still("> Warning: %s" % e, force=True)
             else:
                 line_tokens = [text_to_tokens(L) for L in lines]
                 pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
@@ -620,18 +605,17 @@ def do_store_index(
         db.close()
 
 
-def do_store_index_i(d: Tuple[List[str], str, str, int, bool]) -> None:
+def do_store_index_i(d: Tuple[List[str], str, str, int, ESession]) -> None:
     return do_store_index(d[0], d[1], d[2], d[3], d[4])
 
 
-def do_indexing(language: str, lang_model_file: str, args: Dict[str, str]) -> None:
+def do_indexing(language: str, lang_model_file: str, esession: ESession, args: Dict[str, str]) -> None:
     target_files = args["<file>"]
     window_size = int(args["--window"])
-    verbose = args["--verbose"]
     worker = int(args["--worker"])
 
     if not os.path.exists(DB_DIR):
-        eprint('> Create a `.d2vg` directory for index data.')
+        esession.still('> Create a `.d2vg` directory for index data.', force=True)
         os.mkdir(DB_DIR)
 
     cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
@@ -659,27 +643,22 @@ def do_indexing(language: str, lang_model_file: str, args: Dict[str, str]) -> No
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
     indexing_it = executor.map(do_store_index_i, [(chunk, language, lang_model_file, window_size, verbose) for chunk in file_splits])
     try:
-        if verbose:
-            print("\x1b[1K\x1b[1G" + "[%d/%d] indexing" % (0, len(file_splits)), end="", flush=True)
+        esession.flash("[%d/%d] indexing" % (0, len(file_splits)))
         for i, _ in enumerate(indexing_it):
-            if verbose:
-                print("\x1b[1K\x1b[1G" + "[%d/%d] indexing" % (i + 1, len(file_splits)), end="", flush=True)
+            esession.flash("[%d/%d] indexing" % (i + 1, len(file_splits)))
     except KeyboardInterrupt as e:
         executor.shutdown(wait=False)
         kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
         raise e
     else:
         executor.shutdown()
-    finally:
-        if verbose:
-            print("\x1b[1K\x1b[1G", flush=True)
 
 
 __doc__: str = """Doc2Vec Grep.
 
 Usage:
   d2vg [-v] [-j WORKER] [-l LANG] [-K] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] [-f] <pattern> <file>...
-  d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-u] [-a WIDTH] [-f] <pattern>
+  d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-u] [-a WIDTH] [-f] <pattern> [<file>...]
   d2vg --build-index [-v] -j WORKER [-l LANG] [-w NUM] <file>...
   d2vg --list-lang
   d2vg --list-indexed [-l LANG] [-j WORKER]
@@ -708,7 +687,7 @@ def main():
     argv = sys.argv[1:]
     for i, a in enumerate(argv):
         if a in ['-n', '--normalize-by-length']:
-            eprint('> Warning: option --normalize-by-length is now deprecated. Use --unit-vector')
+            print('> Warning: option --normalize-by-length is now deprecated. Use --unit-vector', file=sys.stderr)
             argv[i] = '--unit-vector'
     args = docopt(__doc__, argv=argv, version="d2vg %s" % __version__)
 
@@ -719,9 +698,9 @@ def main():
         prevl = None
         for l, _m in lang_candidates:
             if l == prevl:
-                eprint("> Warning: multiple Doc2Vec models are found for language: %s" % l)
-                eprint(">   Remove the models with `d2vg-setup-model --delete -l %s`, then" % l)
-                eprint(">   re-install a model for the language.")
+                print("> Warning: multiple Doc2Vec models are found for language: %s" % l, file=sys.stderr)
+                print(">   Remove the models with `d2vg-setup-model --delete -l %s`, then" % l, file=sys.stderr)
+                print(">   re-install a model for the language.", file=sys.stderr)
             prevl = l
         sys.exit(0)
 
@@ -738,27 +717,28 @@ def main():
         sys.exit("Error: specify the language with option -l")
 
     if not any(language == l for l, _d in lang_candidates):
-        eprint("Error: not found Doc2Vec model for language: %s" % language)
+        print("Error: not found Doc2Vec model for language: %s" % language, file=sys.stderr)
         sys.exit("  Specify either: %s" % ", ".join(l for l, _d in lang_candidates))
 
     lang_model_files = model_loader.get_model_files(language)
     assert lang_model_files
     if len(lang_model_files) >= 2:
-        eprint("Error: multiple Doc2Vec models are found for language: %s" % language)
-        eprint("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % language)
-        eprint("   re-install a model for the language.")
+        print("Error: multiple Doc2Vec models are found for language: %s" % language, file=sys.stderr)
+        print("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % language, file=sys.stderr)
+        print("   re-install a model for the language.", file=sys.stderr)
         sys.exit(1)
     lang_model_file = lang_model_files[0]
 
-    if args['--build-index']:
-        do_indexing(language, lang_model_file, args)
-    elif args['--within-indexed']:
-        do_index_search(language, lang_model_file, args)
-    elif args['--list-indexed']:
-        do_list_file_indexed(language, lang_model_file, args)
-    else:
-        do_incremental_search(language, lang_model_file, args)
-
+    verbose = args['--verbose']
+    with ESession(active=verbose) as esession:
+        if args['--build-index']:
+            do_indexing(language, lang_model_file, esession, args)
+        elif args['--within-indexed']:
+            do_index_search(language, lang_model_file, esession, args)
+        elif args['--list-indexed']:
+            do_list_file_indexed(language, lang_model_file, esession, args)
+        else:
+            do_incremental_search(language, lang_model_file, esession, args)
 
 
 if __name__ == "__main__":
