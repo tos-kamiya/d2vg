@@ -13,7 +13,7 @@ from .model_loader import file_signature, DEFAULT_WINDOW_SIZE
 from .types import Vec
 
 
-PosVec = Tuple[Tuple[int, int], List[Vec]]
+PosVec = Tuple[Tuple[int, int], Vec]
 
 DB_FILE_EXTENSION = ".sqlite3"
 DB_DEFAULT_CLUSTER_SIZE = 64
