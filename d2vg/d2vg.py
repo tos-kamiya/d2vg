@@ -19,6 +19,7 @@ from . import model_loader
 from .types import Vec
 from . import index_db
 from .esesion import ESession
+from .fnmatcher import FNMatcher
 
 
 def normalize_vec(vec: Vec) -> Vec:
@@ -58,10 +59,13 @@ def remove_second_appearance(lst: List[T]) -> List[T]:
     return r
 
 
-def expand_target_files(target_files: Iterable[str]) -> List[str]:
+def expand_target_files(target_files: Iterable[str]) -> Tuple[List[str], bool]:
     target_files_expand = []
+    including_stdin = False
     for f in target_files:
-        if "*" in f:
+        if f == '-':
+            including_stdin = True
+        elif "*" in f:
             gfs = glob(f, recursive=True)
             for gf in gfs:
                 if os.path.isfile(gf):
@@ -69,7 +73,7 @@ def expand_target_files(target_files: Iterable[str]) -> List[str]:
         else:
             target_files_expand.append(f)
     target_files_expand = remove_second_appearance(target_files_expand)
-    return target_files_expand
+    return target_files_expand, including_stdin
 
 
 U = TypeVar("U")
@@ -217,8 +221,8 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     assert headline_len >= 8
     unit_vector = args['--unit-vector']
 
-    target_files = expand_target_files(target_files)
-    if not target_files:
+    target_files, read_from_stdin = expand_target_files(target_files)
+    if not target_files and not read_from_stdin:
         sys.exit("Error: no target files are given.")
 
     parser = parsers.Parser()
@@ -240,21 +244,14 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 
     files_stored = []
     files_not_stored = []
-    read_from_stdin = False
     if db is not None and not unknown_word_as_keyword:
         for tf in target_files:
-            if tf == "-":
-                read_from_stdin = True
-            elif db.has(tf):
+            if db.has(tf):
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
     else:
-        for tf in target_files:
-            if tf == "-":
-                read_from_stdin = True
-            else:
-                files_not_stored.append(tf)
+        files_not_stored = target_files
 
     if unit_vector:
         def inner_product(dv: Vec, pv: Vec) -> float:
@@ -337,35 +334,32 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
             update_search_results("-", pos_vecs, lines, line_tokens)
             tfi += 1
 
-        try:
-            for cr in tokenize_it:
-                for i, r in enumerate(cr):
-                    tfi += 1
-                    if r is None:
-                        continue
-                    tf, lines, line_tokens = r
-                    if db is None:
-                        pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+        for cr in tokenize_it:
+            for i, r in enumerate(cr):
+                tfi += 1
+                if r is None:
+                    continue
+                tf, lines, line_tokens = r
+                if db is None:
+                    pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+                else:
+                    if db.has(tf):
+                        pos_vecs = db.lookup(tf)
                     else:
-                        if db.has(tf):
-                            pos_vecs = db.lookup(tf)
-                        else:
-                            pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-                            db.store(tf, pos_vecs)
-                    update_search_results(tf, pos_vecs, lines, line_tokens)
-                    if i == 0:
-                        verbose_print_cur_status(tfi)
-        except KeyboardInterrupt as e:
-            if executor is not None:
-                executor.shutdown(wait=False)
-                kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
-            raise e
-        else:
-            if executor is not None:
-                executor.shutdown()
+                        pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
+                        db.store(tf, pos_vecs)
+                update_search_results(tf, pos_vecs, lines, line_tokens)
+                if i == 0:
+                    verbose_print_cur_status(tfi)
     except KeyboardInterrupt:
         esession.still("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), force=True)
         esession.still("> Warning: shows the search results up to now.", force=True)
+        if executor is not None:
+            executor.shutdown(wait=False)
+            kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
+    else:
+        if executor is not None:
+            executor.shutdown()
     finally:
         if db is not None:
             db.close()
@@ -379,14 +373,13 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
             lines = parse(tf)
         headline, _max_sr = extract_headline(lines, sr, text_to_tokens, tokens_to_vector, pattern_vec, headline_len)
         print("%g\t%s:%d-%d\t%s" % (ip, tf, sr[0] + 1, sr[1] + 1, headline))
-        if i >= top_n > 0:
-            break  # for i
 
 
 def sub_search(
     pattern_vec: Vec, 
     db_base_path: str, 
-    db_index: int, 
+    db_index: int,
+    fnmatch_func: Optional[Callable[[str], bool]], 
     top_n: int, 
     unit_vector: bool, 
     search_paragraph: bool
@@ -399,26 +392,30 @@ def sub_search(
             return float(np.inner(normalize_vec(dv), pv))
 
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
-    it = index_db.open_item_iterator(db_base_path, db_index)
-    for fsig, _window_size, pos_vecs in it:
-        ip_srlls = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
-        if ip_srlls:
-            if search_paragraph:
-                ip_srlls = prune_overlapped_paragraphs(ip_srlls)
-            else:
-                ip_srlls = [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
+    with index_db.open_item_iterator(db_base_path, db_index) as it:
+        for fsig, _window_size, pos_vecs in it:
+            if fnmatch_func is not None:
+                fn, fs, fmt = model_loader.decode_file_signature(fsig)
+                if not fnmatch_func(fn):
+                    continue  # for fsig
 
-        for ip, subrange, lines, _line_tokens in ip_srlls:
-            heapq.heappush(search_results, (ip, fsig, subrange, lines))
-            if len(search_results) > top_n:
-                _smallest = heapq.heappop(search_results)
-    it.close()
+            ip_srlls = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
+            if ip_srlls:
+                if search_paragraph:
+                    ip_srlls = prune_overlapped_paragraphs(ip_srlls)
+                else:
+                    ip_srlls = [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
+
+            for ip, subrange, lines, _line_tokens in ip_srlls:
+                heapq.heappush(search_results, (ip, fsig, subrange, lines))
+                if len(search_results) > top_n:
+                    _smallest = heapq.heappop(search_results)
 
     search_results = heapq.nlargest(top_n, search_results)
     return search_results
 
 
-def sub_search_i(a: Tuple[Vec, str, int, int, bool, bool]) -> List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]]:
+def sub_search_i(a: Tuple[Vec, str, int, Optional[Callable[[str], bool]], int, bool, bool]) -> List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]]:
     return sub_search(*a)
 
 
@@ -436,8 +433,11 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     if args["--unknown-word-as-keyword"]:
         sys.exit("Error: invalid option with --within-indexed")
 
+    fnmatch_func = None
     if args['<file>']:
         file_patterns = args['<file>']
+        fnm = FNMatcher(file_patterns)
+        fnmatch_func = fnm.match
 
     parser = parsers.Parser()
     parse = parser.parse
@@ -475,10 +475,11 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     esession.flash("[0/%d]" % cluster_size)
     if worker is not None:
         executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-        subit = executor.map(sub_search_i, [(pattern_vec, db_base_path, i, top_n, unit_vector, search_paragraph) for i in range(cluster_size)])
+        subit = executor.map(sub_search_i, [(pattern_vec, db_base_path, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size)])
     else:
         executor = None
-        subit = (sub_search(pattern_vec, db_base_path, i, top_n, unit_vector, search_paragraph) for i in range(cluster_size))
+        subit = (sub_search(pattern_vec, db_base_path, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size))
+    subi = 0
     try:
         for subi, sub_search_results in enumerate(subit):
             for item in sub_search_results:
@@ -503,12 +504,11 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         if executor is not None:
             executor.shutdown(wait=False)
             kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
-        raise e
+        esession.still("> Warning: interrupted [%d/%d] in looking up index DB" % (subi + 1, cluster_size), force=True)
+        esession.still("> Warning: shows the search results up to now.", force=True)
     else:
         if executor is not None:
             executor.shutdown()
-    finally:
-        esession.close()
 
     model = model_loader.D2VModel(language, lang_model_file)
 
@@ -523,8 +523,6 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         lines = parse(fn)
         headline, _max_sr = extract_headline(lines, sr, text_to_tokens, model.tokens_to_vec, pattern_vec, headline_len)
         print("%g\t%s:%d-%d\t%s" % (ip, fn, sr[0] + 1, sr[1] + 1, headline))
-        if i >= top_n > 0:
-            break  # for i
 
 
 def sub_list_file_indexed(db_base_path: str, db_index: int) -> List[Tuple[str, int, int, int]]:
@@ -576,6 +574,7 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
     for fn, fmt, fs, window_size in file_data:
         dt = datetime.fromtimestamp(fmt)
         t = dt.strftime('%Y-%m-%d %H:%M:%S')
+        fn = fn.replace('\t', '\ufffd').replace('\t', '\ufffd')
         print('%s\t%s\t%d\t%d' % (fn, t, fs, window_size))
 
 
@@ -587,9 +586,7 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
     tokens_to_vector = model.tokens_to_vec
 
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-    db = index_db.open(db_base_path, 'c', window_size=window_size)
-
-    try:
+    with index_db.open(db_base_path, 'c', window_size=window_size) as db:
         for tf in file_names:
             if db.has(tf):
                 continue
@@ -601,8 +598,6 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
                 line_tokens = [text_to_tokens(L) for L in lines]
                 pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
                 db.store(tf, pos_vecs)
-    finally:
-        db.close()
 
 
 def do_store_index_i(d: Tuple[List[str], str, str, int, ESession]) -> None:
@@ -628,9 +623,11 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
         db = index_db.open(db_base_path, 'c', cluster_size, window_size)
         db.close()
 
-    target_files = expand_target_files(target_files)
+    target_files, including_stdin = expand_target_files(target_files)
     if not target_files:
         sys.exit("Error: no target files are given.")
+    if including_stdin:
+        esession.still('> Warning: skip stdin contents.', force=True)
 
     file_splits = [list() for _ in range(cluster_size)]
     for tf in target_files:
@@ -641,7 +638,7 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     file_splits.sort(key=lambda file_list: len(file_list), reverse=True)  # prioritize chunks containing large number of files
 
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-    indexing_it = executor.map(do_store_index_i, [(chunk, language, lang_model_file, window_size, verbose) for chunk in file_splits])
+    indexing_it = executor.map(do_store_index_i, [(chunk, language, lang_model_file, window_size, esession) for chunk in file_splits])
     try:
         esession.flash("[%d/%d] indexing" % (0, len(file_splits)))
         for i, _ in enumerate(indexing_it):

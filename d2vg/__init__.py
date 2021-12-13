@@ -10,6 +10,7 @@ from . import parsers
 from . import d2vg_setup_model
 from . import types
 from . import index_db
+from . import fnmatcher
 
 from . import sqldbm
 

@@ -5,7 +5,6 @@ import unittest
 from itertools import zip_longest
 from pathlib import Path
 import tempfile
-import time
 
 import numpy as np
 
@@ -32,8 +31,9 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             b = p / "b.txt"
             b.write_text("")
 
-            r = d2vg.expand_target_files([tempdir + "/*.txt"])
+            r, including_stdin = d2vg.expand_target_files([tempdir + "/*.txt"])
             self.assertEqual(sorted(r), [str(p / f) for f in ["a.txt", "b.txt"]])
+            self.assertFalse(including_stdin)
 
     def test_expand_target_files_recursive(self):
         with tempfile.TemporaryDirectory() as tempdir:
@@ -45,8 +45,9 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             b = p2 / "b.txt"
             b.write_text("")
 
-            r = d2vg.expand_target_files([tempdir + "/**/*.txt"])
+            r, including_stdin = d2vg.expand_target_files([tempdir + "/**/*.txt"])
             self.assertEqual(sorted(r), [str(p / f) for f in ["2/b.txt", "a.txt"]])
+            self.assertFalse(including_stdin)
 
     def test_extract_headline(self):
         lines = ["%d" % i for i in range(10)]
@@ -87,7 +88,6 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
         expected = [
             ((0, 2), np.array([6.0, 1.0], dtype=np.float32)),
             ((1, 3), np.array([9.0, 4.0], dtype=np.float32)),
-            ((2, 3), np.array([9.0, 7.0], dtype=np.float32)),
         ]
         for a, e in zip_longest(actual, expected):
             self.assertEqual(a[0], e[0])

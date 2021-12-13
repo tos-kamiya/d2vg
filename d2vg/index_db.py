@@ -61,6 +61,12 @@ class IndexDb:
         else:
             self._window_size = window_size
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def _db_for_file(self, file_name: str):
         c32 = crc32(file_name.encode('utf-8')) & 0xffffffff
         i = c32 % len(self._dbs)
@@ -182,6 +188,12 @@ class IndexDbItemIterator:
         self._db = db
         self._keys = db.keys()
         self._i = -1
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     def __iter__(self):
         return self
