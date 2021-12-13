@@ -30,11 +30,11 @@ def file_signature(file_name: str) -> str:
 def decode_file_signature(fsig: str) -> Tuple[str, int, int]:
     i = fsig.rfind('-')
     assert i > 0
-    fs2 = fsig[:i - 1]
+    fs2 = fsig[:i]
     j = fs2.rfind('-')
     assert j > 0
     fn = fs2[:j]
-    size_str = fs2[j + 1]
+    size_str = fs2[j + 1 : i]
     mtime_str = fsig[i + 1:]
     return fn, int(size_str), int(mtime_str)
 
