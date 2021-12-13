@@ -76,7 +76,7 @@ class IndexDb:
                 else:
                     db = sqldbm.open(db_fn, sqldbm.Mode.OPEN)
             except sqlite3.OperationalError as e:
-                raise IndexDbError('fail to open slite3 db file: %s' % repr(db_fn)) from e
+                raise IndexDbError('fail to open sqlite3 db file: %s' % repr(db_fn)) from e
             self._dbs[db_index] = db
         return db
 
