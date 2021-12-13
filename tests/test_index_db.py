@@ -39,7 +39,7 @@ class IndexDbTest(unittest.TestCase):
                 touch(file_a)
 
                 file_index_db = "index_db"
-                db = index_db.open(file_index_db, 'c')
+                db = index_db.open(file_index_db, "c")
 
                 self.assertFalse(db.has(file_a))
 
@@ -66,7 +66,7 @@ class IndexDbTest(unittest.TestCase):
                 touch(file_a)
 
                 file_index_db = "index_db"
-                db = index_db.open(file_index_db, 'c')
+                db = index_db.open(file_index_db, "c")
 
                 db.store(file_a, pos_vecs)
                 self.assertTrue(db.has(file_a))
@@ -89,13 +89,13 @@ class IndexDbTest(unittest.TestCase):
                 touch(file_a)
 
                 file_index_db = "index_db"
-                db = index_db.open(file_index_db, 'c')
+                db = index_db.open(file_index_db, "c")
 
                 db.store(file_a, pos_vecs)
                 self.assertTrue(db.has(file_a))
                 db.close()
 
-                db = index_db.open(file_index_db, 'r')
+                db = index_db.open(file_index_db, "r")
                 act = db.lookup(file_a)
                 for a, e in zip_longest(act, pos_vecs):
                     self.assertEqual(a[0], e[0])

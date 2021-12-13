@@ -9,7 +9,7 @@ class FNMatcher:
         self._wildcards = []
         fns = []
         for p in patterns:
-            if p.find('*') >= 0:
+            if p.find("*") >= 0:
                 self._wildcards.append(p)
             else:
                 fns.append(normpath(p))
@@ -23,4 +23,3 @@ class FNMatcher:
             if fnmatch(np, wc):
                 return True
         return False
-

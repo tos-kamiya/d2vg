@@ -10,14 +10,14 @@ import zipfile
 import bs4
 import docx2txt
 
-if platform.system() != 'Windows':
+if platform.system() != "Windows":
     import pdftotext
 
 
 _script_dir: str = os.path.dirname(os.path.realpath(__file__))
 
 _ja_nkf_abspath: Optional[str] = None
-if platform.system() == 'Windows' and os.path.exists(os.path.join(_script_dir, "nkf32.exe")):
+if platform.system() == "Windows" and os.path.exists(os.path.join(_script_dir, "nkf32.exe")):
     _ja_nkf_abspath = os.path.abspath(os.path.join(_script_dir, "nkf32.exe"))
 
 
@@ -80,7 +80,7 @@ class Parser:
             return read_text_file(file_name)
 
 
-if platform.system() != 'Windows':
+if platform.system() != "Windows":
 
     def pdf_parse(file_name: str) -> str:
         try:
@@ -110,7 +110,7 @@ else:
             cmd = ["pdftotext.exe", file_name, tempf]
             p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if p.returncode != 0:
-                raise ParseError('ParseError: %s, file: %s' % (p.stderr.decode('utf-8').rstrip(), repr(file_name)))
+                raise ParseError("ParseError: %s, file: %s" % (p.stderr.decode("utf-8").rstrip(), repr(file_name)))
             with open(tempf, "r", encoding="utf-8") as f:
                 text = f.read()
         finally:

@@ -23,7 +23,7 @@ def file_name_crc(file_name: str) -> Optional[int]:
     if os.path.isabs(file_name):
         return None
     np = os.path.normpath(file_name)
-    return  crc32(np.encode('utf-8')) & 0xffffffff
+    return crc32(np.encode("utf-8")) & 0xFFFFFFFF
 
 
 def dumps_pos_vecs(pos_vecs: Iterable[PosVec]) -> bytes:
@@ -31,12 +31,12 @@ def dumps_pos_vecs(pos_vecs: Iterable[PosVec]) -> bytes:
     for sr, vecs in pos_vecs:
         vecs = [float(d) for d in vecs]
         dumped.append((sr, vecs))
-    return bson.dumps({'pos_vecs': dumped})
+    return bson.dumps({"pos_vecs": dumped})
 
 
 def loads_pos_vecs(b: bytes) -> List[PosVec]:
     loaded = []
-    for sr, vecs in bson.loads(b).get('pos_vecs'):
+    for sr, vecs in bson.loads(b).get("pos_vecs"):
         vecs = np.array(vecs, dtype=np.float32)
         loaded.append((tuple(sr), vecs))
     return loaded
@@ -68,21 +68,21 @@ class IndexDb:
         self.close()
 
     def _db_for_file(self, file_name: str):
-        c32 = crc32(file_name.encode('utf-8')) & 0xffffffff
+        c32 = crc32(file_name.encode("utf-8")) & 0xFFFFFFFF
         i = c32 % len(self._dbs)
         return self._db_open(i)
-    
+
     def _db_open(self, db_index: int) -> sqldbm.SqliteDbm:
         db = self._dbs[db_index]
         if db is None:
-            db_fn = '%s-%do%d%s' % (self._base_path, db_index, len(self._dbs), DB_FILE_EXTENSION)
+            db_fn = "%s-%do%d%s" % (self._base_path, db_index, len(self._dbs), DB_FILE_EXTENSION)
             try:
-                if self._mode == 'r':
+                if self._mode == "r":
                     db = sqldbm.open(db_fn, sqldbm.Mode.OPEN_READ_ONLY)
                 else:
                     db = sqldbm.open(db_fn, sqldbm.Mode.OPEN)
             except sqlite3.OperationalError as e:
-                raise IndexDbError('fail to open sqlite3 db file: %s' % repr(db_fn)) from e
+                raise IndexDbError("fail to open sqlite3 db file: %s" % repr(db_fn)) from e
             self._dbs[db_index] = db
         return db
 
@@ -122,46 +122,41 @@ class IndexDb:
 
 
 def exists(db_base_path: str) -> int:
-    pat = db_base_path + '-*' + DB_FILE_EXTENSION
+    pat = db_base_path + "-*" + DB_FILE_EXTENSION
     db_files = glob(pat)
     if db_files:
         valid_cluster_numbers: List[int] = []
         cluster_size = None
         for dbf in db_files:
             cluster_info_str = dbf[len(db_base_path) + 1 : -len(DB_FILE_EXTENSION)]
-            fs = cluster_info_str.split('o')
+            fs = cluster_info_str.split("o")
             if len(fs) != 2:
-                raise IndexDbError('DB corrupted (bad cluster info)')
+                raise IndexDbError("DB corrupted (bad cluster info)")
             i, s = int(fs[0]), int(fs[1])
             if cluster_size is not None:
                 if s != cluster_size:
-                    raise IndexDbError('DB corrupted (cluster size conflict)')
+                    raise IndexDbError("DB corrupted (cluster size conflict)")
             else:
                 cluster_size = s
             if not (0 <= i < s):
-                raise IndexDbError('DB corrupted (cluster size conflict)')
+                raise IndexDbError("DB corrupted (cluster size conflict)")
             valid_cluster_numbers.append(i)
         valid_cluster_numbers.sort()
         assert cluster_size is not None
         if valid_cluster_numbers != list(range(cluster_size)):
-            raise IndexDbError('DB corrupted (member file missing)')
+            raise IndexDbError("DB corrupted (member file missing)")
         return cluster_size  # db exists
     return 0  # db does not exist
 
 
-def open(
-    db_base_path: str, 
-    mode: str, 
-    cluster_size: int = DB_DEFAULT_CLUSTER_SIZE, 
-    window_size: Optional[int] = None
-) -> IndexDb:
-    assert mode in ['r', 'c']
+def open(db_base_path: str, mode: str, cluster_size: int = DB_DEFAULT_CLUSTER_SIZE, window_size: Optional[int] = None) -> IndexDb:
+    assert mode in ["r", "c"]
     r = exists(db_base_path)
     if r == 0:
-        if mode == 'r':
-            raise IndexDbError('DB not found')
+        if mode == "r":
+            raise IndexDbError("DB not found")
         for i in range(cluster_size):
-            db_fn = '%s-%do%d%s' % (db_base_path, i, cluster_size, DB_FILE_EXTENSION)
+            db_fn = "%s-%do%d%s" % (db_base_path, i, cluster_size, DB_FILE_EXTENSION)
             db = sqldbm.open(db_fn, sqldbm.Mode.OPEN_CREATE_NEW)
             db.close()
         index_db = IndexDb(db_base_path, mode, cluster_size, window_size)
@@ -180,11 +175,11 @@ class IndexDbItemIterator:
         assert 0 <= index < cluster_size
         self._base_path = base_path
         self._cluster_size = cluster_size
-        db_fn = '%s-%do%d%s' % (self._base_path, index, self._cluster_size, DB_FILE_EXTENSION)
+        db_fn = "%s-%do%d%s" % (self._base_path, index, self._cluster_size, DB_FILE_EXTENSION)
         try:
             db = sqldbm.open(db_fn, sqldbm.Mode.OPEN_READ_ONLY)
         except sqlite3.OperationalError as e:
-            raise IndexDbError('fail to open slite3 db file: %s' % repr(db_fn)) from e
+            raise IndexDbError("fail to open slite3 db file: %s" % repr(db_fn)) from e
         self._db = db
         self._keys = db.keys()
         self._i = -1
@@ -207,9 +202,9 @@ class IndexDbItemIterator:
         self._i += 1
 
         key = self._keys[self._i]
-        i = key.rfind('-')
+        i = key.rfind("-")
         fsig = key[:i]
-        window_size = int(key[i+1:])
+        window_size = int(key[i + 1 :])
         valueb = self._db[key]
         pos_vecs = loads_pos_vecs(valueb)
         return fsig, window_size, pos_vecs
@@ -218,7 +213,7 @@ class IndexDbItemIterator:
 def open_item_iterator(db_base_path: str, db_index: int):
     r = exists(db_base_path)
     if r == 0:
-        raise IndexDbError('DB not found')
-    
+        raise IndexDbError("DB not found")
+
     cluster_size = r
     return IndexDbItemIterator(db_base_path, db_index, cluster_size)

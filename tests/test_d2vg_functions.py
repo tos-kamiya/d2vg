@@ -107,7 +107,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
 
     def test_prune_by_keywords(self):
         lines = ["a b", "c d", "e f", "b a"]
-        line_tokens = [L.split(' ') for L in lines]
+        line_tokens = [L.split(" ") for L in lines]
         ip_srlls = [
             (0.1, (0, 2), lines, line_tokens),  # a b, c d
             (0.3, (1, 3), lines, line_tokens),  # c d, e f
@@ -126,10 +126,9 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
         expected = [ip_srlls[1]]
         self.assertEqual(actual, expected)
 
-
     def test_prune_overlapped_paragraphs(self):
         lines = ["a b", "c d", "e f", "b a"]
-        line_tokens = [L.split(' ') for L in lines]
+        line_tokens = [L.split(" ") for L in lines]
         ip_srlls = [
             (0.1, (0, 2), lines, line_tokens),
             (0.3, (1, 3), lines, line_tokens),
@@ -159,7 +158,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
         actual = d2vg.prune_overlapped_paragraphs(ip_srlls)
         expected = [ip_srlls[0], ip_srlls[2]]
         self.assertEqual(actual, expected)
-    
+
     # def test_kill_child_processes(self):
     #     executor = concurrent.futures.ProcessPoolExecutor(max_workers=2)
     #     t1 = time.time()

@@ -12,14 +12,14 @@ class SystemWideFlag:
         self._valid = True
         self.set(value)
 
-    def set(self,  value: bytes) -> None:
+    def set(self, value: bytes) -> None:
         assert self._valid
-        with open(self._tempfile, 'wb') as outp:
+        with open(self._tempfile, "wb") as outp:
             outp.write(value)
-    
+
     def get(self) -> bytes:
         assert self._valid
-        with open(self._tempfile, 'rb') as inp:
+        with open(self._tempfile, "rb") as inp:
             return inp.read()
 
     def cleanup(self):

@@ -39,6 +39,7 @@ DB_DIR = ".d2vg"
 # ref: https://psutil.readthedocs.io/en/latest/index.html?highlight=Process#kill-process-tree
 def kill_all_subprocesses():
     import psutil
+
     for child in psutil.Process(os.getpid()).children(recursive=True):
         try:
             child.kill()
@@ -63,7 +64,7 @@ def expand_target_files(target_files: Iterable[str]) -> Tuple[List[str], bool]:
     target_files_expand = []
     including_stdin = False
     for f in target_files:
-        if f == '-':
+        if f == "-":
             including_stdin = True
         elif "*" in f:
             gfs = glob(f, recursive=True)
@@ -170,9 +171,7 @@ def do_parse_and_tokenize_i(d: Tuple[List[str], str, ESession]) -> List[Optional
 
 
 def prune_by_keywords(
-    ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]],
-    keyword_set: FrozenSet[str],
-    min_ip: Optional[float] = None
+    ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]], keyword_set: FrozenSet[str], min_ip: Optional[float] = None
 ) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
     ipsrll_inc_kws: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]] = []
     lines: Optional[List[str]] = None
@@ -194,12 +193,14 @@ def prune_by_keywords(
     return ipsrll_inc_kws
 
 
-def prune_overlapped_paragraphs(ip_srlls: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
+def prune_overlapped_paragraphs(
+    ip_srlls: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]
+) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
     dropped_index_set = set()
     for i, (ip_srll1, ip_srll2) in enumerate(zip(ip_srlls, ip_srlls[1:])):
-        ip1, sr1 = ip_srll1[0], ip_srll1[1] 
+        ip1, sr1 = ip_srll1[0], ip_srll1[1]
         ip2, sr2 = ip_srll2[0], ip_srll2[1]
-        if sr2[0] < sr1[1] < sr2[1]:  # if two subranges are overlapped 
+        if sr2[0] < sr1[1] < sr2[1]:  # if two subranges are overlapped
             if ip1 < ip2:
                 dropped_index_set.add(i)
             else:
@@ -219,7 +220,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         worker = multiprocessing.cpu_count()
     headline_len = int(args["--headline-length"])
     assert headline_len >= 8
-    unit_vector = args['--unit-vector']
+    unit_vector = args["--unit-vector"]
 
     target_files, read_from_stdin = expand_target_files(target_files)
     if not target_files and not read_from_stdin:
@@ -240,7 +241,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     db = None
     if os.path.isdir(DB_DIR):
         db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-        db = index_db.open(db_base_path, 'c', window_size=window_size)
+        db = index_db.open(db_base_path, "c", window_size=window_size)
 
     files_stored = []
     files_not_stored = []
@@ -254,9 +255,12 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         files_not_stored = target_files
 
     if unit_vector:
+
         def inner_product(dv: Vec, pv: Vec) -> float:
             return float(np.inner(unitvec(dv), pv))
+
     else:
+
         def inner_product(dv: Vec, pv: Vec) -> float:
             return float(np.inner(normalize_vec(dv), pv))
 
@@ -314,7 +318,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
             _ip, f, sr, _ls = max_tf[0]
             top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
             esession.flash("[%d/%d] %s" % (tfi + 1, len_target_files, top1_message))
-    
+
     tfi = -1
     tf = None
     len_target_files = len(target_files)
@@ -376,18 +380,15 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 
 
 def sub_search(
-    pattern_vec: Vec, 
-    db_base_path: str, 
-    db_index: int,
-    fnmatch_func: Optional[Callable[[str], bool]], 
-    top_n: int, 
-    unit_vector: bool, 
-    search_paragraph: bool
+    pattern_vec: Vec, db_base_path: str, db_index: int, fnmatch_func: Optional[Callable[[str], bool]], top_n: int, unit_vector: bool, search_paragraph: bool
 ) -> List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]]:
     if unit_vector:
+
         def inner_product(dv: Vec, pv: Vec) -> float:
             return float(np.inner(unitvec(dv), pv))
+
     else:
+
         def inner_product(dv: Vec, pv: Vec) -> float:
             return float(np.inner(normalize_vec(dv), pv))
 
@@ -428,14 +429,14 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         worker = multiprocessing.cpu_count()
     headline_len = int(args["--headline-length"])
     assert headline_len >= 8
-    unit_vector = args['--unit-vector']
+    unit_vector = args["--unit-vector"]
 
     if args["--unknown-word-as-keyword"]:
         sys.exit("Error: invalid option with --within-indexed")
 
     fnmatch_func = None
-    if args['<file>']:
-        file_patterns = args['<file>']
+    if args["<file>"]:
+        file_patterns = args["<file>"]
         fnm = FNMatcher(file_patterns)
         fnmatch_func = fnm.match
 
@@ -570,12 +571,12 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
     file_data.sort()
 
     esession.activate(False)
-    print('name\tsize\tmtime\twindow_size')
+    print("name\tsize\tmtime\twindow_size")
     for fn, fmt, fs, window_size in file_data:
         dt = datetime.fromtimestamp(fmt)
-        t = dt.strftime('%Y-%m-%d %H:%M:%S')
-        fn = fn.replace('\t', '\ufffd').replace('\t', '\ufffd')
-        print('%s\t%s\t%d\t%d' % (fn, t, fs, window_size))
+        t = dt.strftime("%Y-%m-%d %H:%M:%S")
+        fn = fn.replace("\t", "\ufffd").replace("\t", "\ufffd")
+        print("%s\t%s\t%d\t%d" % (fn, t, fs, window_size))
 
 
 def do_store_index(file_names: List[str], language: str, lang_model_file: str, window_size: int, esession: ESession) -> None:
@@ -586,7 +587,7 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
     tokens_to_vector = model.tokens_to_vec
 
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-    with index_db.open(db_base_path, 'c', window_size=window_size) as db:
+    with index_db.open(db_base_path, "c", window_size=window_size) as db:
         for tf in file_names:
             if db.has(tf):
                 continue
@@ -610,7 +611,7 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     worker = int(args["--worker"])
 
     if not os.path.exists(DB_DIR):
-        esession.still('> Create a `.d2vg` directory for index data.', force=True)
+        esession.still("> Create a `.d2vg` directory for index data.", force=True)
         os.mkdir(DB_DIR)
 
     cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
@@ -618,16 +619,16 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     c = index_db.exists(db_base_path)
     if c > 0:
         if cluster_size != c:
-            sys.exit('Error: index db exists but incompatible. Remove `.d2vg` directory before indexing.')
+            sys.exit("Error: index db exists but incompatible. Remove `.d2vg` directory before indexing.")
     else:
-        db = index_db.open(db_base_path, 'c', cluster_size, window_size)
+        db = index_db.open(db_base_path, "c", cluster_size, window_size)
         db.close()
 
     target_files, including_stdin = expand_target_files(target_files)
     if not target_files:
         sys.exit("Error: no target files are given.")
     if including_stdin:
-        esession.still('> Warning: skip stdin contents.', force=True)
+        esession.still("> Warning: skip stdin contents.", force=True)
 
     file_splits = [list() for _ in range(cluster_size)]
     for tf in target_files:
@@ -677,15 +678,17 @@ Options:
   --build-index                 Create index data for the document files and save it in the DB of `.d2vg` directory.
   --list-lang                   Listing the languages in which the corresponding models are installed.
   --list-indexed                List the document files (whose indexes are stored) in the DB.
-""".format(default_window_size = model_loader.DEFAULT_WINDOW_SIZE)
+""".format(
+    default_window_size=model_loader.DEFAULT_WINDOW_SIZE
+)
 
 
 def main():
     argv = sys.argv[1:]
     for i, a in enumerate(argv):
-        if a in ['-n', '--normalize-by-length']:
-            print('> Warning: option --normalize-by-length is now deprecated. Use --unit-vector', file=sys.stderr)
-            argv[i] = '--unit-vector'
+        if a in ["-n", "--normalize-by-length"]:
+            print("> Warning: option --normalize-by-length is now deprecated. Use --unit-vector", file=sys.stderr)
+            argv[i] = "--unit-vector"
     args = docopt(__doc__, argv=argv, version="d2vg %s" % __version__)
 
     lang_candidates = model_loader.get_model_langs()
@@ -726,13 +729,13 @@ def main():
         sys.exit(1)
     lang_model_file = lang_model_files[0]
 
-    verbose = args['--verbose']
+    verbose = args["--verbose"]
     with ESession(active=verbose) as esession:
-        if args['--build-index']:
+        if args["--build-index"]:
             do_indexing(language, lang_model_file, esession, args)
-        elif args['--within-indexed']:
+        elif args["--within-indexed"]:
             do_index_search(language, lang_model_file, esession, args)
-        elif args['--list-indexed']:
+        elif args["--list-indexed"]:
             do_list_file_indexed(language, lang_model_file, esession, args)
         else:
             do_incremental_search(language, lang_model_file, esession, args)

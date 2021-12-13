@@ -28,20 +28,20 @@ def file_signature(file_name: str) -> str:
 
 
 def decode_file_signature(fsig: str) -> Tuple[str, int, int]:
-    i = fsig.rfind('-')
+    i = fsig.rfind("-")
     assert i > 0
     fs2 = fsig[:i]
-    j = fs2.rfind('-')
+    j = fs2.rfind("-")
     assert j > 0
     fn = fs2[:j]
     size_str = fs2[j + 1 : i]
-    mtime_str = fsig[i + 1:]
+    mtime_str = fsig[i + 1 :]
     return fn, int(size_str), int(mtime_str)
 
 
 def get_model_root_dir() -> str:
     models = "models"
-    if platform.system() == 'Windows':
+    if platform.system() == "Windows":
         return os.path.join(appdirs.user_data_dir(_app_name, _author), models)
     else:
         return os.path.join(appdirs.user_config_dir(_app_name), models)
@@ -98,10 +98,7 @@ def get_model_files(
 
 def exit_with_installation_message(e: ModuleNotFoundError, lang: str):
     print("Error: %s" % e, file=sys.stderr)
-    print(
-        "  Need to install d2vg with `{lang}` option: pip install d2vg[{lang}]".format(lang=lang),
-        file=sys.stderr,
-    )
+    print("  Need to install d2vg with `{lang}` option: pip install d2vg[{lang}]".format(lang=lang), file=sys.stderr)
     sys.exit(1)
 
 
@@ -158,7 +155,7 @@ class D2VModel:
         self.lang = lang
         self.lang_model_path = lang_model_path
         self.model = Doc2Vec.load(lang_model_path)
-    
+
     def find_oov_tokens(self, tokens: Iterable[str]) -> List[str]:
         return [t for t in tokens if self.model.wv.key_to_index.get(t, None) is None]
 
