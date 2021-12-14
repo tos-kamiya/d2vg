@@ -176,7 +176,7 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 ├── en.ref
 ├── enwiki-m700-c380-d100.model
 └── enwiki-m700-c380-d100.model.dv.vectors.npy
-````
+```
 
 ## Todo
 
@@ -186,7 +186,7 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 - [x] Combining keyword search
 - [x] Easy installation
 - [ ] Support and tune more languages (experimental support: ko, zh)
-- [ ] Explicit indexing control command in case millions of files to search
+- [x] Explicit indexing control command in case millions of files to search
 
 ## Acknowledgements
 
@@ -202,3 +202,6 @@ https://dumps.wikimedia.org/
 ## License
 
 d2vg is distributed under [BSD-2](https://opensource.org/licenses/BSD-2-Clause) license.
+
+d2vg is shipped with a derivative of Jeffrey Bester's [sqldbm](https://github.com/jbester/sqldbm), which is distributed under the MIT license.
+

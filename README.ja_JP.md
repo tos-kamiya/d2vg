@@ -185,7 +185,7 @@ Doc2Vecモデルは、Gensim v4で作成されたものとしてください。
 - [x] キーワード検索の併用
 - [x] インストールを容易に
 - [ ] より多くの言語サポートおよびチューニング(実験的サポート: ko, zh)
-- [ ] 検索対象のファイルが数百万個になったときのための明示的なインデックス化コマンド
+- [x] 検索対象のファイルが数百万個になったときのための明示的なインデックス化コマンド
 
 ## 謝辞
 
@@ -201,3 +201,5 @@ https://dumps.wikimedia.org/
 ## ライセンス
 
 d2vgは [BSD-2](https://opensource.org/licenses/BSD-2-Clause) ライセンスで配布されます。
+
+d2vgはMITライセンスで配布されるJeffrey Bester氏の[sqldbm](https://github.com/jbester/sqldbm)の派生物を同梱しています。
