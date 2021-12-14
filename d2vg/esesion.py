@@ -41,21 +41,35 @@ class ESession:
             self._showing_flash_message = False
         self._activated = False
 
+    def clear(self):
+        if not self._activated:
+            return
+        if self._showing_flash_message:
+            print(_ANSI_ESCAPE_CLEAR_CUR_LINE, file=sys.stderr, end="")
+        self._showing_flash_message = False
+
     def flash(self, message: str) -> None:
         if not self._activated:
             return
         if self._showing_flash_message:
             print(_ANSI_ESCAPE_CLEAR_CUR_LINE, file=sys.stderr, end="")
-        print(message, file=sys.stderr, end="", flush=True)
-        self._showing_flash_message = True
+        if message:
+            print(message, file=sys.stderr, end="", flush=True)
+            self._showing_flash_message = True
+        else:
+            self._showing_flash_message = False
 
     def flash_eval(self, message_callback: Callable[[], str]):
         if not self._activated:
             return
         if self._showing_flash_message:
             print(_ANSI_ESCAPE_CLEAR_CUR_LINE, file=sys.stderr, end="")
-        print(message_callback(), file=sys.stderr, end="", flush=True)
-        self._showing_flash_message = True
+        message = message_callback()
+        if message:
+            print(message, file=sys.stderr, end="", flush=True)
+            self._showing_flash_message = True
+        else:
+            self._showing_flash_message = False
 
     def print(self, message: str, force: bool = False):
         if not force and not self._activated:

@@ -10,7 +10,7 @@ import numpy as np
 
 from d2vg import types
 from d2vg import d2vg
-
+from d2vg.esesion import ESession
 
 # def wait_1sec(*args):
 #     time.sleep(1)
@@ -18,11 +18,6 @@ from d2vg import d2vg
 
 
 class D2vgHelperFunctionsTest(unittest.TestCase):
-    def test_remove_second_appearance_file(self):
-        lst = "a,b,c,c,a,a,b".split(",")
-        r = d2vg.remove_second_appearance(lst)
-        self.assertEqual(r, "a,b,c".split(","))
-
     def test_expand_target_files(self):
         with tempfile.TemporaryDirectory() as tempdir:
             p = Path(tempdir)
@@ -31,7 +26,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             b = p / "b.txt"
             b.write_text("")
 
-            r, including_stdin = d2vg.expand_target_files([tempdir + "/*.txt"])
+            r, including_stdin = d2vg.do_expand_target_files([tempdir + "/*.txt"], ESession())
             self.assertEqual(sorted(r), [str(p / f) for f in ["a.txt", "b.txt"]])
             self.assertFalse(including_stdin)
 
@@ -45,7 +40,7 @@ class D2vgHelperFunctionsTest(unittest.TestCase):
             b = p2 / "b.txt"
             b.write_text("")
 
-            r, including_stdin = d2vg.expand_target_files([tempdir + "/**/*.txt"])
+            r, including_stdin = d2vg.do_expand_target_files([tempdir + "/**/*.txt"], ESession())
             self.assertEqual(sorted(r), [str(p / f) for f in ["2/b.txt", "a.txt"]])
             self.assertFalse(including_stdin)
 
