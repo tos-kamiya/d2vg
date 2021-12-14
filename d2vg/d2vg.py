@@ -596,6 +596,12 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     window_size = int(args["--window"])
     worker = int(args["--worker"])
 
+    target_files, including_stdin = expand_target_files(target_files)
+    if not target_files:
+        sys.exit("Error: no target files are given.")
+    if including_stdin:
+        esession.print("> Warning: skip stdin contents.", force=True)
+
     if not os.path.exists(DB_DIR):
         esession.print("> Create a `.d2vg` directory for index data.", force=True)
         os.mkdir(DB_DIR)
@@ -609,12 +615,6 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     else:
         db = index_db.open(db_base_path, "c", cluster_size, window_size)
         db.close()
-
-    target_files, including_stdin = expand_target_files(target_files)
-    if not target_files:
-        sys.exit("Error: no target files are given.")
-    if including_stdin:
-        esession.print("> Warning: skip stdin contents.", force=True)
 
     file_splits = [list() for _ in range(cluster_size)]
     for tf in target_files:
