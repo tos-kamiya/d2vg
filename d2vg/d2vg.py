@@ -362,14 +362,23 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 
 
 def sub_index_search(
-    pattern_vec: Vec, db_base_path: str, db_index: int, fnmatch_func: Optional[Callable[[str], bool]], top_n: int, unit_vector: bool, search_paragraph: bool
+    pattern_vec: Vec, 
+    db_base_path: str, 
+    db_index: int, 
+    fnmatch_func: Optional[Callable[[str], bool]], 
+    top_n: int,
+    window_size: Optional[int],
+    unit_vector: bool, 
+    search_paragraph: bool
 ) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     inner_product = inner_product_u if unit_vector else inner_product_n
 
     search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
     with index_db.open_item_iterator(db_base_path, db_index) as it:
-        for fn, sig, _window_size, pos_vecs in it:
+        for fn, sig, ws, pos_vecs in it:
             if fnmatch_func is not None and not fnmatch_func(fn):
+                continue  # for fn
+            if window_size is not None and ws != window_size:
                 continue  # for fn
 
             ip_srlls = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
@@ -384,13 +393,14 @@ def sub_index_search(
     return search_results
 
 
-def sub_index_search_i(a: Tuple[Vec, str, int, Optional[Callable[[str], bool]], int, bool, bool]) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
+def sub_index_search_i(a: Tuple[Vec, str, int, Optional[Callable[[str], bool]], int, Optional[int], bool, bool]) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     return sub_index_search(*a)
 
 
 def do_index_search(language: str, lang_model_file: str, esession: ESession, args: Dict[str, Any]) -> None:
     pattern = args["<pattern>"]
     top_n = int(args["--topn"])
+    window_size = int(args["--window"])
     search_paragraph = args["--paragraph"]
     worker = int(args["--worker"]) if args["--worker"] else None
     if worker == 0:
@@ -444,7 +454,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
 
     esession.flash("[0/%d] (progress is counted by member DB files in index DB)" % cluster_size)
     executor = ProcessPoolExecutor(max_workers=worker)
-    subit = executor.map(sub_index_search_i, ((pattern_vec, db_base_path, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size)))
+    subit = executor.map(sub_index_search_i, ((pattern_vec, db_base_path, i, fnmatch_func, top_n, window_size, unit_vector, search_paragraph) for i in range(cluster_size)))
     subi = 0
     try:
         for subi, sub_search_results in enumerate(subit):
@@ -621,7 +631,7 @@ __doc__: str = """Doc2Vec Grep.
 
 Usage:
   d2vg [-v] [-j WORKER] [-l LANG] [-K] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] [-f] <pattern> <file>...
-  d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-u] [-a WIDTH] [-f] <pattern> [<file>...]
+  d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] [-f] <pattern> [<file>...]
   d2vg --build-index [-v] -j WORKER [-l LANG] [-w NUM] <file>...
   d2vg --list-lang
   d2vg --list-indexed [-l LANG] [-j WORKER]
