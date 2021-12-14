@@ -53,12 +53,12 @@ def do_expand_pattern(pattern: str, esession: ESession) -> str:
         return sys.stdin.read()
     elif pattern.startswith('='):
         assert pattern != '=-'
-        with open(pattern[1:]) as inp:
-            try:
+        try:
+            with open(pattern[1:]) as inp:
                 return inp.read()
-            except FileNotFoundError:
-                esession.clear()
-                sys.exit('Error: fail to open file: %s' % repr(pattern[1:]))
+        except OSError:
+            esession.clear()
+            sys.exit('Error: fail to open file: %s' % repr(pattern[1:]))
     else:
         return pattern
 
@@ -80,9 +80,10 @@ def do_expand_target_files(target_files: Iterable[str], esession: ESession) -> T
                 try:
                     with open(f[1:]) as inp:
                         tfs = [L.rstrip() for L in inp]
-                        expand_target_files_i(tfs, True)
-                except FileNotFoundError:
+                except OSError:
                     sys.exit('Error: fail to open file: %s' % repr(f[1:]))
+                else:
+                    expand_target_files_i(tfs, True)
             elif "*" in f:
                 gfs = glob(f, recursive=True)
                 for gf in gfs:
@@ -246,7 +247,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     files_not_stored = []
     if db is not None and not unknown_word_as_keyword:
         for tf in target_files:
-            if db.has(tf, file_signature(tf)):
+            if db.signature(tf) != file_signature(tf):
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
@@ -307,10 +308,11 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     try:
         for tfi, tf in enumerate(files_stored):
             assert db is not None
-            pos_vecs = db.lookup(tf, file_signature(tf))
-            if pos_vecs == None:
+            r = db.lookup(tf)
+            if r is None or r[0] != file_signature(tf):
                 esession.clear()
                 sys.exit('Error: file signature does not match (the file was modified during search?): %s' % tf)
+            pos_vecs = r[1]
             update_search_results(tf, pos_vecs, None, None)
             if tfi % 100 == 1:
                 verbose_print_cur_status(tfi)
@@ -333,10 +335,12 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
                     pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, window_size)
                 else:
                     sig = file_signature(tf)
-                    pos_vecs = db.lookup(tf, sig)
-                    if pos_vecs is None:
+                    r = db.lookup(tf)
+                    if r is None or r[0] != sig:
                         pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, window_size)
                         db.store(tf, sig, pos_vecs)
+                    else:
+                        pos_vecs = r
                 update_search_results(tf, pos_vecs, lines, line_tokens)
                 if i == 0:
                     verbose_print_cur_status(tfi)
@@ -459,7 +463,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     try:
         for subi, sub_search_results in enumerate(subit):
             for item in sub_search_results:
-                ip, fn, sig, sr, lines = item
+                _ip, fn, sig, _sr, _lines = item
                 if file_signature(fn) != sig:
                     esession.print("> Warning: obsolete index data. Skip file: %s" % fn, force=True)
                     continue  # for item
@@ -470,7 +474,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
             if esession.is_active():
                 max_tf = heapq.nlargest(1, search_results)
                 if max_tf:
-                    _ip, fn, sig, sr, _ls = max_tf[0]
+                    _ip, fn, _sig, sr, _ls = max_tf[0]
                     top1_message = "Tentative top-1: %s:%d-%d" % (fn, sr[0] + 1, sr[1] + 1)
                     esession.flash("[%d/%d] %s" % (subi + 1, cluster_size, top1_message))
     except KeyboardInterrupt as _e:
@@ -560,8 +564,8 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
     with index_db.open(db_base_path, "c", window_size=window_size) as db:
         for tf in file_names:
-            sig = index_db.file_signature(tf)
-            if db.has(tf, sig):
+            sig = file_signature(tf)
+            if db.signature(tf) != sig:
                 continue
             try:
                 lines = parser.parse(tf)

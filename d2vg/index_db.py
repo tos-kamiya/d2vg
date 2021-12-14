@@ -112,21 +112,18 @@ class IndexDb:
     def get_window_size(self) -> int:
         return self._window_size
 
-    def has(self, file_name: str, sig: FileSignature) -> bool:
+    def signature(self, file_name: str) -> Optional[FileSignature]:
         if file_name == "-" or os.path.isabs(file_name):
-            return False
+            return None
         np = os.path.normpath(file_name)
         key = "%s-%d" % (np, self._window_size)
         db = self._db_for_file(np)
         valueb = db[key]
         if valueb is None:
-            return False
-        sig_lookup = loads_sig(valueb)
-        if sig_lookup != sig:
-            return False
-        return True
+            return None
+        return loads_sig(valueb)
 
-    def lookup(self, file_name: str, sig: FileSignature) -> Optional[List[PosVec]]:
+    def lookup(self, file_name: str) -> Optional[Tuple[FileSignature, List[PosVec]]]:
         if file_name == "-" or os.path.isabs(file_name):
             return None
         np = os.path.normpath(file_name)
@@ -135,10 +132,7 @@ class IndexDb:
         valueb = db[key]
         if valueb is None:
             return None
-        sig_lookup, pos_vecs = loads_sig_pos_vecs(valueb)
-        if sig_lookup != sig:
-            return None
-        return pos_vecs
+        return loads_sig_pos_vecs(valueb)
 
     def store(self, file_name: str, sig: FileSignature, pos_vecs: List[PosVec]) -> None:
         if file_name == "-" or os.path.isabs(file_name):
