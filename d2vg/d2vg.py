@@ -1,6 +1,5 @@
 from typing import *
 
-import concurrent.futures
 from datetime import datetime
 from glob import glob
 import heapq
@@ -22,6 +21,7 @@ from . import index_db
 from .esesion import ESession
 from .fnmatcher import FNMatcher
 from .iter_funcs import *
+from .processpoolexecutor_wrapper import ProcessPoolExecutor
 
 
 __version__ = importlib.metadata.version("d2vg")
@@ -46,17 +46,6 @@ def inner_product_u(dv: Vec, pv: Vec) -> float:
 
 def inner_product_n(dv: Vec, pv: Vec) -> float:
     return float(np.inner(normalize_vec(dv), pv))
-
-
-# ref: https://psutil.readthedocs.io/en/latest/index.html?highlight=Process#kill-process-tree
-def kill_all_subprocesses():
-    import psutil
-
-    for child in psutil.Process(os.getpid()).children(recursive=True):
-        try:
-            child.kill()
-        except psutil.NoSuchProcess:
-            pass
 
 
 def do_expand_pattern(pattern: str, esession: ESession) -> str:
@@ -249,7 +238,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     esession.flash_eval(lambda: '> Found %d files.' % (len(target_files) + (1 if read_from_stdin else 0)))
 
     db = None
-    if os.path.isdir(DB_DIR):
+    if os.path.exists(DB_DIR) and os.path.isdir(DB_DIR):
         db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
         db = index_db.open(db_base_path, "c", window_size=window_size)
 
@@ -265,12 +254,8 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         files_not_stored = target_files
 
     chunk_size = max(10, min(len(target_files) // 200, 100))
-    if worker is not None:
-        executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-        tokenize_it = executor.map(do_parse_and_tokenize_i, ((chunk, language, esession) for chunk in split_to_length(files_not_stored, chunk_size)))
-    else:
-        executor = None
-        tokenize_it = map(do_parse_and_tokenize_i, ((chunk, language, esession) for chunk in split_to_length(files_not_stored, chunk_size)))
+    executor = ProcessPoolExecutor(max_workers=worker)
+    tokenize_it = executor.map(do_parse_and_tokenize_i, ((chunk, language, esession) for chunk in split_to_length(files_not_stored, chunk_size)))
 
     esession.flash('> Loading Doc2Vec model.')
     model = model_loader.D2VModel(language, lang_model_file)
@@ -355,15 +340,12 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
                 update_search_results(tf, pos_vecs, lines, line_tokens)
                 if i == 0:
                     verbose_print_cur_status(tfi)
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as _e:
         esession.print("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), force=True)
         esession.print("> Warning: shows the search results up to now.", force=True)
-        if executor is not None:
-            executor.shutdown(wait=False)
-            kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
+        executor.shutdown(wait=False, cancel_futures=True)
     else:
-        if executor is not None:
-            executor.shutdown()
+        executor.shutdown()
     finally:
         if db is not None:
             db.close()
@@ -434,7 +416,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         fnm = FNMatcher(file_patterns)
         fnmatch_func = fnm.match
 
-    if not os.path.isdir(DB_DIR):
+    if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
@@ -461,12 +443,8 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
 
     esession.flash("[0/%d] (progress is counted by member DB files in index DB)" % cluster_size)
-    if worker is not None:
-        executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-        subit = executor.map(sub_index_search_i, [(pattern_vec, db_base_path, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size)])
-    else:
-        executor = None
-        subit = (sub_index_search(pattern_vec, db_base_path, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size))
+    executor = ProcessPoolExecutor(max_workers=worker)
+    subit = executor.map(sub_index_search_i, ((pattern_vec, db_base_path, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size)))
     subi = 0
     try:
         for subi, sub_search_results in enumerate(subit):
@@ -485,15 +463,12 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
                     _ip, fn, sig, sr, _ls = max_tf[0]
                     top1_message = "Tentative top-1: %s:%d-%d" % (fn, sr[0] + 1, sr[1] + 1)
                     esession.flash("[%d/%d] %s" % (subi + 1, cluster_size, top1_message))
-    except KeyboardInterrupt as e:
-        if executor is not None:
-            executor.shutdown(wait=False)
-            kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
+    except KeyboardInterrupt as _e:
         esession.print("> Warning: interrupted [%d/%d] in looking up index DB" % (subi + 1, cluster_size), force=True)
         esession.print("> Warning: shows the search results up to now.", force=True)
+        executor.shutdown(wait=False, cancel_futures=True)
     else:
-        if executor is not None:
-            executor.shutdown()
+        executor.shutdown()
 
     model = model_loader.D2VModel(language, lang_model_file)
     parser = parsers.Parser()
@@ -544,25 +519,17 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
         sis.append((len(it), db_index))
     sis.sort(reverse=True)
 
-    if worker is not None:
-        executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-        subit = executor.map(sub_list_file_indexed_i, ((db_base_path, i) for _s, i in sis))
-    else:
-        executor = None
-        subit = (sub_list_file_indexed(db_base_path, i) for _s, i in sis)
-
+    executor = ProcessPoolExecutor(max_workers=worker)
+    subit = executor.map(sub_list_file_indexed_i, ((db_base_path, i) for _s, i in sis))
     try:
         file_data: List[Tuple[str, int, int, int]] = []
         for fd in subit:
             file_data.extend(fd)
     except KeyboardInterrupt as e:
-        if executor is not None:
-            executor.shutdown(wait=False)
-            kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
+        executor.shutdown(wait=False, cancel_futures=True)
         raise e
     finally:
-        if executor is not None:
-            executor.shutdown()
+        executor.shutdown()
 
     file_data.sort()
 
@@ -637,15 +604,14 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
         file_splits[c32 % cluster_size].append(tf)
     file_splits.sort(key=lambda file_list: len(file_list), reverse=True)  # prioritize chunks containing large number of files
 
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
-    indexing_it = executor.map(do_store_index_i, [(chunk, language, lang_model_file, window_size, esession) for chunk in file_splits])
+    executor = ProcessPoolExecutor(max_workers=worker)
+    indexing_it = executor.map(do_store_index_i, ((chunk, language, lang_model_file, window_size, esession) for chunk in file_splits))
     try:
         esession.flash("[%d/%d] indexing" % (0, len(file_splits)))
         for i, _ in enumerate(indexing_it):
             esession.flash("[%d/%d] indexing" % (i + 1, len(file_splits)))
     except KeyboardInterrupt as e:
-        executor.shutdown(wait=False)
-        kill_all_subprocesses()  # might be better to use executor.shutdown(wait=False, cancel_futures=True), in Python 3.10+
+        executor.shutdown(wait=False, cancel_futures=True)
         raise e
     else:
         executor.shutdown()
