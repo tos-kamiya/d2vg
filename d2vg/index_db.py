@@ -1,6 +1,7 @@
 from typing import *
 
 from binascii import crc32
+from math import floor
 from glob import glob
 import os.path
 import sqlite3
@@ -9,14 +10,27 @@ import bson
 import numpy as np
 from . import sqldbm
 
-from .model_loader import file_signature, DEFAULT_WINDOW_SIZE
+from .model_loader import DEFAULT_WINDOW_SIZE
 from .types import Vec
 
 
+FileSignature = NewType("FileSignature", str)
 PosVec = Tuple[Tuple[int, int], Vec]
 
 DB_FILE_EXTENSION = ".sqlite3"
 DB_DEFAULT_CLUSTER_SIZE = 64
+
+
+def file_signature(file_name: str) -> FileSignature:
+    return "%s-%s" % (os.path.getsize(file_name), floor(os.path.getmtime(file_name)))
+
+
+def decode_file_signature(sig: FileSignature) -> Tuple[int, int]:
+    i = sig.rfind("-")
+    assert i > 0
+    size_str = sig[: i]
+    mtime_str = sig[i + 1 :]
+    return int(size_str), int(mtime_str)
 
 
 def file_name_crc(file_name: str) -> Optional[int]:
@@ -26,20 +40,26 @@ def file_name_crc(file_name: str) -> Optional[int]:
     return crc32(np.encode("utf-8")) & 0xFFFFFFFF
 
 
-def dumps_pos_vecs(pos_vecs: Iterable[PosVec]) -> bytes:
+def dumps_sig_pos_vecs(sig: FileSignature, pos_vecs: Iterable[PosVec]) -> bytes:
     dumped = []
     for sr, vec in pos_vecs:
         vec = [float(d) for d in vec]
         dumped.append((sr, vec))
-    return bson.dumps({"pos_vecs": dumped})
+    return bson.dumps({'sig': sig, 'pos_vecs': dumped})
 
 
-def loads_pos_vecs(b: bytes) -> List[PosVec]:
-    loaded = []
-    for sr, vec in bson.loads(b).get("pos_vecs"):
+def loads_sig_pos_vecs(b: bytes) -> Tuple[FileSignature, List[PosVec]]:
+    d = bson.loads(b)
+    sig = d.get('sig')
+    pos_vecs = []
+    for sr, vec in d.get('pos_vecs'):
         vec = np.array(vec, dtype=np.float32)
-        loaded.append((tuple(sr), vec))
-    return loaded
+        pos_vecs.append((tuple(sr), vec))
+    return sig, pos_vecs
+
+
+def loads_sig(b: bytes) -> FileSignature:
+    return bson.loads(b).get('sig')
 
 
 class IndexDbError(Exception):
@@ -92,32 +112,41 @@ class IndexDb:
     def get_window_size(self) -> int:
         return self._window_size
 
-    def has(self, file_name: str) -> bool:
+    def has(self, file_name: str, sig: FileSignature) -> bool:
         if file_name == "-" or os.path.isabs(file_name):
             return False
         np = os.path.normpath(file_name)
-        key = "%s-%d" % (file_signature(np), self._window_size)
-        db = self._db_for_file(np)
-        return key in db
-
-    def lookup(self, file_name: str) -> List[PosVec]:
-        assert file_name != "-"
-        assert not os.path.isabs(file_name)
-        np = os.path.normpath(file_name)
-        key = "%s-%d" % (file_signature(np), self._window_size)
+        key = "%s-%d" % (np, self._window_size)
         db = self._db_for_file(np)
         valueb = db[key]
-        assert valueb is not None
-        pos_vecs = loads_pos_vecs(valueb)
+        if valueb is None:
+            return False
+        sig_lookup = loads_sig(valueb)
+        if sig_lookup != sig:
+            return False
+        return True
+
+    def lookup(self, file_name: str, sig: FileSignature) -> Optional[List[PosVec]]:
+        if file_name == "-" or os.path.isabs(file_name):
+            return None
+        np = os.path.normpath(file_name)
+        key = "%s-%d" % (np, self._window_size)
+        db = self._db_for_file(np)
+        valueb = db[key]
+        if valueb is None:
+            return None
+        sig_lookup, pos_vecs = loads_sig_pos_vecs(valueb)
+        if sig_lookup != sig:
+            return None
         return pos_vecs
 
-    def store(self, file_name: str, pos_vecs: List[PosVec]) -> None:
+    def store(self, file_name: str, sig: FileSignature, pos_vecs: List[PosVec]) -> None:
         if file_name == "-" or os.path.isabs(file_name):
             return
         np = os.path.normpath(file_name)
-        key = "%s-%d" % (file_signature(np), self._window_size)
+        key = "%s-%d" % (np, self._window_size)
         db = self._db_for_file(np)
-        valueb = dumps_pos_vecs(pos_vecs)
+        valueb = dumps_sig_pos_vecs(sig, pos_vecs)
         db[key] = valueb
 
 
@@ -196,18 +225,18 @@ class IndexDbItemIterator:
     def __len__(self) -> int:
         return len(self._db)
 
-    def __next__(self) -> Tuple[str, int, List[PosVec]]:
+    def __next__(self) -> Tuple[str, FileSignature, int, List[PosVec]]:
         if self._i + 1 >= len(self._keys):
             raise StopIteration()
         self._i += 1
 
         key = self._keys[self._i]
         i = key.rfind("-")
-        fsig = key[:i]
+        fn = key[: i]
         window_size = int(key[i + 1 :])
         valueb = self._db[key]
-        pos_vecs = loads_pos_vecs(valueb)
-        return fsig, window_size, pos_vecs
+        sig, pos_vecs = loads_sig_pos_vecs(valueb)
+        return fn, sig, window_size, pos_vecs
 
 
 def open_item_iterator(db_base_path: str, db_index: int):

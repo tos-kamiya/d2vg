@@ -1,6 +1,5 @@
 from typing import *
 
-from math import floor
 from glob import glob
 import os
 import platform
@@ -21,22 +20,6 @@ _app_name = "d2vg"
 _author = "tos.kamiya"
 _user_data_dir = appdirs.user_data_dir(_app_name, _author)
 _user_config_dir = appdirs.user_config_dir(_app_name)
-
-
-def file_signature(file_name: str) -> str:
-    return "%s-%s-%d" % (file_name, os.path.getsize(file_name), floor(os.path.getmtime(file_name)))
-
-
-def decode_file_signature(fsig: str) -> Tuple[str, int, int]:
-    i = fsig.rfind("-")
-    assert i > 0
-    fs2 = fsig[:i]
-    j = fs2.rfind("-")
-    assert j > 0
-    fn = fs2[:j]
-    size_str = fs2[j + 1 : i]
-    mtime_str = fsig[i + 1 :]
-    return fn, int(size_str), int(mtime_str)
 
 
 def get_model_root_dir() -> str:

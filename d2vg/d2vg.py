@@ -23,6 +23,13 @@ from .esesion import ESession
 from .fnmatcher import FNMatcher
 
 
+__version__ = importlib.metadata.version("d2vg")
+DB_DIR = ".d2vg"
+
+PosVec = index_db.PosVec
+FileSignature = index_db.FileSignature
+
+
 def normalize_vec(vec: Vec) -> Vec:
     veclen = np.linalg.norm(vec)
     if veclen == 0.0:
@@ -36,13 +43,6 @@ def inner_product_u(dv: Vec, pv: Vec) -> float:
 
 def inner_product_n(dv: Vec, pv: Vec) -> float:
     return float(np.inner(normalize_vec(dv), pv))
-
-
-PosVec = index_db.PosVec
-
-__version__ = importlib.metadata.version("d2vg")
-
-DB_DIR = ".d2vg"
 
 
 # ref: https://psutil.readthedocs.io/en/latest/index.html?highlight=Process#kill-process-tree
@@ -234,10 +234,6 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     assert headline_len >= 8
     unit_vector = args["--unit-vector"]
 
-    target_files, read_from_stdin = expand_target_files(target_files)
-    if not target_files and not read_from_stdin:
-        sys.exit("Error: no target files are given.")
-
     parser = parsers.Parser()
     parse = parser.parse
 
@@ -247,6 +243,12 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 
     if not pattern:
         sys.exit("Error: pattern string is empty.")
+
+    esession.flash('> Locating target files.')
+    target_files, read_from_stdin = expand_target_files(target_files)
+    if not target_files and not read_from_stdin:
+        sys.exit("Error: no target files are given.")
+    esession.flash_eval(lambda: '> Found %d files.' % (len(target_files) + (1 if read_from_stdin else 0)))
 
     text_to_tokens = model_loader.load_tokenize_func(language)
 
@@ -259,7 +261,8 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     files_not_stored = []
     if db is not None and not unknown_word_as_keyword:
         for tf in target_files:
-            if db.has(tf):
+            sig = index_db.file_signature(tf)
+            if db.has(tf, sig):
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
@@ -277,6 +280,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         executor = None
         tokenize_it = map(do_parse_and_tokenize_i, [(chunk, language, esession) for chunk in chunks])
 
+    esession.flash('> Loading Doc2Vec model.')
     model = model_loader.D2VModel(language, lang_model_file)
     tokens_to_vector = model.tokens_to_vec
     find_oov_tokens = model.find_oov_tokens
@@ -323,7 +327,10 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     try:
         for tfi, tf in enumerate(files_stored):
             assert db is not None
-            pos_vecs = db.lookup(tf)
+            sig = index_db.file_signature(tf)
+            pos_vecs = db.lookup(tf, sig)
+            if pos_vecs == None:
+                sys.exit('Error: file signature does not match (the file was modified during search?): %s' % tf)
             update_search_results(tf, pos_vecs, None, None)
             if tfi % 100 == 1:
                 verbose_print_cur_status(tfi)
@@ -345,11 +352,11 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
                 if db is None:
                     pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
                 else:
-                    if db.has(tf):
-                        pos_vecs = db.lookup(tf)
-                    else:
+                    sig = index_db.file_signature(tf)
+                    pos_vecs = db.lookup(tf, sig)
+                    if pos_vecs is None:
                         pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-                        db.store(tf, pos_vecs)
+                        db.store(tf, sig, pos_vecs)
                 update_search_results(tf, pos_vecs, lines, line_tokens)
                 if i == 0:
                     verbose_print_cur_status(tfi)
@@ -379,22 +386,22 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 
 def sub_search(
     pattern_vec: Vec, db_base_path: str, db_index: int, fnmatch_func: Optional[Callable[[str], bool]], top_n: int, unit_vector: bool, search_paragraph: bool
-) -> List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]]:
+) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     inner_product = inner_product_u if unit_vector else inner_product_n
 
-    search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
+    search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
     with index_db.open_item_iterator(db_base_path, db_index) as it:
-        for fsig, _window_size, pos_vecs in it:
+        for fn, sig, _window_size, pos_vecs in it:
             if fnmatch_func is not None:
-                fn, fs, fmt = model_loader.decode_file_signature(fsig)
                 if not fnmatch_func(fn):
-                    continue  # for fsig
+                    continue  # for fn
+                fs, fmt = index_db.decode_file_signature(sig)
 
             ip_srlls = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
             ip_srlls = prune_overlapped_paragraphs(ip_srlls, search_paragraph)
 
             for ip, subrange, lines, _line_tokens in ip_srlls:
-                heapq.heappush(search_results, (ip, fsig, subrange, lines))
+                heapq.heappush(search_results, (ip, fn, sig, subrange, lines))
                 if len(search_results) > top_n:
                     _smallest = heapq.heappop(search_results)
 
@@ -402,7 +409,7 @@ def sub_search(
     return search_results
 
 
-def sub_search_i(a: Tuple[Vec, str, int, Optional[Callable[[str], bool]], int, bool, bool]) -> List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]]:
+def sub_search_i(a: Tuple[Vec, str, int, Optional[Callable[[str], bool]], int, bool, bool]) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     return sub_search(*a)
 
 
@@ -420,12 +427,6 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     if args["--unknown-word-as-keyword"]:
         sys.exit("Error: invalid option with --within-indexed")
 
-    fnmatch_func = None
-    if args["<file>"]:
-        file_patterns = args["<file>"]
-        fnm = FNMatcher(file_patterns)
-        fnmatch_func = fnm.match
-
     parser = parsers.Parser()
     parse = parser.parse
 
@@ -435,6 +436,14 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
 
     if not pattern:
         sys.exit("Error: pattern string is empty.")
+
+    fnmatch_func = None
+    if args["<file>"]:
+        file_patterns = args["<file>"]
+        if len(file_patterns) > 100:
+            esession.print("> Warning: many (100+) filenames are specified. Consider using glob patterns enclosed in quotes, like '*.txt'", force=True)
+        fnm = FNMatcher(file_patterns)
+        fnmatch_func = fnm.match
 
     text_to_tokens = model_loader.load_tokenize_func(language)
 
@@ -446,6 +455,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         sys.exit("Error: no index DB (directory `.d2vg`)")
     cluster_size = r
 
+    esession.flash('> Loading Doc2Vec model.')
     model = model_loader.D2VModel(language, lang_model_file)
 
     tokens = text_to_tokens(pattern)
@@ -457,9 +467,9 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     pattern_vec = model.tokens_to_vec(tokens)
     del model
 
-    search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
+    search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
 
-    esession.flash("[0/%d]" % cluster_size)
+    esession.flash("[0/%d] (progress is counted by member DB files in index DB)" % cluster_size)
     if worker is not None:
         executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker)
         subit = executor.map(sub_search_i, [(pattern_vec, db_base_path, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size)])
@@ -470,10 +480,9 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     try:
         for subi, sub_search_results in enumerate(subit):
             for item in sub_search_results:
-                ip, fsig, sr, lines = item
-                fn, fs, fmt = model_loader.decode_file_signature(fsig)
-                existing_file_signature = model_loader.file_signature(fn)
-                if existing_file_signature != fsig:
+                ip, fn, sig, sr, lines = item
+                existing_file_signature = index_db.file_signature(fn)
+                if existing_file_signature != sig:
                     esession.print("> Warning: obsolete index data. Skip file: %s" % fn, force=True)
                     continue  # for item
                 heapq.heappush(search_results, item)
@@ -483,8 +492,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
             if esession.is_active():
                 max_tf = heapq.nlargest(1, search_results)
                 if max_tf:
-                    _ip, fsig, sr, _ls = max_tf[0]
-                    fn, fs, fmt = model_loader.decode_file_signature(fsig)
+                    _ip, fn, sig, sr, _ls = max_tf[0]
                     top1_message = "Tentative top-1: %s:%d-%d" % (fn, sr[0] + 1, sr[1] + 1)
                     esession.flash("[%d/%d] %s" % (subi + 1, cluster_size, top1_message))
     except KeyboardInterrupt as e:
@@ -501,12 +509,12 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
 
     esession.activate(False)
     search_results = heapq.nlargest(top_n, search_results)
-    for i, (ip, fsig, sr, lines) in enumerate(search_results):
+    for ip, fn, sig, sr, lines in search_results:
         if ip < 0:
             break  # for i
-        fn, _fs, _fmt = model_loader.decode_file_signature(fsig)
-        existing_file_signature = model_loader.file_signature(fn)
-        assert existing_file_signature == fsig  # because this check has already done in the `for subi` loop above.
+        existing_file_signature = index_db.file_signature(fn)
+        if existing_file_signature != sig:
+            sys.exit('Error: file signature does not match (the file was modified during search?): %s' % fn)
         lines = parse(fn)
         headline = extract_headline(lines[sr[0] : sr[1]], text_to_tokens, model.tokens_to_vec, pattern_vec, headline_len)
         print("%g\t%s:%d-%d\t%s" % (ip, fn, sr[0] + 1, sr[1] + 1, headline))
@@ -515,8 +523,8 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
 def sub_list_file_indexed(db_base_path: str, db_index: int) -> List[Tuple[str, int, int, int]]:
     file_data: List[Tuple[str, int, int, int]] = []
     it = index_db.open_item_iterator(db_base_path, db_index)
-    for fsig, window_size, _pos_vecs in it:
-        fn, fs, fmt = model_loader.decode_file_signature(fsig)
+    for fn, sig, window_size, _pos_vecs in it:
+        fs, fmt = index_db.decode_file_signature(sig)
         file_data.append((fn, fmt, fs, window_size))
     file_data.sort()
     return file_data
@@ -575,7 +583,8 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
     with index_db.open(db_base_path, "c", window_size=window_size) as db:
         for tf in file_names:
-            if db.has(tf):
+            sig = index_db.file_signature(tf)
+            if db.has(tf, sig):
                 continue
             try:
                 lines = parse(tf)
@@ -584,7 +593,7 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
             else:
                 line_tokens = [text_to_tokens(L) for L in lines]
                 pos_vecs = extract_pos_vecs(line_tokens, tokens_to_vector, window_size)
-                db.store(tf, pos_vecs)
+                db.store(tf, sig, pos_vecs)
 
 
 def do_store_index_i(d: Tuple[List[str], str, str, int, ESession]) -> None:
@@ -596,6 +605,7 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     window_size = int(args["--window"])
     worker = int(args["--worker"])
 
+    esession.flash('> Locating target files.')
     target_files, including_stdin = expand_target_files(target_files)
     if not target_files:
         sys.exit("Error: no target files are given.")
