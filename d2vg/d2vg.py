@@ -231,23 +231,23 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         esession.clear()
         sys.exit("Error: pattern string is empty.")
 
-    esession.flash('> Locating target files.')
+    esession.flash('> Locating document files.')
     target_files, read_from_stdin = do_expand_target_files(target_files, esession)
     if not target_files and not read_from_stdin:
         esession.clear()
-        sys.exit("Error: no target files are given.")
+        sys.exit("Error: no document files are given.")
     esession.flash_eval(lambda: '> Found %d files.' % (len(target_files) + (1 if read_from_stdin else 0)))
 
     db = None
     if os.path.exists(DB_DIR) and os.path.isdir(DB_DIR):
         db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-        db = index_db.open(db_base_path, "c", window_size=window_size)
+        db = index_db.open(db_base_path, window_size, "c")
 
     files_stored = []
     files_not_stored = []
     if db is not None and not unknown_word_as_keyword:
         for tf in target_files:
-            if db.signature(tf) != file_signature(tf):
+            if db.signature(tf) == file_signature(tf):
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
@@ -368,21 +368,19 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 def sub_index_search(
     pattern_vec: Vec, 
     db_base_path: str, 
+    window_size: int,
     db_index: int, 
     fnmatch_func: Optional[Callable[[str], bool]], 
     top_n: int,
-    window_size: Optional[int],
     unit_vector: bool, 
     search_paragraph: bool
 ) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     inner_product = inner_product_u if unit_vector else inner_product_n
 
     search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
-    with index_db.open_item_iterator(db_base_path, db_index) as it:
-        for fn, sig, ws, pos_vecs in it:
+    with index_db.open_item_iterator(db_base_path, window_size, db_index) as it:
+        for fn, sig, pos_vecs in it:
             if fnmatch_func is not None and not fnmatch_func(fn):
-                continue  # for fn
-            if window_size is not None and ws != window_size:
                 continue  # for fn
 
             ip_srlls = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
@@ -397,7 +395,7 @@ def sub_index_search(
     return search_results
 
 
-def sub_index_search_i(a: Tuple[Vec, str, int, Optional[Callable[[str], bool]], int, Optional[int], bool, bool]) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
+def sub_index_search_i(a: Tuple[Vec, str, int, int, Optional[Callable[[str], bool]], int, bool, bool]) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     return sub_index_search(*a)
 
 
@@ -434,7 +432,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-    r = index_db.exists(db_base_path)
+    r = index_db.exists(db_base_path, window_size)
     if r == 0:
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
@@ -458,7 +456,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
 
     esession.flash("[0/%d] (progress is counted by member DB files in index DB)" % cluster_size)
     executor = ProcessPoolExecutor(max_workers=worker)
-    subit = executor.map(sub_index_search_i, ((pattern_vec, db_base_path, i, fnmatch_func, top_n, window_size, unit_vector, search_paragraph) for i in range(cluster_size)))
+    subit = executor.map(sub_index_search_i, ((pattern_vec, db_base_path, window_size, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size)))
     subi = 0
     try:
         for subi, sub_search_results in enumerate(subit):
@@ -499,21 +497,22 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         print("%g\t%s:%d-%d\t%s" % (ip, fn, sr[0] + 1, sr[1] + 1, headline))
 
 
-def sub_list_file_indexed(db_base_path: str, db_index: int) -> List[Tuple[str, int, int, int]]:
+def sub_list_file_indexed(db_base_path: str, window_size: int, db_index: int) -> List[Tuple[str, int, int, int]]:
     file_data: List[Tuple[str, int, int, int]] = []
-    it = index_db.open_item_iterator(db_base_path, db_index)
-    for fn, sig, window_size, _pos_vecs in it:
+    it = index_db.open_item_iterator(db_base_path, window_size, db_index)
+    for fn, sig, _pos_vecs in it:
         fs, fmt = decode_file_signature(sig)
         file_data.append((fn, fmt, fs, window_size))
     file_data.sort()
     return file_data
 
 
-def sub_list_file_indexed_i(args: Tuple[str, int]) -> List[Tuple[str, int, int, int]]:
+def sub_list_file_indexed_i(args: Tuple[str, int, int]) -> List[Tuple[str, int, int, int]]:
     return sub_list_file_indexed(*args)
 
 
 def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession, args: Dict[str, Any]) -> None:
+    window_size = int(args["--window"])
     worker = int(args["--worker"]) if args["--worker"] else None
     assert worker is None or worker >= 1
 
@@ -521,7 +520,7 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-    r = index_db.exists(db_base_path)
+    r = index_db.exists(db_base_path, window_size)
     if r == 0:
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
@@ -529,12 +528,12 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
 
     sis = []
     for db_index in range(cluster_size):
-        it = index_db.open_item_iterator(db_base_path, db_index)
+        it = index_db.open_item_iterator(db_base_path, window_size, db_index)
         sis.append((len(it), db_index))
     sis.sort(reverse=True)
 
     executor = ProcessPoolExecutor(max_workers=worker)
-    subit = executor.map(sub_list_file_indexed_i, ((db_base_path, i) for _s, i in sis))
+    subit = executor.map(sub_list_file_indexed_i, ((db_base_path, window_size, i) for _s, i in sis))
     try:
         file_data: List[Tuple[str, int, int, int]] = []
         for fd in subit:
@@ -548,7 +547,7 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
     file_data.sort()
 
     esession.activate(False)
-    print("name\tsize\tmtime\twindow_size")
+    print("name\tmtime\tsize\twindow_size")
     for fn, fmt, fs, window_size in file_data:
         dt = datetime.fromtimestamp(fmt)
         t = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -562,10 +561,10 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
     model = model_loader.D2VModel(language, lang_model_file)
 
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-    with index_db.open(db_base_path, "c", window_size=window_size) as db:
+    with index_db.open(db_base_path, window_size, "c") as db:
         for tf in file_names:
             sig = file_signature(tf)
-            if db.signature(tf) != sig:
+            if db.signature(tf) == sig:
                 continue
             try:
                 lines = parser.parse(tf)
@@ -586,11 +585,11 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     window_size = int(args["--window"])
     worker = int(args["--worker"])
 
-    esession.flash('> Locating target files.')
+    esession.flash('> Locating document files.')
     target_files, including_stdin = do_expand_target_files(target_files, esession)
     if not target_files:
         esession.clear()
-        sys.exit("Error: no target files are given.")
+        sys.exit("Error: no document files are given.")
     if including_stdin:
         esession.print("> Warning: skip stdin contents.", force=True)
 
@@ -600,13 +599,13 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
 
     cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-    c = index_db.exists(db_base_path)
+    c = index_db.exists(db_base_path, window_size)
     if c > 0:
         if cluster_size != c:
             esession.clear()
-            sys.exit("Error: index db exists but incompatible. Remove `%s` directory before indexing." % DB_DIR)
+            sys.exit("Error: index db exists but incompatible. Remove `%s` directory before building index data." % DB_DIR)
     else:
-        db = index_db.open(db_base_path, "c", cluster_size, window_size)
+        db = index_db.open(db_base_path, window_size, "c", cluster_size)
         db.close()
 
     file_splits = [list() for _ in range(cluster_size)]
@@ -621,9 +620,9 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     executor = ProcessPoolExecutor(max_workers=worker)
     indexing_it = executor.map(do_store_index_i, ((chunk, language, lang_model_file, window_size, esession) for chunk in file_splits))
     try:
-        esession.flash("[%d/%d] indexing" % (0, len(file_splits)))
+        esession.flash("[%d/%d] (progress is counted by member DB files in index DB)" % (0, len(file_splits)))
         for i, _ in enumerate(indexing_it):
-            esession.flash("[%d/%d] indexing" % (i + 1, len(file_splits)))
+            esession.flash("[%d/%d] building index data" % (i + 1, len(file_splits)))
     except KeyboardInterrupt as e:
         executor.shutdown(wait=False, cancel_futures=True)
         raise e
@@ -638,7 +637,7 @@ Usage:
   d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] [-f] <pattern> [<file>...]
   d2vg --build-index [-v] -j WORKER [-l LANG] [-w NUM] <file>...
   d2vg --list-lang
-  d2vg --list-indexed [-l LANG] [-j WORKER]
+  d2vg --list-indexed [-l LANG] [-j WORKER] [-w NUM]
   d2vg --help
   d2vg --version
 

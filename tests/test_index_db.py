@@ -33,6 +33,7 @@ class IndexDbTest(unittest.TestCase):
             ((0, 1), np.array([2, 3], dtype=np.float32)),
             ((1, 2), np.array([3, 4], dtype=np.float32)),
         ]
+        window_size = 2
         with tempfile.TemporaryDirectory() as tempdir:
             with back_to_curdir():
                 os.chdir(tempdir)
@@ -41,7 +42,7 @@ class IndexDbTest(unittest.TestCase):
                 file_a_sig = index_db.file_signature(file_a)
 
                 file_index_db = "index_db"
-                db = index_db.open(file_index_db, "c")
+                db = index_db.open(file_index_db, window_size, "c")
 
                 self.assertEqual(db.signature(file_a), None)
 
@@ -61,6 +62,7 @@ class IndexDbTest(unittest.TestCase):
             ((0, 1), np.array([2, 3], dtype=np.float32)),
             ((1, 2), np.array([3, 4], dtype=np.float32)),
         ]
+        window_size = 2
         with tempfile.TemporaryDirectory() as tempdir:
             with back_to_curdir():
                 os.chdir(tempdir)
@@ -69,7 +71,7 @@ class IndexDbTest(unittest.TestCase):
                 file_a_sig = index_db.file_signature(file_a)
 
                 file_index_db = "index_db"
-                db = index_db.open(file_index_db, "c")
+                db = index_db.open(file_index_db, window_size, "c")
 
                 db.store(file_a, file_a_sig, pos_vecs)
                 self.assertEqual(db.signature(file_a), file_a_sig)
@@ -88,6 +90,7 @@ class IndexDbTest(unittest.TestCase):
             ((0, 1), np.array([2, 3], dtype=np.float32)),
             ((1, 2), np.array([3, 4], dtype=np.float32)),
         ]
+        window_size = 2
         with tempfile.TemporaryDirectory() as tempdir:
             with back_to_curdir():
                 os.chdir(tempdir)
@@ -96,13 +99,13 @@ class IndexDbTest(unittest.TestCase):
                 file_a_sig = index_db.file_signature(file_a)
 
                 file_index_db = "index_db"
-                db = index_db.open(file_index_db, "c")
+                db = index_db.open(file_index_db, window_size, "c")
 
                 db.store(file_a, file_a_sig, pos_vecs)
                 self.assertEqual(db.signature(file_a), file_a_sig)
                 db.close()
 
-                db = index_db.open(file_index_db, "r")
+                db = index_db.open(file_index_db, window_size, "r")
                 r = db.lookup(file_a)
                 self.assertIsNotNone(r)
                 assert r is not None
