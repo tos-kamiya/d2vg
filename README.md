@@ -127,6 +127,8 @@ cd directory of document files
 d2vg --build-index -j <worker_processes> <files>...
 ```
 
+While the `-j` option for incremental indexing parallelizes the process of reading text from a document file and tokenizing it (converting it into a sequence of words), the `-j` option for explicit indexing parallelizes the process of converting a sequence of words into a vector.
+
 (2) Searching within the index
 
 Query the index DB in a parallel way. Document files which is not in the index DB will not be searched, and the index DB will not be updated.
@@ -186,7 +188,7 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 - [x] Combining keyword search
 - [x] Easy installation
 - [ ] Support and tune more languages (experimental support: ko, zh)
-- [x] Explicit indexing control command in case millions of files to search (v2)
+- [x] Explicit indexing control command in case millions of document files to search (v2)
 
 ## Acknowledgements
 
