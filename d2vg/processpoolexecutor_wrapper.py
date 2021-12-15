@@ -17,8 +17,10 @@ class ProcessPoolExecutor:
     def __init__(self, max_workers=None):
         if max_workers is not None and max_workers > 0:
             self._executor = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
+            self.map = self._executor.map
         else:
             self._executor = None
+            self.map = map
 
     def __enter__(self):
         return self
@@ -26,12 +28,6 @@ class ProcessPoolExecutor:
     def __exit__(self, exc_type, exc_value, traceback):
         if self._executor is not None:
             self._executor.__exit__(exc_type, exc_value, traceback)
-
-    def map(self, func, args_it):
-        if self._executor is not None:
-            yield from self._executor.map(func, args_it)
-        else:
-            yield from map(func, args_it)
 
     def shutdown(self, wait=True, cancel_futures=False):
         if self._executor is not None:

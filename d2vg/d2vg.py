@@ -148,13 +148,12 @@ def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[L
 
 def do_parse_and_tokenize(file_names: List[str], language: str, esession: ESession) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
     parser = parsers.Parser()
-    parse = parser.parse
     text_to_tokens = model_loader.load_tokenize_func(language)
 
     r = []
     for tf in file_names:
         try:
-            lines = parse(tf)
+            lines = parser.parse(tf)
         except parsers.ParseError as e:
             esession.print("> Warning: %s" % e)
             r.append(None)
@@ -254,10 +253,6 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     else:
         files_not_stored = target_files
 
-    chunk_size = max(10, min(len(target_files) // 200, 100))
-    executor = ProcessPoolExecutor(max_workers=worker)
-    tokenize_it = executor.map(do_parse_and_tokenize_i, ((chunk, language, esession) for chunk in split_to_length(files_not_stored, chunk_size)))
-
     esession.flash('> Loading Doc2Vec model.')
     model = model_loader.D2VModel(language, lang_model_file)
 
@@ -303,6 +298,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 
     parser = parsers.Parser()
 
+    executor = ProcessPoolExecutor(max_workers=None)  # dummy
     tfi = -1
     tf = None
     try:
@@ -325,8 +321,19 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
             update_search_results("-", pos_vecs, lines, line_tokens)
             tfi += 1
 
+        if worker is not None:
+            model = None  # before forking process, remove a large object from heap
+
+        executor = ProcessPoolExecutor(max_workers=worker)
+        chunk_size = max(10, min(len(target_files) // 200, 100))
+        args_it = [(chunk, language, esession) for chunk in split_to_length(files_not_stored, chunk_size)]
+        files_not_stored = None  # before forking process, remove a (potentially) large object from heap
+        tokenize_it = executor.map(do_parse_and_tokenize_i, args_it)
+
         for cr in tokenize_it:
             for i, r in enumerate(cr):
+                if model is None:
+                    model = model_loader.D2VModel(language, lang_model_file)
                 tfi += 1
                 if r is None:
                     continue
@@ -353,6 +360,8 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     finally:
         if db is not None:
             db.close()
+    if model is None:
+        model = model_loader.D2VModel(language, lang_model_file)
 
     esession.activate(False)
     search_results = heapq.nlargest(top_n, search_results)
@@ -450,7 +459,8 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     if oov_tokens:
         esession.print("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
     pattern_vec = model.tokens_to_vec(tokens)
-    del model
+
+    model = None  # before forking process, remove a large object from heap
 
     search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
 
@@ -618,11 +628,13 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     file_splits.sort(key=lambda file_list: len(file_list), reverse=True)  # prioritize chunks containing large number of files
 
     executor = ProcessPoolExecutor(max_workers=worker)
-    indexing_it = executor.map(do_store_index_i, ((chunk, language, lang_model_file, window_size, esession) for chunk in file_splits))
+    args_it = [(chunk, language, lang_model_file, window_size, esession) for chunk in file_splits]
+    file_splits = None  # before forking process, remove a (potentially) large object from heap
+    indexing_it = executor.map(do_store_index_i, args_it)
     try:
-        esession.flash("[%d/%d] (progress is counted by member DB files in index DB)" % (0, len(file_splits)))
+        esession.flash("[%d/%d] (progress is counted by member DB files in index DB)" % (0, cluster_size))
         for i, _ in enumerate(indexing_it):
-            esession.flash("[%d/%d] building index data" % (i + 1, len(file_splits)))
+            esession.flash("[%d/%d] building index data" % (i + 1, cluster_size))
     except KeyboardInterrupt as e:
         executor.shutdown(wait=False, cancel_futures=True)
         raise e
