@@ -181,12 +181,12 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 ## Todo
 
 - [x] Optimization by indexing document files
-- [x] Prepare Doc2Vec models compatible with the latest gensim (v4) 
+- [x] Prepare Doc2Vec models compatible with the latest gensim (gensim v4) 
 - [x] Check installation on Windows
 - [x] Combining keyword search
 - [x] Easy installation
 - [ ] Support and tune more languages (experimental support: ko, zh)
-- [x] Explicit indexing control command in case millions of files to search
+- [x] Explicit indexing control command in case millions of files to search (v2)
 
 ## Acknowledgements
 
