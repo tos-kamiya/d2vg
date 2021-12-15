@@ -30,3 +30,13 @@ def split_to_length(it: Iterable[T], group_size: int) -> Iterator[List[T]]:
             g = []
     if len(g) > 0:
         yield g
+
+
+def ranges_overwrapping(range1: Tuple[int, int], range2: Tuple[int, int]) -> bool:
+    assert min(range1) >= 0
+    assert min(range2) >= 0
+    if 0 <= range1[0] <= range2[0]:
+        return range2[0] < range1[1]
+    else:
+        # assert range2[0] <= range1[0]
+        return range1[0] < range2[1]

@@ -201,7 +201,7 @@ def prune_overlapped_paragraphs(
         for i, (ip_srll1, ip_srll2) in enumerate(zip(ip_srlls, ip_srlls[1:])):
             ip1, sr1 = ip_srll1[0], ip_srll1[1]
             ip2, sr2 = ip_srll2[0], ip_srll2[1]
-            if sr2[0] < sr1[1] < sr2[1]:  # if two subranges are overlapped
+            if ranges_overwrapping(sr1, sr2):
                 if ip1 < ip2:
                     dropped_index_set.add(i)
                 else:
@@ -604,8 +604,8 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
         esession.print("> Warning: skip stdin contents.", force=True)
 
     if not os.path.exists(DB_DIR):
-        esession.print("> Create a `%s` directory for index data." % DB_DIR, force=True)
         os.mkdir(DB_DIR)
+        esession.print("> Created a `%s` directory for index data." % DB_DIR, force=True)
 
     cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
