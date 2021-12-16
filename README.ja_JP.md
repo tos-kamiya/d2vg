@@ -2,7 +2,7 @@
 
 # d2vg
 
-d2vg, A Doc2Vec grep.
+d2vg, Doc2Vec grep。デスクトップのアプリです。
 
 Doc2Vecモデルを使って、クエリのフレーズに似た部分を含む文書ファイルを検索します。
 

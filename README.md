@@ -1,6 +1,7 @@
 ![test workflow](https://github.com/tos-kamiya/d2vg/workflows/Tests/badge.svg)
 
-&rarr; [Japanese doc](https://github.com/tos-kamiya/d2vg/blob/main/README.ja_JP.md)
+&rarr; doc [(main)](https://github.com/tos-kamiya/d2vg/) [(dev)](https://github.com/tos-kamiya/d2vg/tree/dev)
+&rarr; Japanese doc [(main)](https://github.com/tos-kamiya/d2vg/blob/main/README.ja_JP.md) [(dev)](https://github.com/tos-kamiya/d2vg/blob/dev/README.ja_JP.md)
 
 # d2vg
 
