@@ -566,7 +566,7 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
     file_data.sort()
 
     esession.activate(False)
-    print("name\tmtime\tsize\twindow_size")
+    print("name\tmtime\tfile_size\twindow_size")
     for fn, fmt, fs, window_size in file_data:
         dt = datetime.fromtimestamp(fmt)
         t = dt.strftime("%Y-%m-%d %H:%M:%S")
