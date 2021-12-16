@@ -205,5 +205,3 @@ https://dumps.wikimedia.org/
 
 d2vg is distributed under [BSD-2](https://opensource.org/licenses/BSD-2-Clause) license.
 
-d2vg is shipped with a derivative of Jeffrey Bester's [sqldbm](https://github.com/jbester/sqldbm), which is distributed under the MIT license.
-

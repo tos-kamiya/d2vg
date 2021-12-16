@@ -28,7 +28,7 @@ def touch(file_name: str):
 
 
 class IndexDbTest(unittest.TestCase):
-    def test_(self):
+    def test_filename(self):
         pos_vecs: List[index_db.PosVec] = [
             ((0, 1), np.array([2, 3], dtype=np.float32)),
             ((1, 2), np.array([3, 4], dtype=np.float32)),
@@ -44,18 +44,18 @@ class IndexDbTest(unittest.TestCase):
                 file_index_db = "index_db"
                 db = index_db.open(file_index_db, window_size, "c")
 
-                self.assertEqual(db.signature(file_a), None)
+                self.assertEqual(db.lookup_signature(file_a), None)
 
                 db.store(file_a, file_a_sig, pos_vecs)
-                self.assertEqual(db.signature(file_a), file_a_sig)
+                self.assertEqual(db.lookup_signature(file_a), file_a_sig)
 
                 # path is normalized, so './a' is same as 'a'
                 dot_file_a = os.path.join(os.curdir, file_a)
-                self.assertEqual(db.signature(dot_file_a), file_a_sig)
+                self.assertEqual(db.lookup_signature(dot_file_a), file_a_sig)
 
                 # file name with absolute path is not stored
                 abs_file_a = os.path.abspath(file_a)
-                self.assertNotEqual(db.signature(abs_file_a), file_a_sig)
+                self.assertNotEqual(db.lookup_signature(abs_file_a), file_a_sig)
 
     def test_lookup(self):
         pos_vecs: List[index_db.PosVec] = [
@@ -74,7 +74,7 @@ class IndexDbTest(unittest.TestCase):
                 db = index_db.open(file_index_db, window_size, "c")
 
                 db.store(file_a, file_a_sig, pos_vecs)
-                self.assertEqual(db.signature(file_a), file_a_sig)
+                self.assertEqual(db.lookup_signature(file_a), file_a_sig)
 
                 r = db.lookup(file_a)
                 self.assertIsNotNone(r)
@@ -102,7 +102,7 @@ class IndexDbTest(unittest.TestCase):
                 db = index_db.open(file_index_db, window_size, "c")
 
                 db.store(file_a, file_a_sig, pos_vecs)
-                self.assertEqual(db.signature(file_a), file_a_sig)
+                self.assertEqual(db.lookup_signature(file_a), file_a_sig)
                 db.close()
 
                 db = index_db.open(file_index_db, window_size, "r")

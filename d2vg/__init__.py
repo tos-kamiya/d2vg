@@ -13,7 +13,6 @@ from . import index_db
 from . import fnmatcher
 from . import iter_funcs
 from . import processpoolexecutor_wrapper
-
-from . import sqldbm
+from . import raw_db
 
 setup_model_main = d2vg_setup_model.main

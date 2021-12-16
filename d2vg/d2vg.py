@@ -246,7 +246,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     files_not_stored = []
     if db is not None and not unknown_word_as_keyword:
         for tf in target_files:
-            if db.signature(tf) == file_signature(tf):
+            if db.lookup_signature(tf) == file_signature(tf):
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
@@ -347,7 +347,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
                         pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, window_size)
                         db.store(tf, sig, pos_vecs)
                     else:
-                        pos_vecs = r
+                        pos_vecs = r[1]
                 update_search_results(tf, pos_vecs, lines, line_tokens)
                 if i == 0:
                     verbose_print_cur_status(tfi)
@@ -574,7 +574,7 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
     with index_db.open(db_base_path, window_size, "c") as db:
         for tf in file_names:
             sig = file_signature(tf)
-            if db.signature(tf) == sig:
+            if db.lookup_signature(tf) == sig:
                 continue
             try:
                 lines = parser.parse(tf)

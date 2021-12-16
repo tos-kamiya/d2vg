@@ -203,5 +203,3 @@ https://dumps.wikimedia.org/
 ## ライセンス
 
 d2vgは [BSD-2](https://opensource.org/licenses/BSD-2-Clause) ライセンスで配布されます。
-
-d2vgはMITライセンスで配布されるJeffrey Bester氏の[sqldbm](https://github.com/jbester/sqldbm)の派生物を同梱しています。
