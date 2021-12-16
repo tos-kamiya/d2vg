@@ -231,6 +231,8 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         sys.exit("Error: pattern string is empty.")
 
     esession.flash("> Locating document files.")
+    if len(target_files) > 100:
+        esession.print("> Warning: many (100+) filenames are specified. Consider using glob patterns enclosed in quotes, like '*.txt'", force=True)
     target_files, read_from_stdin = do_expand_target_files(target_files, esession)
     if not target_files and not read_from_stdin:
         esession.clear()
