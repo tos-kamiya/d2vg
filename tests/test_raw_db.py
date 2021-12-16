@@ -46,6 +46,7 @@ class IndexDbTest(unittest.TestCase):
                 self.assertEqual(raw_db.lookup(db, file_a), (file_a_sig, file_a_posvecsb))
 
                 raw_db.close(db)
+                db = None
 
     def test_reopen(self):
         with tempfile.TemporaryDirectory() as tempdir:
@@ -64,10 +65,12 @@ class IndexDbTest(unittest.TestCase):
                 raw_db.store(db, file_a, file_a_sig, file_a_posvecsb)
                 self.assertEqual(raw_db.lookup_signature(db, file_a), file_a_sig)
                 raw_db.close(db)
+                db = None
 
                 db = raw_db.open(file_raw_db, "rw")
                 self.assertEqual(raw_db.lookup_signature(db, file_a), file_a_sig)
                 raw_db.close(db)
+                db = None
 
 
 if __name__ == "__main__":

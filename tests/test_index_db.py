@@ -57,6 +57,8 @@ class IndexDbTest(unittest.TestCase):
                 abs_file_a = os.path.abspath(file_a)
                 self.assertNotEqual(db.lookup_signature(abs_file_a), file_a_sig)
 
+                db.close()
+
     def test_lookup(self):
         pos_vecs: List[index_db.PosVec] = [
             ((0, 1), np.array([2, 3], dtype=np.float32)),
@@ -84,6 +86,8 @@ class IndexDbTest(unittest.TestCase):
                     self.assertEqual(a[0], e[0])
                     for a1i, e1i in zip_longest(a[1], e[1]):
                         self.assertEqual(a1i, e1i)
+                
+                db.close()
 
     def test_reopen(self):
         pos_vecs: List[index_db.PosVec] = [
@@ -114,14 +118,16 @@ class IndexDbTest(unittest.TestCase):
                     self.assertEqual(a[0], e[0])
                     for a1i, e1i in zip_longest(a[1], e[1]):
                         self.assertEqual(a1i, e1i)
+                
+                db.close()
 
     def test_file_signature(self):
         with tempfile.TemporaryDirectory() as tempdir:
             with back_to_curdir():
                 os.chdir(tempdir)
                 file_a = os.path.join("a.txt")
-                with open(file_a, "w") as outp:
-                    outp.write("01234\n")
+                with open(file_a, "wb") as outp:
+                    outp.write(b"01234\n")
                 sig = index_db.file_signature(file_a)
                 self.assertTrue(re.match(r"6-\d+", sig))
 

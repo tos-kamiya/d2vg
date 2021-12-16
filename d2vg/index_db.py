@@ -65,9 +65,10 @@ class IndexDbError(Exception):
 
 class IndexDb:
     def close(self) -> None:
-        for db in self._dbs:
+        for i, db in enumerate(self._dbs):
             if db is not None:
                 raw_db.close(db)
+            self._dbs[i] = None
 
     def __init__(self, base_path: str, window_size: int, mode: str, cluster_size: int):
         self._base_path = base_path
