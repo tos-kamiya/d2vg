@@ -51,14 +51,14 @@ def inner_product_n(dv: Vec, pv: Vec) -> float:
 def do_expand_pattern(pattern: str, esession: ESession) -> str:
     if pattern == "-":
         return sys.stdin.read()
-    elif pattern.startswith('='):
-        assert pattern != '=-'
+    elif pattern.startswith("="):
+        assert pattern != "=-"
         try:
             with open(pattern[1:]) as inp:
                 return inp.read()
         except OSError:
             esession.clear()
-            sys.exit('Error: fail to open file: %s' % repr(pattern[1:]))
+            sys.exit("Error: fail to open file: %s" % repr(pattern[1:]))
     else:
         return pattern
 
@@ -66,22 +66,23 @@ def do_expand_pattern(pattern: str, esession: ESession) -> str:
 def do_expand_target_files(target_files: Iterable[str], esession: ESession) -> Tuple[List[str], bool]:
     including_stdin_box = [False]
     target_files_expand = []
+
     def expand_target_files_i(target_files, recursed):
         for f in target_files:
-            if recursed and (f == "-" or f.startswith('=')):
+            if recursed and (f == "-" or f.startswith("=")):
                 esession.clear()
-                sys.exit('Error: neither `-` or `=` can be used in file-list file.')
+                sys.exit("Error: neither `-` or `=` can be used in file-list file.")
             if f == "-":
                 including_stdin_box[0] = True
             elif f == "=-":
                 tfs = [L.rstrip() for L in sys.stdin]
                 expand_target_files_i(tfs, True)
-            elif f.startswith('='):
+            elif f.startswith("="):
                 try:
                     with open(f[1:]) as inp:
                         tfs = [L.rstrip() for L in inp]
                 except OSError:
-                    sys.exit('Error: fail to open file: %s' % repr(f[1:]))
+                    sys.exit("Error: fail to open file: %s" % repr(f[1:]))
                 else:
                     expand_target_files_i(tfs, True)
             elif "*" in f:
@@ -91,7 +92,7 @@ def do_expand_target_files(target_files: Iterable[str], esession: ESession) -> T
                         target_files_expand.append(gf)
             else:
                 target_files_expand.append(f)
-    
+
     expand_target_files_i(target_files, False)
     target_files_expand = remove_non_first_appearances(target_files_expand)
     return target_files_expand, including_stdin_box[0]
@@ -105,7 +106,7 @@ def extract_headline(
     headline_len: int,
 ) -> str:
     if not lines:
-        return ''
+        return ""
 
     line_tokens = [text_to_tokens(L) for L in lines]
 
@@ -168,8 +169,7 @@ def do_parse_and_tokenize_i(d: Tuple[List[str], str, ESession]) -> List[Optional
 
 
 def prune_by_keywords(
-    ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]], 
-    keyword_set: FrozenSet[str], min_ip: Optional[float] = None
+    ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]], keyword_set: FrozenSet[str], min_ip: Optional[float] = None
 ) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
     ipsrll_inc_kws: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]] = []
     lines: Optional[List[str]] = None
@@ -230,12 +230,12 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         esession.clear()
         sys.exit("Error: pattern string is empty.")
 
-    esession.flash('> Locating document files.')
+    esession.flash("> Locating document files.")
     target_files, read_from_stdin = do_expand_target_files(target_files, esession)
     if not target_files and not read_from_stdin:
         esession.clear()
         sys.exit("Error: no document files are given.")
-    esession.flash_eval(lambda: '> Found %d files.' % (len(target_files) + (1 if read_from_stdin else 0)))
+    esession.flash_eval(lambda: "> Found %d files." % (len(target_files) + (1 if read_from_stdin else 0)))
 
     db = None
     if os.path.exists(DB_DIR) and os.path.isdir(DB_DIR):
@@ -253,7 +253,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     else:
         files_not_stored = target_files
 
-    esession.flash('> Loading Doc2Vec model.')
+    esession.flash("> Loading Doc2Vec model.")
     model = model_loader.D2VModel(language, lang_model_file)
 
     text_to_tokens = model_loader.load_tokenize_func(language)
@@ -287,6 +287,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
                 _smallest = heapq.heappop(search_results)
 
     len_target_files = len(target_files) + (1 if read_from_stdin else 0)
+
     def verbose_print_cur_status(tfi):
         if not esession.is_active():
             return
@@ -307,7 +308,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
             r = db.lookup(tf)
             if r is None or r[0] != file_signature(tf):
                 esession.clear()
-                sys.exit('Error: file signature does not match (the file was modified during search?): %s' % tf)
+                sys.exit("Error: file signature does not match (the file was modified during search?): %s" % tf)
             pos_vecs = r[1]
             update_search_results(tf, pos_vecs, None, None)
             if tfi % 100 == 1:
@@ -377,14 +378,14 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 
 
 def sub_index_search(
-    pattern_vec: Vec, 
-    db_base_path: str, 
+    pattern_vec: Vec,
+    db_base_path: str,
     window_size: int,
-    db_index: int, 
-    fnmatch_func: Optional[Callable[[str], bool]], 
+    db_index: int,
+    fnmatch_func: Optional[Callable[[str], bool]],
     top_n: int,
-    unit_vector: bool, 
-    search_paragraph: bool
+    unit_vector: bool,
+    search_paragraph: bool,
 ) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     inner_product = inner_product_u if unit_vector else inner_product_n
 
@@ -406,7 +407,9 @@ def sub_index_search(
     return search_results
 
 
-def sub_index_search_i(a: Tuple[Vec, str, int, int, Optional[Callable[[str], bool]], int, bool, bool]) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
+def sub_index_search_i(
+    a: Tuple[Vec, str, int, int, Optional[Callable[[str], bool]], int, bool, bool]
+) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     return sub_index_search(*a)
 
 
@@ -449,7 +452,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
     cluster_size = r
 
-    esession.flash('> Loading Doc2Vec model.')
+    esession.flash("> Loading Doc2Vec model.")
     model = model_loader.D2VModel(language, lang_model_file)
 
     text_to_tokens = model_loader.load_tokenize_func(language)
@@ -468,7 +471,9 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
 
     esession.flash("[0/%d] (progress is counted by member DB files in index DB)" % cluster_size)
     executor = ProcessPoolExecutor(max_workers=worker)
-    subit = executor.map(sub_index_search_i, ((pattern_vec, db_base_path, window_size, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size)))
+    subit = executor.map(
+        sub_index_search_i, ((pattern_vec, db_base_path, window_size, i, fnmatch_func, top_n, unit_vector, search_paragraph) for i in range(cluster_size))
+    )
     subi = 0
     try:
         for subi, sub_search_results in enumerate(subit):
@@ -503,7 +508,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         if ip < 0:
             break  # for i
         if file_signature(fn) != sig:
-            sys.exit('Error: file signature does not match (the file was modified during search?): %s' % fn)
+            sys.exit("Error: file signature does not match (the file was modified during search?): %s" % fn)
         lines = parser.parse(fn)
         headline = extract_headline(lines[sr[0] : sr[1]], text_to_tokens, model.tokens_to_vec, pattern_vec, headline_len)
         print("%g\t%s:%d-%d\t%s" % (ip, fn, sr[0] + 1, sr[1] + 1, headline))
@@ -597,7 +602,7 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: D
     window_size = int(args["--window"])
     worker = int(args["--worker"])
 
-    esession.flash('> Locating document files.')
+    esession.flash("> Locating document files.")
     target_files, including_stdin = do_expand_target_files(target_files, esession)
     if not target_files:
         esession.clear()
@@ -670,8 +675,8 @@ Options:
   --list-lang                   Listing the languages in which the corresponding models are installed.
   --list-indexed                List the document files (whose indexes are stored) in the DB.
 """.format(
-    default_window_size = model_loader.DEFAULT_WINDOW_SIZE,
-    db_dir = DB_DIR,
+    default_window_size=model_loader.DEFAULT_WINDOW_SIZE,
+    db_dir=DB_DIR,
 )
 
 
@@ -688,15 +693,15 @@ def main():
             del argv[i]
 
     args = docopt(__doc__, argv=argv, version="d2vg %s" % __version__)
-    if args['<pattern>']:
+    if args["<pattern>"]:
         if pattern_from_file:
-            args['<pattern>'] = '=' + args['<pattern>']
-        if args['<pattern>'] == '=-':
-            sys.exit('Error: can not specify `=-` as <pattern>.')
-        if args['<file>']:
-            fs = [args['<pattern>']] + args['<file>']
-            if fs.count('-') + fs.count('=-') >= 2:
-                sys.exit('Error: the standard input `-` specified multiple in <pattern> and <file>.')
+            args["<pattern>"] = "=" + args["<pattern>"]
+        if args["<pattern>"] == "=-":
+            sys.exit("Error: can not specify `=-` as <pattern>.")
+        if args["<file>"]:
+            fs = [args["<pattern>"]] + args["<file>"]
+            if fs.count("-") + fs.count("=-") >= 2:
+                sys.exit("Error: the standard input `-` specified multiple in <pattern> and <file>.")
 
     lang_candidates = model_loader.get_model_langs()
     if args["--list-lang"]:

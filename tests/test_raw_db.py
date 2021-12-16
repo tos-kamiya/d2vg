@@ -35,7 +35,7 @@ class IndexDbTest(unittest.TestCase):
                 file_a = os.path.join("a")
                 touch(file_a)
                 file_a_sig: str = "1-1"
-                file_a_posvecsb: bytes = b'012345'
+                file_a_posvecsb: bytes = b"012345"
 
                 file_raw_db = "index_db"
                 db = raw_db.open(file_raw_db, "rwc")
@@ -54,7 +54,7 @@ class IndexDbTest(unittest.TestCase):
                 file_a = os.path.join("a")
                 touch(file_a)
                 file_a_sig: str = "1-1"
-                file_a_posvecsb: bytes = b'012345'
+                file_a_posvecsb: bytes = b"012345"
 
                 file_raw_db = "index_db"
                 db = raw_db.open(file_raw_db, "rwc")

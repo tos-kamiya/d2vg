@@ -18,11 +18,11 @@ def cursor(db: RawDb) -> Generator[sqlite3.Cursor, None, None]:
 
 
 def open(db_filename: str, mode: str) -> RawDb:
-    assert mode in ['rw', 'rwc', 'ro']
+    assert mode in ["rw", "rwc", "ro"]
     if platform.system() == "Windows":
-        db_filename = db_filename.replace('\\', '/')
-    db = sqlite3.connect("file:%s?mode=%s" % (db_filename, mode), uri=True, isolation_level='DEFERRED')
-    if mode == 'rwc':
+        db_filename = db_filename.replace("\\", "/")
+    db = sqlite3.connect("file:%s?mode=%s" % (db_filename, mode), uri=True, isolation_level="DEFERRED")
+    if mode == "rwc":
         db.execute("CREATE TABLE IF NOT EXISTS data (filename TEXT PRIMARY KEY UNIQUE NOT NULL, signature TEXT, posvecs BLOB)")
         db.execute("CREATE INDEX IF NOT EXISTS data_filename ON data(filename)")
     return db
@@ -59,10 +59,13 @@ def lookup_posvecs(db: RawDb, filename: str) -> Optional[bytes]:
 
 
 def store(db: RawDb, filename: str, signature: str, posvecs: bytes) -> None:
-    db.execute("""INSERT INTO data (filename, signature, posvecs) VALUES (?, ?, ?) 
+    db.execute(
+        """INSERT INTO data (filename, signature, posvecs) VALUES (?, ?, ?) 
 ON CONFLICT(filename) DO UPDATE SET
 signature = excluded.signature,
-posvecs = excluded.posvecs""", (filename, signature, posvecs))
+posvecs = excluded.posvecs""",
+        (filename, signature, posvecs),
+    )
 
 
 def commit(db: RawDb) -> None:

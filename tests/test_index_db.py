@@ -120,10 +120,10 @@ class IndexDbTest(unittest.TestCase):
             with back_to_curdir():
                 os.chdir(tempdir)
                 file_a = os.path.join("a.txt")
-                with open(file_a, 'w') as outp:
+                with open(file_a, "w") as outp:
                     outp.write("01234\n")
                 sig = index_db.file_signature(file_a)
-                self.assertTrue(re.match(r'6-\d+', sig))
+                self.assertTrue(re.match(r"6-\d+", sig))
 
     def test_decode_file_signature(self):
         sig = "10-12345"

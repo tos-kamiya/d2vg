@@ -13,7 +13,7 @@ from .types import Vec
 from . import raw_db
 
 
-RawDb = raw_db.RawDb 
+RawDb = raw_db.RawDb
 
 FileSignature = NewType("FileSignature", str)
 PosVec = Tuple[Tuple[int, int], Vec]
@@ -30,7 +30,7 @@ def file_signature(file_name: str) -> FileSignature:
 def decode_file_signature(sig: FileSignature) -> Tuple[int, int]:
     i = sig.rfind("-")
     assert i > 0
-    size_str = sig[: i]
+    size_str = sig[:i]
     mtime_str = sig[i + 1 :]
     return int(size_str), int(mtime_str)
 
@@ -47,13 +47,13 @@ def dumps_pos_vecs(pos_vecs: Iterable[PosVec]) -> bytes:
     for sr, vec in pos_vecs:
         vec = [float(d) for d in vec]
         dumped.append((sr, vec))
-    return bson.dumps({'pos_vecs': dumped})
+    return bson.dumps({"pos_vecs": dumped})
 
 
 def loads_pos_vecs(b: bytes) -> List[PosVec]:
     d = bson.loads(b)
     pos_vecs = []
-    for sr, vec in d.get('pos_vecs'):
+    for sr, vec in d.get("pos_vecs"):
         vec = np.array(vec, dtype=np.float32)
         pos_vecs.append((tuple(sr), vec))
     return pos_vecs
@@ -94,9 +94,9 @@ class IndexDb:
             db_fn = "%s-%d-%do%d%s" % (self._base_path, self._window_size, db_index, len(self._dbs), DB_FILE_EXTENSION)
             try:
                 if self._mode == "r":
-                    db = raw_db.open(db_fn, 'ro')
+                    db = raw_db.open(db_fn, "ro")
                 else:
-                    db = raw_db.open(db_fn, 'rw')
+                    db = raw_db.open(db_fn, "rw")
             except sqlite3.OperationalError as e:
                 raise IndexDbError("fail to open sqlite3 db file: %s" % repr(db_fn)) from e
             self._dbs[db_index] = db
@@ -146,7 +146,7 @@ def exists(db_base_path: str, window_size: int) -> int:
         cluster_size = None
         for dbf in db_files:
             s = dbf[len(db_base_path) + 1 : -len(DB_FILE_EXTENSION)]
-            i = s.find('-')
+            i = s.find("-")
             assert i > 0
             w = int(s[:i])
             if w != window_size:
@@ -180,7 +180,7 @@ def open(db_base_path: str, window_size: int, mode: str, cluster_size: int = DB_
             raise IndexDbError("DB not found")
         for i in range(cluster_size):
             db_fn = "%s-%d-%do%d%s" % (db_base_path, window_size, i, cluster_size, DB_FILE_EXTENSION)
-            db = raw_db.open(db_fn, 'rwc')
+            db = raw_db.open(db_fn, "rwc")
             db.close()
         index_db = IndexDb(db_base_path, window_size, mode, cluster_size)
     else:
@@ -201,7 +201,7 @@ class IndexDbItemIterator:
         self._cluster_size = cluster_size
         db_fn = "%s-%d-%do%d%s" % (self._base_path, self._window_size, index, self._cluster_size, DB_FILE_EXTENSION)
         try:
-            db = raw_db.open(db_fn, 'ro')
+            db = raw_db.open(db_fn, "ro")
         except sqlite3.OperationalError as e:
             raise IndexDbError("fail to open slite3 db file: %s" % repr(db_fn)) from e
         self._db = db

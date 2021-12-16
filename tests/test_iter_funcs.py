@@ -20,16 +20,16 @@ class IterFuncsTest(unittest.TestCase):
         self.assertSequenceEqual(actual, expected)
 
     def test_grouper(self):
-        lst = list(range(1, 10+1))
+        lst = list(range(1, 10 + 1))
         actual = list(split_to_length(lst, 3))
         expected = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
         self.assertSequenceEqual(actual, expected)
 
-        lst = list(range(1, 10+1))
+        lst = list(range(1, 10 + 1))
         actual = list(split_to_length(lst, 5))
         expected = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]]
         self.assertSequenceEqual(actual, expected)
-    
+
     def test_ranges_overwrapping(self):
         rand = random.Random(123)
         tc = fc = 0

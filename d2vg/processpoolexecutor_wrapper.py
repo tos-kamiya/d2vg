@@ -24,7 +24,7 @@ class ProcessPoolExecutor:
 
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_value, traceback):
         if self._executor is not None:
             self._executor.__exit__(exc_type, exc_value, traceback)
