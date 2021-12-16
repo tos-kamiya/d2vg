@@ -351,6 +351,8 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
                 update_search_results(tf, pos_vecs, lines, line_tokens)
                 if i == 0:
                     verbose_print_cur_status(tfi)
+        else:
+            verbose_print_cur_status(tfi)
     except KeyboardInterrupt as _e:
         esession.print("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), force=True)
         esession.print("> Warning: shows the search results up to now.", force=True)
