@@ -138,7 +138,7 @@ cd directory of document files
 d2vg -C -j <worker_processes> <query_phrase>
 ```
 
-(3) Show a list of indexed document files
+(3) Listing of indexed document files
 
 Outputs a list of document files whose index data is stored in the database.
 Note that if you have a large number of files, it is recommended to run the program in parallel using the -j option.
@@ -194,6 +194,7 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 - [x] Easy installation
 - [ ] Support and tune more languages (experimental support: ko, zh)
 - [x] Explicit indexing control command in case millions of document files to search (v2)
+- [ ] A (GC) command to delete the index data without a corresponding file in index DB.
 
 ## Acknowledgements
 
