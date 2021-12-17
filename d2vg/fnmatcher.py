@@ -5,7 +5,7 @@ from os.path import normpath
 
 
 class FNMatcher:
-    def __init__(self, patterns: Iterator[str]):
+    def __init__(self, patterns: Iterable[str]):
         self._wildcards = []
         fns = []
         for p in patterns:
