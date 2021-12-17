@@ -5,18 +5,18 @@ from enum import Enum
 class InitAttrsWKwArgs:
     @staticmethod
     def _convert_option_name_to_attr_name(name: str) -> str:
-        if name.startswith('--'):
+        if name.startswith("--"):
             ns = name[2:]
-        elif name.startswith('-'):
+        elif name.startswith("-"):
             ns = name[1:]
-        elif name.startswith('<') and name.endswith('>'):
+        elif name.startswith("<") and name.endswith(">"):
             ns = name[1:-1]
         else:
             ns = name
-        ns = ns.replace('-', '_')
-        
-        if not(len(ns) > 0 and ('a' <= ns[0] <= 'z' or 'A' <= ns[0] <= 'Z') and \
-                all('a' <= c <= 'z' or 'A' <= c <= 'Z' or '0' <= c <= '9' or c == '_' for c in ns)):
+        ns = ns.replace("-", "_")
+
+        if not (len(ns) > 0 and ("a" <= ns[0] <= "z" or "A" <= ns[0] <= "Z") and \
+               all("a" <= c <= "z" or "A" <= c <= "Z" or "0" <= c <= "9" or c == "_" for c in ns)):
             raise NameError("Invalid name for option or positional argument: %s" % repr(name))
 
         return ns
@@ -33,7 +33,7 @@ class InitAttrsWKwArgs:
             try:
                 return target_type[value]  # conversion from str to Enum (it might not look so)
             except KeyError as e:
-                raise ValueError('Invalid Enum name: %s' % repr(value)) from e
+                raise ValueError("Invalid Enum name: %s" % repr(value)) from e
         else:
             return value  # not converted
 

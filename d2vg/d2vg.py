@@ -331,7 +331,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
             if len(search_results) > args.top_n:
                 _smallest = heapq.heappop(search_results)
 
-    len_target_files = len(target_files) + (1 if read_from_stdin else 0)
+    len_files = len(files_stored) + len(files_not_stored) + (1 if read_from_stdin else 0)
 
     def verbose_print_cur_status(tfi):
         if not esession.is_active():
@@ -340,7 +340,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         if max_tf:
             _ip, f, sr, _ls = max_tf[0]
             top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
-            esession.flash("[%d/%d] %s" % (tfi + 1, len_target_files, top1_message))
+            esession.flash("[%d/%d] %s" % (tfi + 1, len_files, top1_message))
 
     parser = parsers.Parser()
 
@@ -510,7 +510,8 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     esession.flash("[0/%d] (progress is counted by member DB files in index DB)" % cluster_size)
     executor = ProcessPoolExecutor(max_workers=args.worker)
     subit = executor.map(
-        sub_index_search_i, ((pattern_vec, db_base_path, args.window, i, fnmatch_func, args.top_n, args.unit_vector, args.paragraph) for i in range(cluster_size))
+        sub_index_search_i,
+        ((pattern_vec, db_base_path, args.window, i, fnmatch_func, args.top_n, args.unit_vector, args.paragraph) for i in range(cluster_size)),
     )
     subi = 0
     try:
@@ -563,9 +564,7 @@ def sub_remove_index_no_corresponding_files(db_base_path: str, window_size: int,
     return len(target_files)
 
 
-def sub_remove_index_no_corresponding_files_i(
-    a: Tuple[str, int, int]
-) -> int:
+def sub_remove_index_no_corresponding_files_i(a: Tuple[str, int, int]) -> int:
     return sub_remove_index_no_corresponding_files(*a)
 
 
@@ -586,9 +585,7 @@ def do_remove_index_no_corresponding_files(language: str, lang_model_file: str, 
 
     esession.flash("[0/%d] removing obsolete index data (progress is counted by member DB files in index DB)" % cluster_size)
     executor = ProcessPoolExecutor(max_workers=args.worker)
-    subit = executor.map(
-        sub_remove_index_no_corresponding_files_i, ((db_base_path, args.window, i) for i in range(cluster_size))
-    )
+    subit = executor.map(sub_remove_index_no_corresponding_files_i, ((db_base_path, args.window, i) for i in range(cluster_size)))
     count_removed_index_data = 0
     try:
         for subi, c in enumerate(subit):
@@ -598,7 +595,7 @@ def do_remove_index_no_corresponding_files(language: str, lang_model_file: str, 
         executor.shutdown(wait=False, cancel_futures=True)
     else:
         executor.shutdown()
-    esession.flash('Removed %d obsolete index data' % count_removed_index_data)
+    esession.flash("Removed %d obsolete index data" % count_removed_index_data)
 
 
 def sub_list_file_indexed(db_base_path: str, window_size: int, db_index: int) -> List[Tuple[str, int, int, int]]:

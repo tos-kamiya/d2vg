@@ -86,7 +86,7 @@ class IndexDbTest(unittest.TestCase):
                     self.assertEqual(a[0], e[0])
                     for a1i, e1i in zip_longest(a[1], e[1]):
                         self.assertEqual(a1i, e1i)
-                
+
                 db.close()
 
     def test_reopen(self):
@@ -118,7 +118,7 @@ class IndexDbTest(unittest.TestCase):
                     self.assertEqual(a[0], e[0])
                     for a1i, e1i in zip_longest(a[1], e[1]):
                         self.assertEqual(a1i, e1i)
-                
+
                 db.close()
 
     def test_file_signature(self):
