@@ -53,7 +53,7 @@ Select the Doc2Vec model that corresponds to the language. The available languag
 `--unknown-word-as-keyword, -K`  
 If the query contains unknown words, the included unknown words are considered keywords. Only documents that match the query and contain the keywords will be returned as search results.
 
-`--topn=NUM, -t NUM`  
+`--top-n=NUM, -t NUM`  
 Show top NUM documents as results. The default value is 20.
 Specify `0` to show all the documents searched, sorted by the degree of match to the query.
 
@@ -109,7 +109,7 @@ rm -rf .d2vg
 For DOS prompt or Powershell, use `rd /s /q .d2vg` or `rm -r -fo .d2vg`, respectively.
 
 Example of execution with indexes enabled:  
-(In this example, it took 70+ seconds without indexing, but it was reduced to 4 seconds.)  
+(In this example, it took 50 seconds without indexing, but it was reduced to 5 seconds.)  
 ![](images/example2.png)
 
 ### Explicit indexing and searching within the index
@@ -125,7 +125,7 @@ In this explicit index creation, the Doc2Vec model is loaded as many times as th
 
 ```sh
 cd directory of document files
-d2vg --build-index -j <worker_processes> <files>...
+d2vg --update-index -j <worker_processes> <files>...
 ```
 
 While the `-j` option for incremental indexing parallelizes the process of reading text from a document file and tokenizing it (converting it into a sequence of words), the `-j` option for explicit indexing parallelizes the process of converting a sequence of words into a vector.
@@ -136,7 +136,7 @@ Query the index DB in a parallel way. Document files which is not in the index D
 
 ```sh
 cd directory of document files
-d2vg -C -j <worker_processes> <query_phrase>
+d2vg -I -j <worker_processes> <query_phrase>
 ```
 
 (3) Listing of indexed document files
@@ -151,7 +151,7 @@ d2vg --list-indexed -j <worker_processes>
 
 If you have a large number of document files and you are sure that they will not be updated so often, I strongly recommend that you use explicit indexing.
 
-Example of searching within the index. Over 10 million text files, in 9 minutes:  
+Example of searching within the index. Over 10 million text files, in less than 9 minutes:  
 ![](images/example4.png)
 
 ## Troubleshooting
@@ -195,7 +195,7 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 - [x] Easy installation
 - [ ] Support and tune more languages (experimental support: ko, zh)
 - [x] Explicit indexing control command in case millions of document files to search (v2)
-- [ ] A (GC) command to delete the index data without a corresponding file in index DB.
+- [x] GC of index data. Delete the index data without a corresponding file in index DB (v2)
 
 ## Acknowledgements
 
