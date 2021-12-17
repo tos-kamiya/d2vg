@@ -1,6 +1,5 @@
 import concurrent.futures
 import os
-from numpy.core.fromnumeric import trace
 import psutil
 
 
