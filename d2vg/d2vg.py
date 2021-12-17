@@ -47,7 +47,7 @@ class CommandLineArguments(InitAttrsWKwArgs):
     window: int
     headline_length: int
     within_indexed: bool
-    build_index: bool
+    update_index: bool
     list_lang: bool
     list_indexed: bool
     help: bool
@@ -59,7 +59,7 @@ __doc__: str = """Doc2Vec Grep.
 Usage:
   d2vg [-v] [-j WORKER] [-l LANG] [-K] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] <pattern> <file>...
   d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] <pattern> [<file>...]
-  d2vg --build-index [-v] -j WORKER [-l LANG] [-w NUM] <file>...
+  d2vg --update-index [-v] -j WORKER [-l LANG] [-w NUM] <file>...
   d2vg --list-lang
   d2vg --list-indexed [-l LANG] [-j WORKER] [-w NUM]
   d2vg --help
@@ -75,10 +75,10 @@ Options:
   --unit-vector, -u             Convert discrete representations to unit vectors before comparison.
   --window=NUM, -w NUM          Line window size [default: {default_window_size}].
   --headline-length WIDTH, -a WIDTH     Length of headline [default: 80].
-  --list-lang                   Listing the languages in which the corresponding models are installed.
-  --within-indexed, -C          Search only within the document files whose indexes are stored in the DB.
-  --build-index                 Create index data for the document files and save it in the DB of `{db_dir}` directory.
+  --within-indexed, -I          Search only within the document files whose indexes are stored in the DB.
+  --update-index                Add/update index data for the document files and save it in the DB of `{db_dir}` directory.
   --list-indexed                List the document files (whose indexes are stored) in the DB.
+  --list-lang                   Listing the languages in which the corresponding models are installed.
 """.format(
     default_window_size=model_loader.DEFAULT_WINDOW_SIZE,
     db_dir=DB_DIR,
@@ -435,7 +435,7 @@ def sub_index_search(
     inner_product = inner_product_u if unit_vector else inner_product_n
 
     search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
-    with index_db.open_item_iterator(db_base_path, window_size, db_index) as it:
+    with index_db.open_partial_index_db_item_iterator(db_base_path, window_size, db_index) as it:
         for fn, sig, pos_vecs in it:
             if fnmatch_func is not None and not fnmatch_func(fn):
                 continue  # for fn
@@ -459,6 +459,16 @@ def sub_index_search_i(
 
 
 def do_index_search(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
+    if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
+        esession.clear()
+        sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    r = index_db.exists(db_base_path, args.window)
+    if r == 0:
+        esession.clear()
+        sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
+    cluster_size = r
+
     if args.worker == 0:
         args.worker = multiprocessing.cpu_count()
     assert args.headline_length >= 8
@@ -479,16 +489,6 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
             esession.print("> Warning: many (100+) filenames are specified. Consider using glob patterns enclosed in quotes, like '*.txt'", force=True)
         fnm = FNMatcher(file_patterns)
         fnmatch_func = fnm.match
-
-    if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
-        esession.clear()
-        sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-    r = index_db.exists(db_base_path, args.window)
-    if r == 0:
-        esession.clear()
-        sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    cluster_size = r
 
     esession.flash("> Loading Doc2Vec model.")
     model = model_loader.D2VModel(language, lang_model_file)
@@ -552,9 +552,58 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         print("%g\t%s:%d-%d\t%s" % (ip, fn, sr[0] + 1, sr[1] + 1, headline))
 
 
+def sub_remove_index_no_corresponding_files(db_base_path: str, window_size: int, db_index: int) -> int:
+    target_files = []
+    with index_db.open_partial_index_db_signature_iterator(db_base_path, window_size, db_index) as it:
+        for fn, sig in it:
+            if not (os.path.exists(fn) and os.path.isfile(fn) and file_signature(fn)) == sig:
+                target_files.append(fn)
+
+    index_db.remove_partial_index_db_items(db_base_path, window_size, db_index, target_files)
+    return len(target_files)
+
+
+def sub_remove_index_no_corresponding_files_i(
+    a: Tuple[str, int, int]
+) -> int:
+    return sub_remove_index_no_corresponding_files(*a)
+
+
+def do_remove_index_no_corresponding_files(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
+    if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
+        esession.clear()
+        sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    r = index_db.exists(db_base_path, args.window)
+    if r == 0:
+        esession.clear()
+        sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
+    cluster_size = r
+
+    if args.worker == 0:
+        args.worker = multiprocessing.cpu_count()
+    assert args.headline_length >= 8
+
+    esession.flash("[0/%d] removing obsolete index data (progress is counted by member DB files in index DB)" % cluster_size)
+    executor = ProcessPoolExecutor(max_workers=args.worker)
+    subit = executor.map(
+        sub_remove_index_no_corresponding_files_i, ((db_base_path, args.window, i) for i in range(cluster_size))
+    )
+    count_removed_index_data = 0
+    try:
+        for subi, c in enumerate(subit):
+            esession.flash("[%d/%d] removing obsolete index data" % (subi, cluster_size))
+            count_removed_index_data += c
+    except KeyboardInterrupt as _e:
+        executor.shutdown(wait=False, cancel_futures=True)
+    else:
+        executor.shutdown()
+    esession.flash('Removed %d obsolete index data' % count_removed_index_data)
+
+
 def sub_list_file_indexed(db_base_path: str, window_size: int, db_index: int) -> List[Tuple[str, int, int, int]]:
     file_data: List[Tuple[str, int, int, int]] = []
-    it = index_db.open_item_iterator(db_base_path, window_size, db_index)
+    it = index_db.open_partial_index_db_item_iterator(db_base_path, window_size, db_index)
     for fn, sig, _pos_vecs in it:
         fs, fmt = decode_file_signature(sig)
         file_data.append((fn, fmt, fs, window_size))
@@ -582,7 +631,7 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
 
     sis = []
     for db_index in range(cluster_size):
-        it = index_db.open_item_iterator(db_base_path, args.window, db_index)
+        it = index_db.open_partial_index_db_item_iterator(db_base_path, args.window, db_index)
         sis.append((len(it), db_index))
     sis.sort(reverse=True)
 
@@ -609,7 +658,7 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
         print("%s\t%s\t%d\t%d" % (fn, t, fs, window_size))
 
 
-def do_store_index(file_names: List[str], language: str, lang_model_file: str, window_size: int, esession: ESession) -> None:
+def sub_update_index(file_names: List[str], language: str, lang_model_file: str, window_size: int, esession: ESession) -> None:
     parser = parsers.Parser()
     text_to_tokens = model_loader.load_tokenize_func(language)
     model = model_loader.D2VModel(language, lang_model_file)
@@ -630,11 +679,11 @@ def do_store_index(file_names: List[str], language: str, lang_model_file: str, w
                 db.store(tf, sig, pos_vecs)
 
 
-def do_store_index_i(d: Tuple[List[str], str, str, int, ESession]) -> None:
-    return do_store_index(d[0], d[1], d[2], d[3], d[4])
+def sub_update_index_i(d: Tuple[List[str], str, str, int, ESession]) -> None:
+    return sub_update_index(d[0], d[1], d[2], d[3], d[4])
 
 
-def do_indexing(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
+def do_update_index(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
     assert args.worker is not None
 
     esession.flash("> Locating document files.")
@@ -655,10 +704,12 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: C
     if c > 0:
         if cluster_size != c:
             esession.clear()
-            sys.exit("Error: index db exists but incompatible. Remove `%s` directory before building index data." % DB_DIR)
+            sys.exit("Error: index db exists but incompatible. Remove `%s` directory before adding index data." % DB_DIR)
     else:
         db = index_db.open(db_base_path, args.window, "c", cluster_size)
         db.close()
+
+    do_remove_index_no_corresponding_files(language, lang_model_file, esession, args)
 
     file_splits = [list() for _ in range(cluster_size)]
     for tf in target_files:
@@ -672,11 +723,11 @@ def do_indexing(language: str, lang_model_file: str, esession: ESession, args: C
     executor = ProcessPoolExecutor(max_workers=args.worker)
     args_it = [(chunk, language, lang_model_file, args.window, esession) for chunk in file_splits]
     file_splits = None  # before forking process, remove a (potentially) large object from heap
-    indexing_it = executor.map(do_store_index_i, args_it)
+    indexing_it = executor.map(sub_update_index_i, args_it)
     try:
-        esession.flash("[%d/%d] (progress is counted by member DB files in index DB)" % (0, cluster_size))
+        esession.flash("[%d/%d] adding/updating index data (progress is counted by member DB files in index DB)" % (0, cluster_size))
         for i, _ in enumerate(indexing_it):
-            esession.flash("[%d/%d] building index data" % (i + 1, cluster_size))
+            esession.flash("[%d/%d] adding/updating index data" % (i + 1, cluster_size))
     except KeyboardInterrupt as e:
         executor.shutdown(wait=False, cancel_futures=True)
         raise e
@@ -747,8 +798,8 @@ def main():
     lang_model_file = lang_model_files[0]
 
     with ESession(active=args.verbose) as esession:
-        if args.build_index:
-            do_indexing(language, lang_model_file, esession, args)
+        if args.update_index:
+            do_update_index(language, lang_model_file, esession, args)
         elif args.within_indexed:
             do_index_search(language, lang_model_file, esession, args)
         elif args.list_indexed:

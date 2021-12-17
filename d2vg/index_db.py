@@ -190,10 +190,13 @@ def open(db_base_path: str, window_size: int, mode: str, cluster_size: int = DB_
     return index_db
 
 
-class IndexDbItemIterator:
+class PartialIndexDbItemIterator:
     def close(self) -> None:
         if self._db is not None:
             raw_db.close(self._db)
+        self._db = None
+        self._filenames = []
+        self._i = -1
 
     def __init__(self, base_path: str, window_size: int, index: int, cluster_size: int):
         assert 0 <= index < cluster_size
@@ -204,7 +207,7 @@ class IndexDbItemIterator:
         try:
             db = raw_db.open(db_fn, "ro")
         except sqlite3.OperationalError as e:
-            raise IndexDbError("fail to open slite3 db file: %s" % repr(db_fn)) from e
+            raise IndexDbError("fail to open sqlite3 db file: %s" % repr(db_fn)) from e
         self._db = db
         self._filenames = list(raw_db.filename_iter(db))
         self._i = -1
@@ -233,10 +236,82 @@ class IndexDbItemIterator:
         return fn, sig, loads_pos_vecs(posvecsb)
 
 
-def open_item_iterator(db_base_path: str, window_size: int, db_index: int):
+def open_partial_index_db_item_iterator(db_base_path: str, window_size: int, db_index: int) -> PartialIndexDbItemIterator:
     r = exists(db_base_path, window_size)
     if r == 0:
         raise IndexDbError("DB not found")
 
     cluster_size = r
-    return IndexDbItemIterator(db_base_path, window_size, db_index, cluster_size)
+    return PartialIndexDbItemIterator(db_base_path, window_size, db_index, cluster_size)
+
+
+class PartialIndexDbSignatureIterator:
+    def close(self) -> None:
+        if self._db is not None:
+            raw_db.close(self._db)
+        self._db = None
+        self._filenames = []
+        self._i = -1
+
+    def __init__(self, base_path: str, window_size: int, index: int, cluster_size: int):
+        assert 0 <= index < cluster_size
+        self._base_path = base_path
+        self._window_size = window_size
+        self._cluster_size = cluster_size
+        db_fn = "%s-%d-%do%d%s" % (self._base_path, self._window_size, index, self._cluster_size, DB_FILE_EXTENSION)
+        try:
+            db = raw_db.open(db_fn, "ro")
+        except sqlite3.OperationalError as e:
+            raise IndexDbError("fail to open sqlite3 db file: %s" % repr(db_fn)) from e
+        self._db = db
+        self._filenames = list(raw_db.filename_iter(db))
+        self._i = -1
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _exc_type, _exc_value, _traceback):
+        self.close()
+
+    def __iter__(self):
+        return self
+
+    def __len__(self) -> int:
+        return len(self._filenames)
+
+    def __next__(self) -> Tuple[str, FileSignature]:
+        if self._i + 1 >= len(self._filenames):
+            raise StopIteration()
+        self._i += 1
+
+        fn = self._filenames[self._i]
+        r = raw_db.lookup_signature(self._db, fn)
+        assert r is not None
+        return fn, r
+
+
+def open_partial_index_db_signature_iterator(db_base_path: str, window_size: int, db_index: int) -> PartialIndexDbSignatureIterator:
+    r = exists(db_base_path, window_size)
+    if r == 0:
+        raise IndexDbError("DB not found")
+
+    cluster_size = r
+    return PartialIndexDbSignatureIterator(db_base_path, window_size, db_index, cluster_size)
+
+
+def remove_partial_index_db_items(db_base_path: str, window_size: int, db_index: int, target_files: Iterable[str]) -> None:
+    r = exists(db_base_path, window_size)
+    if r == 0:
+        raise IndexDbError("DB not found")
+
+    cluster_size = r
+    db_fn = "%s-%d-%do%d%s" % (db_base_path, window_size, db_index, cluster_size, DB_FILE_EXTENSION)
+    try:
+        db = raw_db.open(db_fn, "rw")
+    except sqlite3.OperationalError as e:
+        raise IndexDbError("fail to open sqlite3 db file: %s" % repr(db_fn)) from e
+
+    for tf in target_files:
+        np = os.path.normpath(tf)
+        raw_db.delete(db, np)
+    raw_db.close(db)
