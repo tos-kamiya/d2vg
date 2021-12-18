@@ -9,18 +9,14 @@ import sqlite3
 import bson
 import numpy as np
 
-from .types import Vec
+from .iter_funcs import concatinated, split_to_length
 from . import raw_db
+from .raw_db import RawDb, FileSignature, PosVec
 
-
-RawDb = raw_db.RawDb
-
-FileSignature = NewType("FileSignature", str)
-PosVec = Tuple[Tuple[int, int], Vec]
 
 DB_FILE_EXTENSION = ".sqlite3"
 DB_DEFAULT_CLUSTER_SIZE = 64
-DB_WRITE_QUEUE_MAX_LEN = 1048576
+DB_WRITE_QUEUE_MAX_LEN = 2**30
 
 
 def file_signature(file_name: str) -> FileSignature:
@@ -123,8 +119,8 @@ class IndexDb:
         r = raw_db.lookup(db, np)
         if r is None:
             return None
-        sig, posvecsb = r
-        return sig, loads_pos_vecs(posvecsb)
+        sig, pvvs = r
+        return sig, concatinated(loads_pos_vecs(pvv) for pvv in pvvs)
 
     def store(self, file_name: str, sig: FileSignature, pos_vecs: List[PosVec]) -> None:
         if file_name == "-" or os.path.isabs(file_name):
@@ -132,11 +128,11 @@ class IndexDb:
         np = os.path.normpath(file_name)
         i = self._db_index_for_file(np)
         db = self._db_open(i)
-        valueb = dumps_pos_vecs(pos_vecs)
-        raw_db.store(db, np, sig, valueb)
-        l = self._write_q_len[i] = (self._write_q_len[i] + 1) % DB_WRITE_QUEUE_MAX_LEN
-        if l == 0:
+        raw_db.store(db, np, sig, (dumps_pos_vecs(pvc) for pvc in split_to_length(pos_vecs, 1000)))
+        self._write_q_len[i] += len(pos_vecs)
+        if self._write_q_len[i] >= DB_WRITE_QUEUE_MAX_LEN:
             db.commit()
+            self._write_q_len[i] = 0
 
 
 def exists(db_base_path: str, window_size: int) -> int:
@@ -208,7 +204,7 @@ class PartialIndexDbItemIterator:
             db = raw_db.open(db_fn, "ro")
         except sqlite3.OperationalError as e:
             raise IndexDbError("fail to open sqlite3 db file: %s" % repr(db_fn)) from e
-        self._db = db
+        self._db: Optional[RawDb] = db
         self._filenames = list(raw_db.filename_iter(db))
         self._i = -1
 
@@ -225,6 +221,7 @@ class PartialIndexDbItemIterator:
         return len(self._filenames)
 
     def __next__(self) -> Tuple[str, FileSignature, List[PosVec]]:
+        assert self._db is not None
         if self._i + 1 >= len(self._filenames):
             raise StopIteration()
         self._i += 1
@@ -232,8 +229,8 @@ class PartialIndexDbItemIterator:
         fn = self._filenames[self._i]
         r = raw_db.lookup(self._db, fn)
         assert r is not None
-        sig, posvecsb = r
-        return fn, sig, loads_pos_vecs(posvecsb)
+        sig, pvvs = r
+        return fn, sig, concatinated(loads_pos_vecs(pvv) for pvv in pvvs)
 
 
 def open_partial_index_db_item_iterator(db_base_path: str, window_size: int, db_index: int) -> PartialIndexDbItemIterator:
@@ -280,6 +277,7 @@ class PartialIndexDbSignatureIterator:
         return len(self._filenames)
 
     def __next__(self) -> Tuple[str, FileSignature]:
+        assert self._db is not None
         if self._i + 1 >= len(self._filenames):
             raise StopIteration()
         self._i += 1

@@ -14,7 +14,7 @@ from gensim.matutils import unitvec
 import numpy as np
 from docopt import docopt
 
-from .init_attrs_with_kwargs import InitAttrsWKwArgs
+from init_attrs_with_kwargs import InitAttrsWKwArgs
 from . import parsers
 from . import model_loader
 from .types import Vec
