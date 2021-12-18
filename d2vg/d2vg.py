@@ -8,8 +8,11 @@ import locale
 from math import pow
 import multiprocessing
 import os
+import subprocess
 import sys
+import tempfile
 
+import bson
 from gensim.matutils import unitvec
 import numpy as np
 from docopt import docopt
@@ -24,6 +27,12 @@ from .fnmatcher import FNMatcher
 from .iter_funcs import *
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
 
+
+_script_dir = os.path.dirname(os.path.realpath(__file__))
+
+rust_sub_index_search = os.path.join(_script_dir, 'bin', 'sub_index_search')
+if not os.path.exists(rust_sub_index_search):
+    rust_sub_index_search = None
 
 __version__ = importlib.metadata.version("d2vg")
 DB_DIR = ".d2vg"
@@ -458,6 +467,32 @@ def sub_index_search_i(
     return sub_index_search(*a)
 
 
+def sub_index_search_r(
+    patternvec_file: str, db_base_path: str, window: int, db_i_c: Tuple[int, int], globpatterns_file: str, top_n: int, unit_vector: bool, paragraph: bool, temp_dir: str
+) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
+    db_fn = "%s-%d-%do%d%s" % (db_base_path, window, db_i_c[0], db_i_c[1], index_db.DB_FILE_EXTENSION)
+    result_file = os.path.join(temp_dir, 'result_%d' % db_i_c[0])
+
+    cmd = [rust_sub_index_search, patternvec_file, db_fn, '-g', globpatterns_file, '-o', result_file, '-t', "%d" % top_n]
+    if unit_vector:
+        cmd = cmd + ['-u']
+    if paragraph:
+        cmd = cmd + ['-p']
+    subprocess.run(cmd)
+
+    with open(result_file, 'rb') as inp:
+        b = inp.read()
+        d = bson.loads(b)
+    r = [(ip, fn, sig, tuple(sr), None) for ip, fn, sig, sr in d["ipfssrs"]]
+    return r
+
+
+def sub_index_search_r_i(
+    a: Tuple[str, str, int, Tuple[int, int], str, int, bool, bool, str]
+) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
+    return sub_index_search_r(*a)
+
+
 def do_index_search(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
@@ -482,13 +517,23 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         esession.clear()
         sys.exit("Error: pattern string is empty.")
 
+    if args.file and len(args.file) > 100:
+        esession.print("> Warning: many (100+) filenames are specified. Consider using glob patterns enclosed in quotes, like '*.txt'", force=True)
+
     fnmatch_func = None
+    temp_dir = None
+    globpatterns_file = None
+    patternvec_file = None
     if args.file:
-        file_patterns = args.file
-        if len(file_patterns) > 100:
-            esession.print("> Warning: many (100+) filenames are specified. Consider using glob patterns enclosed in quotes, like '*.txt'", force=True)
-        fnm = FNMatcher(file_patterns)
-        fnmatch_func = fnm.match
+        if rust_sub_index_search is None:
+            fnm = FNMatcher(args.file)
+            fnmatch_func = fnm.match
+        else:
+            temp_dir = tempfile.TemporaryDirectory()
+            globpatterns_file = os.path.join(temp_dir.name, 'filepattern')
+            with open(globpatterns_file, 'w') as outp:
+                for L in args.file:
+                    print(L, file=outp)
 
     esession.flash("> Loading Doc2Vec model.")
     model = model_loader.D2VModel(language, lang_model_file)
@@ -502,17 +547,34 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     if oov_tokens:
         esession.print("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
     pattern_vec = model.tokens_to_vec(tokens)
-
     model = None  # before forking process, remove a large object from heap
+
+    if rust_sub_index_search is not None:
+        assert temp_dir is not None
+        patternvec_file = os.path.join(temp_dir.name, 'patternvec')
+        b = bson.dumps({'pattern_vec': [float(d) for d in pattern_vec]})
+        with open(patternvec_file, 'wb') as outp:
+            outp.write(b)
 
     search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
 
-    esession.flash("[0/%d] (progress is counted by member DB files in index DB)" % cluster_size)
+    additional_message = ''
+    if rust_sub_index_search is not None:
+        additional_message = ', with sub-index-search engine'
+    esession.flash("[0/%d] (progress is counted by member DB files in index DB%s)" % (cluster_size, additional_message))
     executor = ProcessPoolExecutor(max_workers=args.worker)
-    subit = executor.map(
-        sub_index_search_i,
-        ((pattern_vec, db_base_path, args.window, i, fnmatch_func, args.top_n, args.unit_vector, args.paragraph) for i in range(cluster_size)),
-    )
+    if rust_sub_index_search is None:
+        subit = executor.map(
+            sub_index_search_i, 
+            ((pattern_vec, db_base_path, args.window, i, fnmatch_func, args.top_n, args.unit_vector, args.paragraph) \
+                    for i in range(cluster_size)))
+    else:
+        assert patternvec_file is not None
+        assert globpatterns_file is not None
+        subit = executor.map(
+            sub_index_search_r_i,
+            ((patternvec_file, db_base_path, args.window, (i, cluster_size), globpatterns_file, args.top_n, args.unit_vector, args.paragraph, temp_dir.name) \
+                    for i in range(cluster_size)))
     subi = 0
     try:
         for subi, sub_search_results in enumerate(subit):
@@ -537,6 +599,9 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         executor.shutdown(wait=False, cancel_futures=True)
     else:
         executor.shutdown()
+    finally:
+        if temp_dir is not None:
+            temp_dir.cleanup()
 
     model = model_loader.D2VModel(language, lang_model_file)
     parser = parsers.Parser()
@@ -743,6 +808,9 @@ def main():
             print("> Warning: option --pattern-from-file is now deprecated. Specify `=<filename>` as pattern.", file=sys.stderr)
             pattern_from_file = True
             del argv[i]
+        elif a == '--bin-dir':
+            print(os.path.join(_script_dir, 'bin'))
+            return
 
     raw_args = docopt(__doc__, argv=argv, version="d2vg %s" % __version__)
     args = CommandLineArguments(_cast_str_values=True, **raw_args)
