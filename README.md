@@ -1,7 +1,9 @@
 ![test workflow](https://github.com/tos-kamiya/d2vg/workflows/Tests/badge.svg)
 
-&rarr; doc [(main)](https://github.com/tos-kamiya/d2vg/) [(dev)](https://github.com/tos-kamiya/d2vg/tree/dev)
-&rarr; Japanese doc [(main)](https://github.com/tos-kamiya/d2vg/blob/main/README.ja_JP.md) [(dev)](https://github.com/tos-kamiya/d2vg/blob/dev/README.ja_JP.md)
+&rarr; doc [main](https://github.com/tos-kamiya/d2vg/) | [dev](https://github.com/tos-kamiya/d2vg/tree/dev)  
+&rarr; Japanese doc [main](https://github.com/tos-kamiya/d2vg/blob/main/README.ja_JP.md) | [dev](https://github.com/tos-kamiya/d2vg/blob/dev/README.ja_JP.md)  
+
+**WARNING: In the dev branch, an experiment to change the structure of the DB is currently underway. The index DB created with the alpha or beta release will not be usable in the official release.**
 
 # d2vg
 
@@ -194,6 +196,7 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 - [x] Combining keyword search
 - [x] Easy installation
 - [ ] Support and tune more languages (experimental support: ko, zh)
+- [ ] DB structure change for performance (v2)
 - [x] Explicit indexing control command in case millions of document files to search (v2)
 - [x] GC of index data. Delete the index data without a corresponding file in index DB (v2)
 
