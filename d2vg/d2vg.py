@@ -468,7 +468,7 @@ def sub_index_search_i(
 
 
 def sub_index_search_r(
-    patternvec_file: str, db_base_path: str, window: int, db_i_c: Tuple[int, int], globpatterns_file: str, top_n: int, unit_vector: bool, paragraph: bool, temp_dir: str
+    patternvec_file: str, db_base_path: str, window: int, db_i_c: Tuple[int, int], globpatterns_file: str, top_n: int, unit_vector: bool, paragraph: bool, temp_dir: str, esession: ESession,
 ) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     db_fn = "%s-%d-%do%d%s" % (db_base_path, window, db_i_c[0], db_i_c[1], index_db.DB_FILE_EXTENSION)
     result_file = os.path.join(temp_dir, 'result_%d' % db_i_c[0])
@@ -478,17 +478,21 @@ def sub_index_search_r(
         cmd = cmd + ['-u']
     if paragraph:
         cmd = cmd + ['-p']
-    subprocess.run(cmd)
-
-    with open(result_file, 'rb') as inp:
-        b = inp.read()
-        d = bson.loads(b)
-    r = [(ip, fn, sig, tuple(sr), None) for ip, fn, sig, sr in d["ipfssrs"]]
-    return r
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        esession.print("> Warning: error for DB %d" % db_i_c[0])
+        return []
+    else:
+        with open(result_file, 'rb') as inp:
+            b = inp.read()
+            d = bson.loads(b)
+        r = [(ip, fn, sig, tuple(sr), None) for ip, fn, sig, sr in d["ipfssrs"]]
+        return r
 
 
 def sub_index_search_r_i(
-    a: Tuple[str, str, int, Tuple[int, int], str, int, bool, bool, str]
+    a: Tuple[str, str, int, Tuple[int, int], str, int, bool, bool, str, ESession]
 ) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
     return sub_index_search_r(*a)
 
@@ -573,7 +577,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         assert globpatterns_file is not None
         subit = executor.map(
             sub_index_search_r_i,
-            ((patternvec_file, db_base_path, args.window, (i, cluster_size), globpatterns_file, args.top_n, args.unit_vector, args.paragraph, temp_dir.name) \
+            ((patternvec_file, db_base_path, args.window, (i, cluster_size), globpatterns_file, args.top_n, args.unit_vector, args.paragraph, temp_dir.name, esession) \
                     for i in range(cluster_size)))
     subi = 0
     try:
