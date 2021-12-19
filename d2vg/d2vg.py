@@ -25,7 +25,7 @@ from . import index_db
 from .esesion import ESession
 from .fnmatcher import FNMatcher
 from .iter_funcs import *
-from .processpoolexecutor_wrapper import ProcessPoolExecutor
+from .processpoolexecutor_wrapper import ProcessPoolExecutor, kill_all_subprocesses
 
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -483,6 +483,9 @@ def sub_index_search_r(
     except subprocess.CalledProcessError as e:
         esession.print("> Warning: error for DB %d" % db_i_c[0])
         return []
+    except Exception as e:
+        kill_all_subprocesses()
+        raise e
     else:
         with open(result_file, 'rb') as inp:
             b = inp.read()
