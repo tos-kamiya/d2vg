@@ -40,10 +40,9 @@ class IndexDbTest(unittest.TestCase):
                 file_raw_db = "index_db"
                 db = raw_db.open(file_raw_db, "rwc")
 
-                raw_db.store(db, file_a, file_a_sig, file_a_posvecsb)
+                raw_db.store(db, file_a, file_a_sig, [file_a_posvecsb])
                 self.assertEqual(raw_db.lookup_signature(db, file_a), file_a_sig)
-                self.assertEqual(raw_db.lookup_posvecs(db, file_a), file_a_posvecsb)
-                self.assertEqual(raw_db.lookup(db, file_a), (file_a_sig, file_a_posvecsb))
+                self.assertEqual(raw_db.lookup(db, file_a), (file_a_sig, [file_a_posvecsb]))
 
                 raw_db.close(db)
                 db = None
@@ -62,7 +61,7 @@ class IndexDbTest(unittest.TestCase):
 
                 self.assertEqual(raw_db.lookup_signature(db, file_a), None)
 
-                raw_db.store(db, file_a, file_a_sig, file_a_posvecsb)
+                raw_db.store(db, file_a, file_a_sig, [file_a_posvecsb])
                 self.assertEqual(raw_db.lookup_signature(db, file_a), file_a_sig)
                 raw_db.close(db)
                 db = None
