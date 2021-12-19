@@ -24,7 +24,7 @@ DB_WRITE_QUEUE_MAX_LEN = 1048576
 
 
 def file_signature(file_name: str) -> FileSignature:
-    return "%s-%s" % (os.path.getsize(file_name), floor(os.path.getmtime(file_name)))
+    return FileSignature("%s-%s" % (os.path.getsize(file_name), floor(os.path.getmtime(file_name))))
 
 
 def decode_file_signature(sig: FileSignature) -> Tuple[int, int]:
@@ -112,7 +112,7 @@ class IndexDb:
         r = raw_db.lookup_signature(db, np)
         if r is None:
             return None
-        return r
+        return FileSignature(r)
 
     def lookup(self, file_name: str) -> Optional[Tuple[FileSignature, List[PosVec]]]:
         if file_name == "-" or os.path.isabs(file_name):
@@ -124,7 +124,7 @@ class IndexDb:
         if r is None:
             return None
         sig, posvecsb = r
-        return sig, loads_pos_vecs(posvecsb)
+        return FileSignature(sig), loads_pos_vecs(posvecsb)
 
     def store(self, file_name: str, sig: FileSignature, pos_vecs: List[PosVec]) -> None:
         if file_name == "-" or os.path.isabs(file_name):
@@ -208,7 +208,7 @@ class PartialIndexDbItemIterator:
             db = raw_db.open(db_fn, "ro")
         except sqlite3.OperationalError as e:
             raise IndexDbError("fail to open sqlite3 db file: %s" % repr(db_fn)) from e
-        self._db = db
+        self._db: Optional[RawDb] = db
         self._filenames = list(raw_db.filename_iter(db))
         self._i = -1
 
@@ -230,10 +230,11 @@ class PartialIndexDbItemIterator:
         self._i += 1
 
         fn = self._filenames[self._i]
+        assert self._db is not None
         r = raw_db.lookup(self._db, fn)
         assert r is not None
         sig, posvecsb = r
-        return fn, sig, loads_pos_vecs(posvecsb)
+        return fn, FileSignature(sig), loads_pos_vecs(posvecsb)
 
 
 def open_partial_index_db_item_iterator(db_base_path: str, window_size: int, db_index: int) -> PartialIndexDbItemIterator:

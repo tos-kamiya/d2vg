@@ -191,18 +191,18 @@ def extract_headline(
     return headline_text
 
 
-def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[List[str]], Vec], window_size: int) -> List[PosVec]:
+def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[List[str]], Vec], window: int) -> List[PosVec]:
     pos_vecs = []
-    if window_size == 1:
+    if window == 1:
         for pos, tokens in enumerate(line_tokens):
             vec = tokens_to_vector(tokens)
             pos_vecs.append(((pos, pos + 1), vec))
     else:
-        if len(line_tokens) < window_size // 2:
+        if len(line_tokens) < window // 2:
             vec = tokens_to_vector(concatinated(line_tokens))
             pos_vecs.append(((0, len(line_tokens)), vec))
-        for pos in range(0, len(line_tokens) - window_size // 2, window_size // 2):
-            end_pos = min(pos + window_size, len(line_tokens))
+        for pos in range(0, len(line_tokens) - window // 2, window // 2):
+            end_pos = min(pos + window, len(line_tokens))
             vec = tokens_to_vector(concatinated(line_tokens[pos:end_pos]))
             pos_vecs.append(((pos, end_pos), vec))
     return pos_vecs
@@ -229,10 +229,12 @@ def do_parse_and_tokenize_i(d: Tuple[List[str], str, ESession]) -> List[Optional
     return do_parse_and_tokenize(d[0], d[1], d[2])
 
 
-def prune_by_keywords(
-    ip_srlls: Iterable[Tuple[float, Tuple[int, int], List[str], List[List[str]]]], keyword_set: FrozenSet[str], min_ip: Optional[float] = None
-) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
-    ipsrll_inc_kws: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]] = []
+IPSRLL = Tuple[float, Tuple[int, int], List[str], List[List[str]]]
+IPSRLL_OPT = Tuple[float, Tuple[int, int], Optional[List[str]], Optional[List[List[str]]]]
+
+
+def prune_by_keywords(ip_srlls: Iterable[IPSRLL], keyword_set: FrozenSet[str], min_ip: Optional[float] = None) -> List[IPSRLL]:
+    ipsrll_inc_kws: List[IPSRLL] = []
     lines: Optional[List[str]] = None
     line_tokens: Optional[List[List[str]]] = None
     for ip, (sp, ep), ls, lts in ip_srlls:
@@ -251,10 +253,7 @@ def prune_by_keywords(
     return ipsrll_inc_kws
 
 
-def prune_overlapped_paragraphs(
-    ip_srlls: List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]],
-    search_paragraph: bool,
-) -> List[Tuple[float, Tuple[int, int], List[str], List[List[str]]]]:
+def prune_overlapped_paragraphs(ip_srlls: List[IPSRLL_OPT], search_paragraph: bool) -> List[IPSRLL_OPT]:
     if not ip_srlls:
         return ip_srlls
     elif search_paragraph:
@@ -329,8 +328,8 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
     search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
 
     def update_search_results(tf, pos_vecs, lines, line_tokens):
-        ip_srlls = [(inner_product(vec, pattern_vec), sr, lines, line_tokens) for sr, vec in pos_vecs]  # ignore type mismatch
-        if keyword_set:
+        ip_srlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, lines, line_tokens) for sr, vec in pos_vecs]  # ignore type mismatch
+        if keyword_set:  # ensure ip_srlls's type is actually List[IPSRLL], in this case
             min_ip = heapq.nsmallest(1, search_results)[0][0] if len(search_results) >= args.top_n else None
             ip_srlls = prune_by_keywords(ip_srlls, keyword_set, min_ip)
         ip_srlls = prune_overlapped_paragraphs(ip_srlls, args.paragraph)
@@ -431,26 +430,29 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         print("%g\t%s:%d-%d\t%s" % (ip, tf, sr[0] + 1, sr[1] + 1, headline))
 
 
+IPFSSRL_OPT = Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]
+
+
 def sub_index_search(
     pattern_vec: Vec,
     db_base_path: str,
-    window_size: int,
+    window: int,
     db_index: int,
     fnmatch_func: Optional[Callable[[str], bool]],
     top_n: int,
     unit_vector: bool,
-    search_paragraph: bool,
-) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
+    paragraph: bool,
+) -> List[IPFSSRL_OPT]:
     inner_product = inner_product_u if unit_vector else inner_product_n
 
-    search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
-    with index_db.open_partial_index_db_item_iterator(db_base_path, window_size, db_index) as it:
+    search_results: List[IPFSSRL_OPT] = []
+    with index_db.open_partial_index_db_item_iterator(db_base_path, window, db_index) as it:
         for fn, sig, pos_vecs in it:
             if fnmatch_func is not None and not fnmatch_func(fn):
                 continue  # for fn
 
-            ip_srlls = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
-            ip_srlls = prune_overlapped_paragraphs(ip_srlls, search_paragraph)
+            ip_srlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
+            ip_srlls = prune_overlapped_paragraphs(ip_srlls, paragraph)
 
             for ip, subrange, lines, _line_tokens in ip_srlls:
                 heapq.heappush(search_results, (ip, fn, sig, subrange, lines))
@@ -461,19 +463,17 @@ def sub_index_search(
     return search_results
 
 
-def sub_index_search_i(
-    a: Tuple[Vec, str, int, int, Optional[Callable[[str], bool]], int, bool, bool]
-) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
+def sub_index_search_i(a: Tuple[Vec, str, int, int, Optional[Callable[[str], bool]], int, bool, bool]) -> List[IPFSSRL_OPT]:
     return sub_index_search(*a)
 
 
 def sub_index_search_r(
-    patternvec_file: str, db_base_path: str, window: int, db_i_c: Tuple[int, int], globpatterns_file: str, top_n: int, unit_vector: bool, paragraph: bool, temp_dir: str, esession: ESession,
-) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
+    patternvec_file: str, db_base_path: str, window: int, db_i_c: Tuple[int, int], glob_file: str, top_n: int, unit_vector: bool, paragraph: bool, temp_dir: str, esession: ESession,
+) -> List[IPFSSRL_OPT]:
     db_fn = "%s-%d-%do%d%s" % (db_base_path, window, db_i_c[0], db_i_c[1], index_db.DB_FILE_EXTENSION)
     result_file = os.path.join(temp_dir, 'result_%d' % db_i_c[0])
 
-    cmd = [rust_sub_index_search, patternvec_file, db_fn, '-g', globpatterns_file, '-o', result_file, '-t', "%d" % top_n]
+    cmd = [rust_sub_index_search, patternvec_file, db_fn, '-g', glob_file, '-o', result_file, '-t', "%d" % top_n]
     if unit_vector:
         cmd = cmd + ['-u']
     if paragraph:
@@ -491,9 +491,7 @@ def sub_index_search_r(
         return r
 
 
-def sub_index_search_r_i(
-    a: Tuple[str, str, int, Tuple[int, int], str, int, bool, bool, str, ESession]
-) -> List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]]:
+def sub_index_search_r_i(a: Tuple[str, str, int, Tuple[int, int], str, int, bool, bool, str, ESession]) -> List[IPFSSRL_OPT]:
     return sub_index_search_r(*a)
 
 
@@ -521,12 +519,15 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         esession.clear()
         sys.exit("Error: pattern string is empty.")
 
+    if not args.file:
+        esession.clear()
+        sys.exit("Error: no document files are given.")
     if args.file and len(args.file) > 100:
         esession.print("> Warning: many (100+) filenames are specified. Consider using glob patterns enclosed in quotes, like '*.txt'", force=True)
 
     fnmatch_func = None
     temp_dir = None
-    globpatterns_file = None
+    glob_file = None
     patternvec_file = None
     if args.file:
         if rust_sub_index_search is None:
@@ -534,8 +535,8 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
             fnmatch_func = fnm.match
         else:
             temp_dir = tempfile.TemporaryDirectory()
-            globpatterns_file = os.path.join(temp_dir.name, 'filepattern')
-            with open(globpatterns_file, 'w') as outp:
+            glob_file = os.path.join(temp_dir.name, 'filepattern')
+            with open(glob_file, 'w') as outp:
                 for L in args.file:
                     print(L, file=outp)
 
@@ -560,7 +561,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         with open(patternvec_file, 'wb') as outp:
             outp.write(b)
 
-    search_results: List[Tuple[float, str, FileSignature, Tuple[int, int], Optional[List[str]]]] = []
+    search_results: List[IPFSSRL_OPT] = []
 
     additional_message = ''
     if rust_sub_index_search is not None:
@@ -574,10 +575,10 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
                     for i in range(cluster_size)))
     else:
         assert patternvec_file is not None
-        assert globpatterns_file is not None
+        assert glob_file is not None
         subit = executor.map(
             sub_index_search_r_i,
-            ((patternvec_file, db_base_path, args.window, (i, cluster_size), globpatterns_file, args.top_n, args.unit_vector, args.paragraph, temp_dir.name, esession) \
+            ((patternvec_file, db_base_path, args.window, (i, cluster_size), glob_file, args.top_n, args.unit_vector, args.paragraph, temp_dir.name, esession) \
                     for i in range(cluster_size)))
     subi = 0
     try:
@@ -622,14 +623,14 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         print("%g\t%s:%d-%d\t%s" % (ip, fn, sr[0] + 1, sr[1] + 1, headline))
 
 
-def sub_remove_index_no_corresponding_files(db_base_path: str, window_size: int, db_index: int) -> int:
+def sub_remove_index_no_corresponding_files(db_base_path: str, window: int, db_index: int) -> int:
     target_files = []
-    with index_db.open_partial_index_db_signature_iterator(db_base_path, window_size, db_index) as it:
+    with index_db.open_partial_index_db_signature_iterator(db_base_path, window, db_index) as it:
         for fn, sig in it:
             if not (os.path.exists(fn) and os.path.isfile(fn) and file_signature(fn)) == sig:
                 target_files.append(fn)
 
-    index_db.remove_partial_index_db_items(db_base_path, window_size, db_index, target_files)
+    index_db.remove_partial_index_db_items(db_base_path, window, db_index, target_files)
     return len(target_files)
 
 
@@ -664,15 +665,15 @@ def do_remove_index_no_corresponding_files(language: str, lang_model_file: str, 
         executor.shutdown(wait=False, cancel_futures=True)
     else:
         executor.shutdown()
-    esession.flash("Removed %d obsolete index data" % count_removed_index_data)
+    # esession.print("> Removed %d obsolete index data." % count_removed_index_data)
 
 
-def sub_list_file_indexed(db_base_path: str, window_size: int, db_index: int) -> List[Tuple[str, int, int, int]]:
+def sub_list_file_indexed(db_base_path: str, window: int, db_index: int) -> List[Tuple[str, int, int, int]]:
     file_data: List[Tuple[str, int, int, int]] = []
-    it = index_db.open_partial_index_db_item_iterator(db_base_path, window_size, db_index)
+    it = index_db.open_partial_index_db_item_iterator(db_base_path, window, db_index)
     for fn, sig, _pos_vecs in it:
         fs, fmt = decode_file_signature(sig)
-        file_data.append((fn, fmt, fs, window_size))
+        file_data.append((fn, fmt, fs, window))
     file_data.sort()
     return file_data
 
@@ -724,13 +725,13 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
         print("%s\t%s\t%d\t%d" % (fn, t, fs, window_size))
 
 
-def sub_update_index(file_names: List[str], language: str, lang_model_file: str, window_size: int, esession: ESession) -> None:
+def sub_update_index(file_names: List[str], language: str, lang_model_file: str, window: int, esession: ESession) -> None:
     parser = parsers.Parser()
     text_to_tokens = model_loader.load_tokenize_func(language)
     model = model_loader.D2VModel(language, lang_model_file)
 
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
-    with index_db.open(db_base_path, window_size, "c") as db:
+    with index_db.open(db_base_path, window, "c") as db:
         for tf in file_names:
             sig = file_signature(tf)
             if db.lookup_signature(tf) == sig:
@@ -741,7 +742,7 @@ def sub_update_index(file_names: List[str], language: str, lang_model_file: str,
                 esession.print("> Warning: %s" % e, force=True)
             else:
                 line_tokens = [text_to_tokens(L) for L in lines]
-                pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, window_size)
+                pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, window)
                 db.store(tf, sig, pos_vecs)
 
 
