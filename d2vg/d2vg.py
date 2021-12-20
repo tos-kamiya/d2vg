@@ -79,7 +79,7 @@ Options:
   --worker=WORKER, -j WORKER    Number of worker processes. `0` is interpreted as number of CPU cores.
   --lang=LANG, -l LANG          Model language.
   --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
-  --top-n=NUM, -t NUM           Show top NUM files [default: 20]. Specify `0` to show all files.
+  --top-n=NUM, -t NUM           Show top NUM files [default: 20].
   --paragraph, -p               Search paragraphs in documents.
   --unit-vector, -u             Convert discrete representations to unit vectors before comparison.
   --window=NUM, -w NUM          Line window size [default: {default_window_size}].
@@ -822,6 +822,10 @@ def main():
 
     raw_args = docopt(__doc__, argv=argv, version="d2vg %s" % __version__)
     args = CommandLineArguments(_cast_str_values=True, **raw_args)
+
+    if args.top_n <= 0:
+        sys.exit("Error: --top-n=0 is no longer supported.")
+
     if args.pattern:
         if pattern_from_file:
             args.pattern = "=" + args.pattern
