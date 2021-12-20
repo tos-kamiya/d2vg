@@ -1,6 +1,7 @@
 from typing import *
 
 from datetime import datetime
+from functools import lru_cache
 from glob import glob
 import heapq
 import importlib
@@ -161,7 +162,7 @@ def do_expand_target_files(target_files: Iterable[str], esession: ESession) -> T
 
 def extract_headline(
     lines: List[str],
-    text_to_tokens: Callable[[str], List[str]],
+    line_tokens: Optional[List[List[str]]],
     tokens_to_vec: Callable[[List[str]], Vec],
     pattern_vec: Vec,
     headline_len: int,
@@ -169,7 +170,8 @@ def extract_headline(
     if not lines:
         return ""
 
-    line_tokens = [text_to_tokens(L) for L in lines]
+    if len(lines) == 1:
+        return lines[0][:headline_len]
 
     len_lines = len(lines)
     max_ip_data = None
@@ -324,8 +326,9 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
         else:
             esession.print("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
 
+    esession.flash("> Calculating similarity to each document.")
     inner_product = inner_product_u if args.unit_vector else inner_product_n
-    search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]]]] = []
+    search_results: List[Tuple[float, str, Tuple[int, int], Optional[List[str]], Optional[List[List[str]]]]] = []
 
     def update_search_results(tf, pos_vecs, lines, line_tokens):
         ip_srlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, lines, line_tokens) for sr, vec in pos_vecs]  # ignore type mismatch
@@ -334,8 +337,8 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
             ip_srlls = prune_by_keywords(ip_srlls, keyword_set, min_ip)
         ip_srlls = prune_overlapped_paragraphs(ip_srlls, args.paragraph)
 
-        for ip, subrange, lines, _line_tokens in ip_srlls:
-            heapq.heappush(search_results, (ip, tf, subrange, lines))
+        for ip, subrange, lines, line_tokens in ip_srlls:
+            heapq.heappush(search_results, (ip, tf, subrange, lines, line_tokens))
             if len(search_results) > args.top_n:
                 _smallest = heapq.heappop(search_results)
 
@@ -346,7 +349,7 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
             return
         max_tf = heapq.nlargest(1, search_results)
         if max_tf:
-            _ip, f, sr, _ls = max_tf[0]
+            _ip, f, sr, _ls, _lts = max_tf[0]
             top1_message = "Tentative top-1: %s:%d-%d" % (f, sr[0] + 1, sr[1] + 1)
             esession.flash("[%d/%d] %s" % (tfi + 1, len_files, top1_message))
 
@@ -420,13 +423,23 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
         model = model_loader.D2VModel(lang, lang_model_file)
 
     esession.activate(False)
+
+    if args.paragraph:
+        parse = lru_cache(maxsize=args.top_n)(parser.parse)
+    else:
+        parse = parser.parse
+
     search_results = heapq.nlargest(args.top_n, search_results)
-    for i, (ip, tf, sr, lines) in enumerate(search_results):
+    for i, (ip, tf, sr, lines, line_tokens) in enumerate(search_results):
         if ip < 0:
             break  # for i
+        b, e = sr
         if lines is None:
-            lines = parser.parse(tf)
-        headline = extract_headline(lines[sr[0] : sr[1]], text_to_tokens, model.tokens_to_vec, pattern_vec, args.headline_length)
+            lines = parse(tf)
+        lines = lines[b:e]
+        if line_tokens is None:
+            line_tokens = [text_to_tokens(L) for L in lines]
+        headline = extract_headline(lines, line_tokens, model.tokens_to_vec, pattern_vec, args.headline_length)
         print("%g\t%s:%d-%d\t%s" % (ip, tf, sr[0] + 1, sr[1] + 1, headline))
 
 
@@ -468,18 +481,17 @@ def sub_index_search_i(a: Tuple[Vec, str, int, int, Optional[FNMatcher], int, bo
 
 
 def sub_index_search_r(
-    patternvec_file: str, db_base_path: str, window: int, db_i_c: Tuple[int, int], glob_file: str, top_n: int, unit_vector: bool, paragraph: bool, temp_dir: str, esession: ESession,
+    patternvec_file: str, db_base_path: str, window: int, db_i_c: Tuple[int, int], glob_file: str, top_n: int, unit_vector: bool, paragraph: bool, esession: ESession,
 ) -> List[IPFSSRL_OPT]:
     db_fn = "%s-%d-%do%d%s" % (db_base_path, window, db_i_c[0], db_i_c[1], index_db.DB_FILE_EXTENSION)
-    result_file = os.path.join(temp_dir, 'result_%d' % db_i_c[0])
 
-    cmd = [exec_sub_index_search, patternvec_file, db_fn, '-g', glob_file, '-o', result_file, '-t', "%d" % top_n]
+    cmd = [exec_sub_index_search, patternvec_file, db_fn, '-g', glob_file, '-o', '-', '-t', "%d" % top_n]
     if unit_vector:
         cmd = cmd + ['-u']
     if paragraph:
         cmd = cmd + ['-p']
     try:
-        subprocess.run(cmd, check=True)
+        b = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
         esession.print("> Warning: error for DB %d" % db_i_c[0])
         return []
@@ -487,14 +499,12 @@ def sub_index_search_r(
         kill_all_subprocesses()
         raise e
     else:
-        with open(result_file, 'rb') as inp:
-            b = inp.read()
-            d = bson.loads(b)
+        d = bson.loads(b)
         r = [(ip, fn, sig, tuple(sr), None) for ip, fn, sig, sr in d["ipfssrs"]]
         return r
 
 
-def sub_index_search_r_i(a: Tuple[str, str, int, Tuple[int, int], str, int, bool, bool, str, ESession]) -> List[IPFSSRL_OPT]:
+def sub_index_search_r_i(a: Tuple[str, str, int, Tuple[int, int], str, int, bool, bool, ESession]) -> List[IPFSSRL_OPT]:
     return sub_index_search_r(*a)
 
 
@@ -556,6 +566,7 @@ def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: C
     pattern_vec = model.tokens_to_vec(tokens)
     model = None  # before forking process, remove a large object from heap
 
+    esession.flash("> Calculating similarity to each document.")
     if exec_sub_index_search is not None:
         assert temp_dir is not None
         patternvec_file = os.path.join(temp_dir.name, 'patternvec')
@@ -580,7 +591,7 @@ def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: C
         assert glob_file is not None
         subit = executor.map(
             sub_index_search_r_i,
-            ((patternvec_file, db_base_path, args.window, (i, cluster_size), glob_file, args.top_n, args.unit_vector, args.paragraph, temp_dir.name, esession) \
+            ((patternvec_file, db_base_path, args.window, (i, cluster_size), glob_file, args.top_n, args.unit_vector, args.paragraph, esession) \
                     for i in range(cluster_size)))
     subi = 0
     try:
@@ -610,18 +621,26 @@ def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: C
         if temp_dir is not None:
             temp_dir.cleanup()
 
+    esession.activate(False)
+
     model = model_loader.D2VModel(lang, lang_model_file)
     parser = parsers.Parser()
+    if args.paragraph:
+        parse = lru_cache(maxsize=args.top_n)(parser.parse)
+    else:
+        parse = parser.parse
 
-    esession.activate(False)
     search_results = heapq.nlargest(args.top_n, search_results)
     for ip, fn, sig, sr, lines in search_results:
         if ip < 0:
             break  # for i
         if file_signature(fn) != sig:
             sys.exit("Error: file signature does not match (the file was modified during search?): %s" % fn)
-        lines = parser.parse(fn)
-        headline = extract_headline(lines[sr[0] : sr[1]], text_to_tokens, model.tokens_to_vec, pattern_vec, args.headline_length)
+        b, e = sr
+        lines = parse(fn)
+        lines = lines[b:e]
+        line_tokens = [text_to_tokens(L) for L in lines]
+        headline = extract_headline(lines, line_tokens, model.tokens_to_vec, pattern_vec, args.headline_length)
         print("%g\t%s:%d-%d\t%s" % (ip, fn, sr[0] + 1, sr[1] + 1, headline))
 
 
