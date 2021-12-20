@@ -19,8 +19,11 @@ DB_DEFAULT_CLUSTER_SIZE = 64
 DB_WRITE_QUEUE_MAX_LEN = 2**30
 
 
-def file_signature(file_name: str) -> FileSignature:
-    return FileSignature("%s-%s" % (os.path.getsize(file_name), floor(os.path.getmtime(file_name))))
+def file_signature(file_name: str) -> Optional[FileSignature]:
+    if os.path.exists(file_name) and os.path.isfile(file_name):
+        return FileSignature("%s-%s" % (os.path.getsize(file_name), floor(os.path.getmtime(file_name))))
+    else:
+        return None
 
 
 def decode_file_signature(sig: FileSignature) -> Tuple[int, int]:

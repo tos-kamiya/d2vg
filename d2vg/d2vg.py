@@ -23,6 +23,7 @@ from . import parsers
 from . import model_loader
 from .types import Vec
 from . import index_db
+from .index_db import PosVec, FileSignature, file_signature, decode_file_signature
 from .esesion import ESession
 from .fnmatcher import FNMatcher
 from .iter_funcs import *
@@ -37,11 +38,6 @@ if not os.path.exists(exec_sub_index_search):
 
 __version__ = importlib.metadata.version("d2vg")
 DB_DIR = ".d2vg"
-
-PosVec = index_db.PosVec
-FileSignature = index_db.FileSignature
-file_signature = index_db.file_signature
-decode_file_signature = index_db.decode_file_signature
 
 
 class CLArgs(InitAttrsWKwArgs):
@@ -219,7 +215,7 @@ def do_parse_and_tokenize(file_names: List[str], lang: str, esession: ESession) 
         try:
             lines = parser.parse(tf)
         except parsers.ParseError as e:
-            esession.print("> Warning: %s" % e)
+            esession.print("> Warning: %s" % e, force=True)
             r.append(None)
         else:
             line_tokens = [text_to_tokens(L) for L in lines]
@@ -301,12 +297,19 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
     files_not_stored = []
     if db is not None and not args.unknown_word_as_keyword:
         for tf in target_files:
-            if db.lookup_signature(tf) == file_signature(tf):
+            sig = file_signature(tf)
+            if sig is None:
+                esession.print("> Warning: skip non-existing file: %s" % tf, force=True)
+            elif db.lookup_signature(tf) == sig:
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
     else:
         files_not_stored = target_files
+
+    len_files = len(files_stored) + len(files_not_stored) + (1 if read_from_stdin else 0)
+    if len_files == 0:
+        return
 
     esession.flash("> Loading Doc2Vec model.")
     model = model_loader.D2VModel(lang, lang_model_file)
@@ -341,8 +344,6 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
             heapq.heappush(search_results, (ip, tf, subrange, lines, line_tokens))
             if len(search_results) > args.top_n:
                 _smallest = heapq.heappop(search_results)
-
-    len_files = len(files_stored) + len(files_not_stored) + (1 if read_from_stdin else 0)
 
     def verbose_print_cur_status(tfi):
         if not esession.is_active():
@@ -397,15 +398,19 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
                 tf, lines, line_tokens = r
                 if db is None:
                     pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, args.window)
+                    update_search_results(tf, pos_vecs, lines, line_tokens)
                 else:
                     sig = file_signature(tf)
-                    r = db.lookup(tf)
-                    if r is None or r[0] != sig:
-                        pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, args.window)
-                        db.store(tf, sig, pos_vecs)
+                    if sig is None:
+                        esession.print("> Warning: skip non-existing file: %s" % tf, force=True)
                     else:
-                        pos_vecs = r[1]
-                update_search_results(tf, pos_vecs, lines, line_tokens)
+                        r = db.lookup(tf)
+                        if r is None or r[0] != sig:
+                            pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, args.window)
+                            db.store(tf, sig, pos_vecs)
+                        else:
+                            pos_vecs = r[1]
+                        update_search_results(tf, pos_vecs, lines, line_tokens)
                 if i == 0:
                     verbose_print_cur_status(tfi)
         else:
@@ -493,7 +498,7 @@ def sub_index_search_r(
     try:
         b = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
-        esession.print("> Warning: error for DB %d" % db_i_c[0])
+        esession.print("> Warning: error for DB %d" % db_i_c[0], force=True)
         return []
     except Exception as e:
         kill_all_subprocesses()
@@ -648,7 +653,7 @@ def sub_remove_index_no_corresponding_files(db_base_path: str, window: int, db_i
     target_files = []
     with index_db.open_partial_index_db_signature_iterator(db_base_path, window, db_index) as it:
         for fn, sig in it:
-            if not (os.path.exists(fn) and os.path.isfile(fn) and file_signature(fn)) == sig:
+            if file_signature(fn) != sig:
                 target_files.append(fn)
 
     index_db.remove_partial_index_db_items(db_base_path, window, db_index, target_files)
@@ -756,6 +761,9 @@ def sub_update_index(file_names: List[str], lang: str, lang_model_file: str, win
     with index_db.open(db_base_path, window, "c") as db:
         for tf in file_names:
             sig = file_signature(tf)
+            if sig is None:
+                esession.print("> Warning: skip non-existing file: %s" % tf, force=True)
+                continue  # tf
             if db.lookup_signature(tf) == sig:
                 continue
             try:
