@@ -30,9 +30,9 @@ from .processpoolexecutor_wrapper import ProcessPoolExecutor, kill_all_subproces
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
 
-rust_sub_index_search = os.path.join(_script_dir, 'bin', 'sub_index_search')
-if not os.path.exists(rust_sub_index_search):
-    rust_sub_index_search = None
+exec_sub_index_search = os.path.join(_script_dir, 'bin', 'sub_index_search')
+if not os.path.exists(exec_sub_index_search):
+    exec_sub_index_search = None
 
 __version__ = importlib.metadata.version("d2vg")
 DB_DIR = ".d2vg"
@@ -43,7 +43,7 @@ file_signature = index_db.file_signature
 decode_file_signature = index_db.decode_file_signature
 
 
-class CommandLineArguments(InitAttrsWKwArgs):
+class CLArgs(InitAttrsWKwArgs):
     pattern: str
     file: List[str]
     verbose: bool
@@ -162,7 +162,7 @@ def do_expand_target_files(target_files: Iterable[str], esession: ESession) -> T
 def extract_headline(
     lines: List[str],
     text_to_tokens: Callable[[str], List[str]],
-    tokens_to_vector: Callable[[List[str]], Vec],
+    tokens_to_vec: Callable[[List[str]], Vec],
     pattern_vec: Vec,
     headline_len: int,
 ) -> str:
@@ -179,7 +179,7 @@ def extract_headline(
         while q < len_lines and sublines_textlen < headline_len:
             sublines_textlen += len(lines[q])
             q += 1
-        vec = tokens_to_vector(concatinated(line_tokens[p:q]))
+        vec = tokens_to_vec(concatinated(line_tokens[p:q]))
         ip = float(np.inner(vec, pattern_vec))
         if max_ip_data is None or ip > max_ip_data[0]:
             max_ip_data = ip, (p, q)
@@ -191,26 +191,26 @@ def extract_headline(
     return headline_text
 
 
-def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vector: Callable[[List[str]], Vec], window: int) -> List[PosVec]:
+def extract_pos_vecs(line_tokens: List[List[str]], tokens_to_vec: Callable[[List[str]], Vec], window: int) -> List[PosVec]:
     pos_vecs = []
     if window == 1:
         for pos, tokens in enumerate(line_tokens):
-            vec = tokens_to_vector(tokens)
+            vec = tokens_to_vec(tokens)
             pos_vecs.append(((pos, pos + 1), vec))
     else:
         if len(line_tokens) < window // 2:
-            vec = tokens_to_vector(concatinated(line_tokens))
+            vec = tokens_to_vec(concatinated(line_tokens))
             pos_vecs.append(((0, len(line_tokens)), vec))
         for pos in range(0, len(line_tokens) - window // 2, window // 2):
             end_pos = min(pos + window, len(line_tokens))
-            vec = tokens_to_vector(concatinated(line_tokens[pos:end_pos]))
+            vec = tokens_to_vec(concatinated(line_tokens[pos:end_pos]))
             pos_vecs.append(((pos, end_pos), vec))
     return pos_vecs
 
 
-def do_parse_and_tokenize(file_names: List[str], language: str, esession: ESession) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
+def do_parse_and_tokenize(file_names: List[str], lang: str, esession: ESession) -> List[Optional[Tuple[str, List[str], List[List[str]]]]]:
     parser = parsers.Parser()
-    text_to_tokens = model_loader.load_tokenize_func(language)
+    text_to_tokens = model_loader.load_tokenize_func(lang)
 
     r = []
     for tf in file_names:
@@ -253,10 +253,10 @@ def prune_by_keywords(ip_srlls: Iterable[IPSRLL], keyword_set: FrozenSet[str], m
     return ipsrll_inc_kws
 
 
-def prune_overlapped_paragraphs(ip_srlls: List[IPSRLL_OPT], search_paragraph: bool) -> List[IPSRLL_OPT]:
+def prune_overlapped_paragraphs(ip_srlls: List[IPSRLL_OPT], paragraph: bool) -> List[IPSRLL_OPT]:
     if not ip_srlls:
         return ip_srlls
-    elif search_paragraph:
+    elif paragraph:
         dropped_index_set = set()
         for i, (ip_srll1, ip_srll2) in enumerate(zip(ip_srlls, ip_srlls[1:])):
             ip1, sr1 = ip_srll1[0], ip_srll1[1]
@@ -271,7 +271,7 @@ def prune_overlapped_paragraphs(ip_srlls: List[IPSRLL_OPT], search_paragraph: bo
         return [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
 
 
-def do_incremental_search(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
+def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, args: CLArgs) -> None:
     if args.worker == 0:
         args.worker = multiprocessing.cpu_count()
     assert args.headline_length >= 8
@@ -292,7 +292,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 
     db = None
     if os.path.exists(DB_DIR) and os.path.isdir(DB_DIR):
-        db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+        db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
         db = index_db.open(db_base_path, args.window, "c")
 
     files_stored = []
@@ -307,9 +307,9 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         files_not_stored = target_files
 
     esession.flash("> Loading Doc2Vec model.")
-    model = model_loader.D2VModel(language, lang_model_file)
+    model = model_loader.D2VModel(lang, lang_model_file)
 
-    text_to_tokens = model_loader.load_tokenize_func(language)
+    text_to_tokens = model_loader.load_tokenize_func(lang)
     tokens = text_to_tokens(pattern)
     oov_tokens = model.find_oov_tokens(tokens)
     if set(tokens) == set(oov_tokens) and not args.unknown_word_as_keyword:
@@ -380,14 +380,14 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
 
         executor = ProcessPoolExecutor(max_workers=args.worker)
         chunk_size = max(10, min(len(target_files) // 200, 100))
-        args_it = [(chunk, language, esession) for chunk in split_to_length(files_not_stored, chunk_size)]
+        args_it = [(chunk, lang, esession) for chunk in split_to_length(files_not_stored, chunk_size)]
         files_not_stored = None  # before forking process, remove a (potentially) large object from heap
         tokenize_it = executor.map(do_parse_and_tokenize_i, args_it)
 
         for cr in tokenize_it:
             for i, r in enumerate(cr):
                 if model is None:
-                    model = model_loader.D2VModel(language, lang_model_file)
+                    model = model_loader.D2VModel(lang, lang_model_file)
                 tfi += 1
                 if r is None:
                     continue
@@ -417,7 +417,7 @@ def do_incremental_search(language: str, lang_model_file: str, esession: ESessio
         if db is not None:
             db.close()
     if model is None:
-        model = model_loader.D2VModel(language, lang_model_file)
+        model = model_loader.D2VModel(lang, lang_model_file)
 
     esession.activate(False)
     search_results = heapq.nlargest(args.top_n, search_results)
@@ -438,7 +438,7 @@ def sub_index_search(
     db_base_path: str,
     window: int,
     db_index: int,
-    fnmatch_func: Optional[Callable[[str], bool]],
+    fnmatcher: Optional[FNMatcher],
     top_n: int,
     unit_vector: bool,
     paragraph: bool,
@@ -448,7 +448,7 @@ def sub_index_search(
     search_results: List[IPFSSRL_OPT] = []
     with index_db.open_partial_index_db_item_iterator(db_base_path, window, db_index) as it:
         for fn, sig, pos_vecs in it:
-            if fnmatch_func is not None and not fnmatch_func(fn):
+            if fnmatcher is not None and not fnmatcher.match(fn):
                 continue  # for fn
 
             ip_srlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
@@ -463,7 +463,7 @@ def sub_index_search(
     return search_results
 
 
-def sub_index_search_i(a: Tuple[Vec, str, int, int, Optional[Callable[[str], bool]], int, bool, bool]) -> List[IPFSSRL_OPT]:
+def sub_index_search_i(a: Tuple[Vec, str, int, int, Optional[FNMatcher], int, bool, bool]) -> List[IPFSSRL_OPT]:
     return sub_index_search(*a)
 
 
@@ -473,7 +473,7 @@ def sub_index_search_r(
     db_fn = "%s-%d-%do%d%s" % (db_base_path, window, db_i_c[0], db_i_c[1], index_db.DB_FILE_EXTENSION)
     result_file = os.path.join(temp_dir, 'result_%d' % db_i_c[0])
 
-    cmd = [rust_sub_index_search, patternvec_file, db_fn, '-g', glob_file, '-o', result_file, '-t', "%d" % top_n]
+    cmd = [exec_sub_index_search, patternvec_file, db_fn, '-g', glob_file, '-o', result_file, '-t', "%d" % top_n]
     if unit_vector:
         cmd = cmd + ['-u']
     if paragraph:
@@ -498,11 +498,11 @@ def sub_index_search_r_i(a: Tuple[str, str, int, Tuple[int, int], str, int, bool
     return sub_index_search_r(*a)
 
 
-def do_index_search(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
+def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: CLArgs) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
     r = index_db.exists(db_base_path, args.window)
     if r == 0:
         esession.clear()
@@ -528,14 +528,13 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     if args.file and len(args.file) > 100:
         esession.print("> Warning: many (100+) filenames are specified. Consider using glob patterns enclosed in quotes, like '*.txt'", force=True)
 
-    fnmatch_func = None
+    fnmatcher = None
     temp_dir = None
     glob_file = None
     patternvec_file = None
     if args.file:
-        if rust_sub_index_search is None:
-            fnm = FNMatcher(args.file)
-            fnmatch_func = fnm.match
+        if exec_sub_index_search is None:
+            fnmatcher = FNMatcher(args.file)
         else:
             temp_dir = tempfile.TemporaryDirectory()
             glob_file = os.path.join(temp_dir.name, 'filepattern')
@@ -544,9 +543,9 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
                     print(L, file=outp)
 
     esession.flash("> Loading Doc2Vec model.")
-    model = model_loader.D2VModel(language, lang_model_file)
+    model = model_loader.D2VModel(lang, lang_model_file)
 
-    text_to_tokens = model_loader.load_tokenize_func(language)
+    text_to_tokens = model_loader.load_tokenize_func(lang)
     tokens = text_to_tokens(pattern)
     oov_tokens = model.find_oov_tokens(tokens)
     if set(tokens) == set(oov_tokens):
@@ -557,7 +556,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     pattern_vec = model.tokens_to_vec(tokens)
     model = None  # before forking process, remove a large object from heap
 
-    if rust_sub_index_search is not None:
+    if exec_sub_index_search is not None:
         assert temp_dir is not None
         patternvec_file = os.path.join(temp_dir.name, 'patternvec')
         b = bson.dumps({'pattern_vec': [float(d) for d in pattern_vec]})
@@ -567,14 +566,14 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
     search_results: List[IPFSSRL_OPT] = []
 
     additional_message = ''
-    if rust_sub_index_search is not None:
+    if exec_sub_index_search is not None:
         additional_message = ', with sub-index-search engine'
     esession.flash("[0/%d] (progress is counted by member DB files in index DB%s)" % (cluster_size, additional_message))
     executor = ProcessPoolExecutor(max_workers=args.worker)
-    if rust_sub_index_search is None:
+    if exec_sub_index_search is None:
         subit = executor.map(
             sub_index_search_i, 
-            ((pattern_vec, db_base_path, args.window, i, fnmatch_func, args.top_n, args.unit_vector, args.paragraph) \
+            ((pattern_vec, db_base_path, args.window, i, fnmatcher, args.top_n, args.unit_vector, args.paragraph) \
                     for i in range(cluster_size)))
     else:
         assert patternvec_file is not None
@@ -611,7 +610,7 @@ def do_index_search(language: str, lang_model_file: str, esession: ESession, arg
         if temp_dir is not None:
             temp_dir.cleanup()
 
-    model = model_loader.D2VModel(language, lang_model_file)
+    model = model_loader.D2VModel(lang, lang_model_file)
     parser = parsers.Parser()
 
     esession.activate(False)
@@ -641,11 +640,11 @@ def sub_remove_index_no_corresponding_files_i(a: Tuple[str, int, int]) -> int:
     return sub_remove_index_no_corresponding_files(*a)
 
 
-def do_remove_index_no_corresponding_files(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
+def do_remove_index_no_corresponding_files(lang: str, lang_model_file: str, esession: ESession, args: CLArgs) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
     r = index_db.exists(db_base_path, args.window)
     if r == 0:
         esession.clear()
@@ -654,6 +653,7 @@ def do_remove_index_no_corresponding_files(language: str, lang_model_file: str, 
 
     if args.worker == 0:
         args.worker = multiprocessing.cpu_count()
+
     assert args.headline_length >= 8
 
     esession.flash("[0/%d] removing obsolete index data (progress is counted by member DB files in index DB)" % cluster_size)
@@ -685,14 +685,14 @@ def sub_list_file_indexed_i(args: Tuple[str, int, int]) -> List[Tuple[str, int, 
     return sub_list_file_indexed(*args)
 
 
-def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
+def do_list_file_indexed(lang: str, lang_model_file: str, esession: ESession, args: CLArgs) -> None:
     if args.worker == 0:
         args.worker = multiprocessing.cpu_count()
 
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
     r = index_db.exists(db_base_path, args.window)
     if r == 0:
         esession.clear()
@@ -728,12 +728,12 @@ def do_list_file_indexed(language: str, lang_model_file: str, esession: ESession
         print("%s\t%s\t%d\t%d" % (fn, t, fs, window_size))
 
 
-def sub_update_index(file_names: List[str], language: str, lang_model_file: str, window: int, esession: ESession) -> None:
+def sub_update_index(file_names: List[str], lang: str, lang_model_file: str, window: int, esession: ESession) -> None:
     parser = parsers.Parser()
-    text_to_tokens = model_loader.load_tokenize_func(language)
-    model = model_loader.D2VModel(language, lang_model_file)
+    text_to_tokens = model_loader.load_tokenize_func(lang)
+    model = model_loader.D2VModel(lang, lang_model_file)
 
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
     with index_db.open(db_base_path, window, "c") as db:
         for tf in file_names:
             sig = file_signature(tf)
@@ -753,7 +753,7 @@ def sub_update_index_i(d: Tuple[List[str], str, str, int, ESession]) -> None:
     return sub_update_index(d[0], d[1], d[2], d[3], d[4])
 
 
-def do_update_index(language: str, lang_model_file: str, esession: ESession, args: CommandLineArguments) -> None:
+def do_update_index(lang: str, lang_model_file: str, esession: ESession, args: CLArgs) -> None:
     assert args.worker is not None
 
     esession.flash("> Locating document files.")
@@ -769,7 +769,7 @@ def do_update_index(language: str, lang_model_file: str, esession: ESession, arg
         esession.print("> Created a `%s` directory for index data." % DB_DIR, force=True)
 
     cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(language, lang_model_file))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
     c = index_db.exists(db_base_path, args.window)
     if c > 0:
         if cluster_size != c:
@@ -779,7 +779,7 @@ def do_update_index(language: str, lang_model_file: str, esession: ESession, arg
         db = index_db.open(db_base_path, args.window, "c", cluster_size)
         db.close()
 
-    do_remove_index_no_corresponding_files(language, lang_model_file, esession, args)
+    do_remove_index_no_corresponding_files(lang, lang_model_file, esession, args)
 
     file_splits = [list() for _ in range(cluster_size)]
     for tf in target_files:
@@ -791,7 +791,7 @@ def do_update_index(language: str, lang_model_file: str, esession: ESession, arg
     file_splits.sort(key=lambda file_list: len(file_list), reverse=True)  # prioritize chunks containing large number of files
 
     executor = ProcessPoolExecutor(max_workers=args.worker)
-    args_it = [(chunk, language, lang_model_file, args.window, esession) for chunk in file_splits]
+    args_it = [(chunk, lang, lang_model_file, args.window, esession) for chunk in file_splits]
     file_splits = None  # before forking process, remove a (potentially) large object from heap
     indexing_it = executor.map(sub_update_index_i, args_it)
     try:
@@ -821,7 +821,7 @@ def main():
             return
 
     raw_args = docopt(__doc__, argv=argv, version="d2vg %s" % __version__)
-    args = CommandLineArguments(_cast_str_values=True, **raw_args)
+    args = CLArgs(_cast_str_values=True, **raw_args)
 
     if args.top_n <= 0:
         sys.exit("Error: --top-n=0 is no longer supported.")
@@ -849,40 +849,40 @@ def main():
             prevl = l
         sys.exit(0)
 
-    language = None
+    lang = None
     lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
     if lng is not None:
         i = lng.find("_")
         if i >= 0:
             lng = lng[:i]
-        language = lng
+        lang = lng
     if args.lang:
-        language = args.lang
-    if language is None:
+        lang = args.lang
+    if lang is None:
         sys.exit("Error: specify the language with option -l")
 
-    if not any(language == l for l, _d in lang_candidates):
-        print("Error: not found Doc2Vec model for language: %s" % language, file=sys.stderr)
+    if not any(lang == l for l, _d in lang_candidates):
+        print("Error: not found Doc2Vec model for language: %s" % lang, file=sys.stderr)
         sys.exit("  Specify either: %s" % ", ".join(l for l, _d in lang_candidates))
 
-    lang_model_files = model_loader.get_model_files(language)
+    lang_model_files = model_loader.get_model_files(lang)
     assert lang_model_files
     if len(lang_model_files) >= 2:
-        print("Error: multiple Doc2Vec models are found for language: %s" % language, file=sys.stderr)
-        print("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % language, file=sys.stderr)
+        print("Error: multiple Doc2Vec models are found for language: %s" % lang, file=sys.stderr)
+        print("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % lang, file=sys.stderr)
         print("   re-install a model for the language.", file=sys.stderr)
         sys.exit(1)
     lang_model_file = lang_model_files[0]
 
     with ESession(active=args.verbose) as esession:
         if args.update_index:
-            do_update_index(language, lang_model_file, esession, args)
+            do_update_index(lang, lang_model_file, esession, args)
         elif args.within_indexed:
-            do_index_search(language, lang_model_file, esession, args)
+            do_index_search(lang, lang_model_file, esession, args)
         elif args.list_indexed:
-            do_list_file_indexed(language, lang_model_file, esession, args)
+            do_list_file_indexed(lang, lang_model_file, esession, args)
         else:
-            do_incremental_search(language, lang_model_file, esession, args)
+            do_incremental_search(lang, lang_model_file, esession, args)
 
 
 if __name__ == "__main__":
