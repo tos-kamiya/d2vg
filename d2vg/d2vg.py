@@ -9,6 +9,7 @@ import locale
 from math import pow
 import multiprocessing
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -33,6 +34,8 @@ from .processpoolexecutor_wrapper import ProcessPoolExecutor, kill_all_subproces
 _script_dir = os.path.dirname(os.path.realpath(__file__))
 
 exec_sub_index_search = os.path.join(_script_dir, 'bin', 'sub_index_search')
+if platform.system() == "Windows":
+    exec_sub_index_search += '.exe'
 if not os.path.exists(exec_sub_index_search):
     exec_sub_index_search = None
 
@@ -537,9 +540,6 @@ def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: C
         esession.clear()
         sys.exit("Error: pattern string is empty.")
 
-    if not args.file:
-        esession.clear()
-        sys.exit("Error: no document files are given.")
     if args.file and len(args.file) > 100:
         esession.print("> Warning: many (100+) filenames are specified. Consider using glob patterns enclosed in quotes, like '*.txt'", force=True)
 
