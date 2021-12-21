@@ -26,5 +26,3 @@ def inner_product_u(dv: Vec, pv: Vec) -> float:
 
 def inner_product_n(dv: Vec, pv: Vec) -> float:
     return float(np.inner(normalize_vec(dv), pv))
-
-

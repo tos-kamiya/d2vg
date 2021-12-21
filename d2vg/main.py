@@ -32,8 +32,8 @@ def main():
             print("> Warning: option --pattern-from-file is now deprecated. Specify `=<filename>` as pattern.", file=sys.stderr)
             pattern_from_file = True
             del argv[i]
-        elif a == '--bin-dir':
-            print(os.path.join(_script_dir, 'bin'))
+        elif a == "--bin-dir":
+            print(os.path.join(_script_dir, "bin"))
             return
 
     raw_args = docopt(DOC, argv=argv, version="d2vg %s" % VERSION)

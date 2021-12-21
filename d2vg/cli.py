@@ -116,4 +116,3 @@ def do_expand_target_files(target_files: Iterable[str], esession: ESession) -> T
     expand_target_files_i(target_files, False)
     target_files_expand = remove_non_first_appearances(target_files_expand)
     return target_files_expand, including_stdin_box[0]
-    

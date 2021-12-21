@@ -14,6 +14,7 @@ from d2vg.embedding_utils import extract_headline, extract_pos_vecs
 #     time.sleep(1)
 #     return None
 
+
 class EmbeddingUtlsTest(unittest.TestCase):
     def test_extract_headline(self):
         lines = ["%d" % i for i in range(10)]
@@ -65,4 +66,3 @@ class EmbeddingUtlsTest(unittest.TestCase):
             self.assertEqual(a[0], e[0])
             for a1i, e1i in zip_longest(a[1], e[1]):
                 self.assertEqual(a1i, e1i)
-

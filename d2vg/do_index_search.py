@@ -23,9 +23,9 @@ from .vec import *
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
 
-exec_sub_index_search = os.path.join(_script_dir, 'bin', 'sub_index_search')
+exec_sub_index_search = os.path.join(_script_dir, "bin", "sub_index_search")
 if platform.system() == "Windows":
-    exec_sub_index_search += '.exe'
+    exec_sub_index_search += ".exe"
 if not os.path.exists(exec_sub_index_search):
     exec_sub_index_search = None
 
@@ -67,15 +67,23 @@ def sub_index_search_i(a: Tuple[Vec, str, int, int, Optional[FNMatcher], int, bo
 
 
 def sub_index_search_r(
-    patternvec_file: str, db_base_path: str, window: int, db_i_c: Tuple[int, int], glob_file: str, top_n: int, unit_vector: bool, paragraph: bool, esession: ESession,
+    patternvec_file: str,
+    db_base_path: str,
+    window: int,
+    db_i_c: Tuple[int, int],
+    glob_file: str,
+    top_n: int,
+    unit_vector: bool,
+    paragraph: bool,
+    esession: ESession,
 ) -> List[SearchResult]:
     db_fn = "%s-%d-%do%d%s" % (db_base_path, window, db_i_c[0], db_i_c[1], index_db.DB_FILE_EXTENSION)
 
-    cmd = [exec_sub_index_search, patternvec_file, db_fn, '-g', glob_file, '-o', '-', '-t', "%d" % top_n]
+    cmd = [exec_sub_index_search, patternvec_file, db_fn, "-g", glob_file, "-o", "-", "-t", "%d" % top_n]
     if unit_vector:
-        cmd = cmd + ['-u']
+        cmd = cmd + ["-u"]
     if paragraph:
-        cmd = cmd + ['-p']
+        cmd = cmd + ["-p"]
     try:
         b = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
@@ -130,8 +138,8 @@ def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: C
             fnmatcher = FNMatcher(args.file)
         else:
             temp_dir = tempfile.TemporaryDirectory()
-            glob_file = os.path.join(temp_dir.name, 'filepattern')
-            with open(glob_file, 'w') as outp:
+            glob_file = os.path.join(temp_dir.name, "filepattern")
+            with open(glob_file, "w") as outp:
                 for L in args.file:
                     print(L, file=outp)
 
@@ -152,30 +160,33 @@ def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: C
     esession.flash("> Calculating similarity to each document.")
     if exec_sub_index_search is not None:
         assert temp_dir is not None
-        pattern_vec_file = os.path.join(temp_dir.name, 'patternvec')
-        b = bson.dumps({'pattern_vec': to_float_list(pattern_vec)})
-        with open(pattern_vec_file, 'wb') as outp:
+        pattern_vec_file = os.path.join(temp_dir.name, "patternvec")
+        b = bson.dumps({"pattern_vec": to_float_list(pattern_vec)})
+        with open(pattern_vec_file, "wb") as outp:
             outp.write(b)
 
     search_results: List[SearchResult] = []
 
-    additional_message = ''
+    additional_message = ""
     if exec_sub_index_search is not None:
-        additional_message = ', with sub-index-search engine'
+        additional_message = ", with sub-index-search engine"
     esession.flash("[0/%d] (progress is counted by member DB files in index DB%s)" % (cluster_size, additional_message))
     executor = ProcessPoolExecutor(max_workers=args.worker)
     if exec_sub_index_search is None:
         subit = executor.map(
-            sub_index_search_i, 
-            ((pattern_vec, db_base_path, args.window, i, fnmatcher, args.top_n, args.unit_vector, args.paragraph) \
-                    for i in range(cluster_size)))
+            sub_index_search_i,
+            ((pattern_vec, db_base_path, args.window, i, fnmatcher, args.top_n, args.unit_vector, args.paragraph) for i in range(cluster_size)),
+        )
     else:
         assert pattern_vec_file is not None
         assert glob_file is not None
         subit = executor.map(
             sub_index_search_r_i,
-            ((pattern_vec_file, db_base_path, args.window, (i, cluster_size), glob_file, args.top_n, args.unit_vector, args.paragraph, esession) \
-                    for i in range(cluster_size)))
+            (
+                (pattern_vec_file, db_base_path, args.window, (i, cluster_size), glob_file, args.top_n, args.unit_vector, args.paragraph, esession)
+                for i in range(cluster_size)
+            ),
+        )
     subi = 0
     try:
         for subi, sub_search_results in enumerate(subit):

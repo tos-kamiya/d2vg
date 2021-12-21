@@ -16,7 +16,7 @@ from .raw_db import RawDb, FileSignature, PosVec
 
 DB_FILE_EXTENSION = ".sqlite3"
 DB_DEFAULT_CLUSTER_SIZE = 64
-DB_WRITE_QUEUE_MAX_LEN = 2**30
+DB_WRITE_QUEUE_MAX_LEN = 2 ** 30
 
 
 def file_signature(file_name: str) -> Optional[FileSignature]:

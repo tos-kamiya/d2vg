@@ -53,12 +53,12 @@ SearchResult = Tuple[IPSRLL_OPT, str, FileSignature]
 
 
 def print_search_results(
-    search_results: List[SearchResult], 
-    parse: Callable[[str], List[str]], 
-    text_to_tokens: Callable[[str], List[str]], 
-    tokens_to_vec: Callable[[List[str]], Vec], 
-    pattern_vec: Vec, 
-    headline_length: int
+    search_results: List[SearchResult],
+    parse: Callable[[str], List[str]],
+    text_to_tokens: Callable[[str], List[str]],
+    tokens_to_vec: Callable[[List[str]], Vec],
+    pattern_vec: Vec,
+    headline_length: int,
 ) -> None:
     for ipsrll, tf, _sig in search_results:
         ip, (b, e), lines, line_tokens = ipsrll
@@ -71,5 +71,3 @@ def print_search_results(
             line_tokens = line_tokens[b:e]
         headline = extract_headline(lines, line_tokens, text_to_tokens, tokens_to_vec, pattern_vec, headline_length)
         print("%g\t%s:%d-%d\t%s" % (ip, tf, b + 1, e + 1, headline))
-
-
