@@ -9,7 +9,7 @@ import appdirs
 from gensim.models.doc2vec import Doc2Vec
 from gensim.utils import tokenize
 
-from .types import Vec
+from .vec import Vec
 
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))

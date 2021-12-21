@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import platform
 import sqlite3
 
-from .types import Vec
+from .vec import Vec
 
 
 RawDb = sqlite3.Connection
