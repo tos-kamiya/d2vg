@@ -4,6 +4,7 @@ from binascii import crc32
 from math import floor
 from glob import glob
 import os.path
+import platform
 import sqlite3
 
 import bson
@@ -17,6 +18,13 @@ from .raw_db import RawDb, FileSignature, PosVec
 DB_FILE_EXTENSION = ".sqlite3"
 DB_DEFAULT_CLUSTER_SIZE = 64
 DB_WRITE_QUEUE_MAX_LEN = 2 ** 30
+
+
+if platform.system() == "Windows":
+    def normpath(file_name: str) -> str:
+        return os.path.normpath(file_name.replace("\\", "/"))
+else:
+    normpath = os.path.normpath
 
 
 def file_signature(file_name: str) -> Optional[FileSignature]:
@@ -37,7 +45,7 @@ def decode_file_signature(sig: FileSignature) -> Tuple[int, int]:
 def file_name_crc(file_name: str) -> Optional[int]:
     if os.path.isabs(file_name):
         return None
-    np = os.path.normpath(file_name)
+    np = normpath(file_name)
     return crc32(np.encode("utf-8")) & 0xFFFFFFFF
 
 
@@ -105,7 +113,7 @@ class IndexDb:
     def lookup_signature(self, file_name: str) -> Optional[FileSignature]:
         if file_name == "-" or os.path.isabs(file_name):
             return None
-        np = os.path.normpath(file_name)
+        np = normpath(file_name)
         i = self._db_index_for_file(np)
         db = self._db_open(i)
         r = raw_db.lookup_signature(db, np)
@@ -116,7 +124,7 @@ class IndexDb:
     def lookup(self, file_name: str) -> Optional[Tuple[FileSignature, List[PosVec]]]:
         if file_name == "-" or os.path.isabs(file_name):
             return None
-        np = os.path.normpath(file_name)
+        np = normpath(file_name)
         i = self._db_index_for_file(np)
         db = self._db_open(i)
         r = raw_db.lookup(db, np)
@@ -128,7 +136,7 @@ class IndexDb:
     def store(self, file_name: str, sig: FileSignature, pos_vecs: List[PosVec]) -> None:
         if file_name == "-" or os.path.isabs(file_name):
             return
-        np = os.path.normpath(file_name)
+        np = normpath(file_name)
         i = self._db_index_for_file(np)
         db = self._db_open(i)
         raw_db.store(db, np, sig, (dumps_pos_vecs(pvc) for pvc in split_to_length(pos_vecs, 1000)))
@@ -314,6 +322,6 @@ def remove_partial_index_db_items(db_base_path: str, window_size: int, db_index:
         raise IndexDbError("fail to open sqlite3 db file: %s" % repr(db_fn)) from e
 
     for tf in target_files:
-        np = os.path.normpath(tf)
+        np = normpath(tf)
         raw_db.delete(db, np)
     raw_db.close(db)
