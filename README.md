@@ -199,6 +199,7 @@ For example, in the case of English Doc2Vec model, the content of the file `en.r
 - [ ] DB structure change for performance (v2)
 - [x] Explicit indexing control command in case millions of document files to search (v2)
 - [x] GC of index data. Delete the index data without a corresponding file in index DB (v2)
+- [ ] Fix index data was regarded as outdated when the timestamp of the corresponding file was off by a few seconds
 
 ## Acknowledgements
 
