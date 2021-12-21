@@ -1,6 +1,6 @@
 ## Installation on Windows
 
-(1) Install the dependencies and d2v.
+(1) Install the dependencies and d2vg. **(Required)**
 
 If you are using [Chocolatey](https://chocolatey.org/), you can install Poppler as follows:
 
@@ -31,7 +31,7 @@ In order to use non-English Doc2Vec models, depending on the language, you may n
 pip3 install d2vg[ja]
 ```
 
-(2) Install an English Doc2Vec model file.
+(2) Install an English Doc2Vec model file. **(Required)**
 
 Download the Doc2Vec model file from the github release page.
 
@@ -53,6 +53,16 @@ Please remove the installed Doc2Vec model files as follows, and then perform the
 
 ```sh
 d2vg-setup-model --delete-all
+```
+
+(3) Install index-search engine **(Optional)**
+
+Download `sub_index_search-windows-10-x64.zip` from the release page, and then extract and copy the file `sub_index_search` to the bin directory of d2vg.
+
+The bin directory of d2vg can be found as follows:
+
+```sh
+d2vg --bin-dir
 ```
 
 ### Note on running d2vg

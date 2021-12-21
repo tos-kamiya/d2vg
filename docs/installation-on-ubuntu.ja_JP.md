@@ -2,11 +2,11 @@
 
 下記の手順はUbuntu 20.04で確認したものです。
 
-(1) 依存やd2v本体を`apt`や`pip'を使ってインストール
+(1) 依存やd2vg本体を`apt`や`pip'を使ってインストール **(必須)**
 
 `pdf2text`を記述 https://github.com/jalan/pdftotext に従ってインストールしてください。
 
-日本語Doc2Vecモデルを利用するためには、`d2vg`を次のように`[ja]`オプションをつけてインストールしてください。
+日本語Doc2Vecモデルを利用するためには、次のようにパッケージ名のあとに **`[ja]`をつけて** `d2vg`をインストールしてください。
 
 ```sh
 pip3 install d2vg[ja]
@@ -14,7 +14,7 @@ pip3 install d2vg[ja]
 
 英語のDoc2Vecモデルは、オプションの有無にかかわらず利用可能です。
 
-(2) Doc2Vecモデルのインストール
+(2) Doc2Vecモデルのインストール **(必須)**
 
 githubのリリースページから、英語、日本語に対応するDoc2Vecモデルのファイルをダウンロードしてください。
 
@@ -38,4 +38,14 @@ en '/home/<ユーザー名>/.config/d2vg/models/enwiki-m700-c380-d100/en.ref'
 
 ```sh
 d2vg-setup-model --delete-all
+```
+
+(3) インデックス検索エンジンのインストール **(オプション)**
+
+リリースページから`sub_index_search-ubuntu-20.04-amd64.zip`をダウンロードして展開し、得られたファイル`sub_index_search`を、d2vgのbinディレクトリにコピーしてください。
+
+d2vgのbinディレクトリは次で確認できます。
+
+```sh
+d2vg --bin-dir
 ```
