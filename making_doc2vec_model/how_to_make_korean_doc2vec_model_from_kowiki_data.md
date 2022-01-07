@@ -2,7 +2,7 @@
 
 (1) Preparation: Install dependencies:
 
-```
+```sh
 pip3 install wikiextractor
 pip3 install tweepy==3.7  # the latest ver (4) is incompatible with konlpy
 pip3 install konlpy
@@ -10,11 +10,11 @@ pip3 install konlpy
 
 (2) Download Korean wikipedia data from https://dumps.wikimedia.org/kowiki/latest/
 
-```
+```sh
 kowiki-latest-pages-articles.xml.bz2               20-Nov-2021 19:38           797283917
 ```
 
-```
+```sh
 curl -O https://dumps.wikimedia.org/kowiki/latest/kowiki-latest-pages-articles.xml.bz2
 ```
 
@@ -41,7 +41,7 @@ with open(output_file, 'w') as outp:
                 pass
 ```
 
-```
+```sh
 mkdir wc
 python3 -m wikiextractor.WikiExtractor -b 100m -o wc kowiki-latest-pages-articles.xml.bz2
 ls wc/**/* | xargs -P11 -n1 -I "{}" python3 ../remove_doc_and_file_tags.py "{}" "{}".rdft
@@ -53,7 +53,7 @@ The option `-b 100m` of wikiextractor is size of data chunks, and the option `-P
 
 (4) Build Doc2Vec model
 
-```
+```sh
 python3 ../trim_docs.py -w 11 -o wiki_tokenized -m 5 -c 400 wc/**/*.tokenized
 python3 ../train.py wiki_tokenized -o kowiki-m50-c400-d100.model -m 50 -e tmp.model
 ```

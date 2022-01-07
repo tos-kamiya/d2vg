@@ -2,23 +2,23 @@
 
 (1) Preparation: Install dependencies:
 
-```
+```sh
 pip3 install wikiextractor
 ```
 
 (2) Download English wikipedia data from https://dumps.wikimedia.org/enwiki/latest/
 
-```
+```sh
 enwiki-latest-pages-articles.xml.bz2               02-Nov-2021 06:04         19147548970
 ```
 
-```
+```sh
 curl -O https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2
 ```
 
 (3) Cleaning (remove XML tag, etc.)
 
-```
+```sh
 mkdir wc
 python3 -m wikiextractor.WikiExtractor -b 120m -o wc enwiki-latest-pages-articles.xml.bz2
 ls wc/**/* | xargs -P11 -n1 -I "{}" python3 ../remove_doc_and_file_tags.py "{}" "{}".tokenized
@@ -28,7 +28,7 @@ The option `-b 120m` of wikiextractor is the size of the data chunk, and the opt
 
 (4) Build Doc2Vec model
 
-```
+```sh
 python3 ../trim_docs.py -w 11 -o wiki_tokenized -m 700 -c 380 wc/**/*.tokenized
 python3 ../train.py wiki_tokenized -o enwiki-m700-c380-d100.model -e tmp.model
 ```

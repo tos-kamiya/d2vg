@@ -2,17 +2,17 @@
 
 (1) 準備: 依存ライブラリのインストール:
 
-```
+```sh
 pip3 install wikiextractor
 ```
 
 (2) 日本語ウィキペディアのデータを次からダウンロード https://dumps.wikimedia.org/jawiki/latest/
 
-```
+```sh
 jawiki-latest-pages-articles.xml.bz2               01-Nov-2021 20:04          3501295120
 ```
 
-```
+```sh
 curl -O https://dumps.wikimedia.org/jawiki/latest/jawiki-latest-pages-articles.xml.bz2
 ```
 
@@ -41,6 +41,7 @@ with open(output_file, 'w') as outp:
                 pass
 ```
 
+```sh
 mkdir wc
 python3 -m wikiextractor.WikiExtractor -b 120m -o wc jawiki-latest-pages-articles.xml.bz2
 ls wc/**/* | xargs -P11 -n1 -I "{}" python3 ../remove_doc_and_file_tags.py "{}" "{}".rdft
@@ -51,7 +52,7 @@ wikiextractorのオプション`-b 120m` of wikiextractorはデータのチャ�
 
 (4) Doc2Vecモデルの構築
 
-```
+```sh
 python3 ../trim_docs.py -w 11 -o wiki_tokenized -m 20 -c 400 wc/**/*.tokenized
 python3 ../train.py wiki_tokenized -o jawiki-janome-m100-c400-d100.model -m 100 -e tmp.model
 ```
