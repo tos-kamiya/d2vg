@@ -11,6 +11,7 @@ import tempfile
 import numpy as np
 
 from d2vg import index_db
+from d2vg.index_db import FileSignature, PosVec, decode_file_signature, file_signature, file_signature_eq
 
 
 @contextlib.contextmanager
@@ -29,7 +30,7 @@ def touch(file_name: str):
 
 class IndexDbTest(unittest.TestCase):
     def test_filename(self):
-        pos_vecs: List[index_db.PosVec] = [
+        pos_vecs: List[PosVec] = [
             ((0, 1), np.array([2, 3], dtype=np.float32)),
             ((1, 2), np.array([3, 4], dtype=np.float32)),
         ]
@@ -39,13 +40,15 @@ class IndexDbTest(unittest.TestCase):
                 os.chdir(tempdir)
                 file_a = os.path.join("a")
                 touch(file_a)
-                file_a_sig = index_db.file_signature(file_a)
+                file_a_sig = file_signature(file_a)
+                self.assertIsNotNone(file_a_sig)
 
                 file_index_db = "index_db"
                 db = index_db.open(file_index_db, window_size, "c")
 
                 self.assertEqual(db.lookup_signature(file_a), None)
 
+                assert file_a_sig is not None
                 db.store(file_a, file_a_sig, pos_vecs)
                 self.assertEqual(db.lookup_signature(file_a), file_a_sig)
 
@@ -60,7 +63,7 @@ class IndexDbTest(unittest.TestCase):
                 db.close()
 
     def test_lookup(self):
-        pos_vecs: List[index_db.PosVec] = [
+        pos_vecs: List[PosVec] = [
             ((0, 1), np.array([2, 3], dtype=np.float32)),
             ((1, 2), np.array([3, 4], dtype=np.float32)),
         ]
@@ -70,11 +73,12 @@ class IndexDbTest(unittest.TestCase):
                 os.chdir(tempdir)
                 file_a = os.path.join("a")
                 touch(file_a)
-                file_a_sig = index_db.file_signature(file_a)
+                file_a_sig = file_signature(file_a)
 
                 file_index_db = "index_db"
                 db = index_db.open(file_index_db, window_size, "c")
 
+                assert file_a_sig is not None
                 db.store(file_a, file_a_sig, pos_vecs)
                 self.assertEqual(db.lookup_signature(file_a), file_a_sig)
 
@@ -90,7 +94,7 @@ class IndexDbTest(unittest.TestCase):
                 db.close()
 
     def test_reopen(self):
-        pos_vecs: List[index_db.PosVec] = [
+        pos_vecs: List[PosVec] = [
             ((0, 1), np.array([2, 3], dtype=np.float32)),
             ((1, 2), np.array([3, 4], dtype=np.float32)),
         ]
@@ -100,11 +104,12 @@ class IndexDbTest(unittest.TestCase):
                 os.chdir(tempdir)
                 file_a = os.path.join("a")
                 touch(file_a)
-                file_a_sig = index_db.file_signature(file_a)
+                file_a_sig = file_signature(file_a)
 
                 file_index_db = "index_db"
                 db = index_db.open(file_index_db, window_size, "c")
 
+                assert file_a_sig is not None
                 db.store(file_a, file_a_sig, pos_vecs)
                 self.assertEqual(db.lookup_signature(file_a), file_a_sig)
                 db.close()
@@ -128,14 +133,50 @@ class IndexDbTest(unittest.TestCase):
                 file_a = os.path.join("a.txt")
                 with open(file_a, "wb") as outp:
                     outp.write(b"01234\n")
-                sig = index_db.file_signature(file_a)
+                sig = file_signature(file_a)
+
+                assert sig is not None
                 self.assertTrue(re.match(r"6-\d+", sig))
 
     def test_decode_file_signature(self):
-        sig = "10-12345"
-        size, mtime = index_db.decode_file_signature(sig)
+        sig = FileSignature("10-12345")
+        size, mtime = decode_file_signature(sig)
         self.assertEqual(size, 10)
         self.assertEqual(mtime, 12345)
+
+    def test_file_signature_eq(self):
+        sig1 = FileSignature("10-12345")
+        sig2 = sig1
+        self.assertTrue(file_signature_eq(sig1, sig2))
+        self.assertTrue(file_signature_eq(sig2, sig1))
+
+        sig2 = FileSignature("20-12345")
+        self.assertFalse(file_signature_eq(sig1, sig2))
+        self.assertFalse(file_signature_eq(sig2, sig1))
+
+        sig2 = FileSignature("10-67890")
+        self.assertFalse(file_signature_eq(sig1, sig2))
+        self.assertFalse(file_signature_eq(sig2, sig1))
+
+    def test_file_signature_eq_mtime_diff(self):
+        sig1 = FileSignature("10-10000")
+        sig2 = FileSignature("10-9999")
+        self.assertTrue(file_signature_eq(sig1, sig2))
+        self.assertTrue(file_signature_eq(sig2, sig1))
+
+        sig2 = FileSignature("10-10004")
+        self.assertFalse(file_signature_eq(sig1, sig2))
+        self.assertFalse(file_signature_eq(sig2, sig1))
+
+        sig2 = FileSignature("10-99996")
+        self.assertFalse(file_signature_eq(sig1, sig2))
+        self.assertFalse(file_signature_eq(sig2, sig1))
+
+    def test_file_signature_eq_none(self):
+        sig1 = FileSignature("10-12345")
+        sig2 = None
+        self.assertFalse(file_signature_eq(sig1, sig2))
+        self.assertRaises(AssertionError, lambda: file_signature_eq(sig2, sig1))
 
 
 if __name__ == "__main__":

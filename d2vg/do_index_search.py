@@ -13,7 +13,7 @@ from .cli import *
 from .esesion import ESession
 from .fnmatcher import FNMatcher
 from . import index_db
-from .index_db import file_signature
+from .index_db import file_signature, file_signature_eq
 from . import model_loader
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor, kill_all_subprocesses
@@ -193,7 +193,7 @@ def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: C
             for item in sub_search_results:
                 _ipsrll, fn, sig = item
                 # _ip, _sr, _lines, _line_tokens = _ipsrll
-                if file_signature(fn) != sig:
+                if not file_signature_eq(sig, file_signature(fn)):
                     esession.print("> Warning: obsolete index data. Skip file: %s" % fn, force=True)
                     continue  # for item
                 heapq.heappush(search_results, item)

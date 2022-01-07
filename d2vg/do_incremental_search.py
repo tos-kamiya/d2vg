@@ -8,7 +8,7 @@ from .cli import *
 from .embedding_utils import extract_pos_vecs
 from .esesion import ESession
 from . import index_db
-from .index_db import FileSignature, file_signature
+from .index_db import FileSignature, file_signature, file_signature_eq
 from . import model_loader
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
@@ -29,6 +29,7 @@ def do_parse_and_tokenize(file_names: List[str], lang: str, esession: ESession) 
             esession.print("> Warning: %s" % e, force=True)
             r.append(None)
         else:
+            assert sig is not None
             line_tokens = [text_to_tokens(L) for L in lines]
             r.append((tf, sig, lines, line_tokens))
     return r
@@ -69,7 +70,7 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
             sig = file_signature(tf)
             if sig is None:
                 esession.print("> Warning: skip non-existing file: %s" % tf, force=True)
-            elif db.lookup_signature(tf) == sig:
+            elif file_signature_eq(sig, db.lookup_signature(tf)):
                 files_stored.append(tf)
             else:
                 files_not_stored.append(tf)
@@ -106,7 +107,7 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
         ipsrlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, lines, line_tokens) for sr, vec in pos_vecs]  # ignore type mismatch
         if keyword_set:  # ensure ip_srlls's type is actually List[IPSRLL], in this case
             min_ip = heapq.nsmallest(1, search_results)[0][0][0] if len(search_results) >= args.top_n else None
-            ipsrlls = prune_by_keywords(ipsrlls, keyword_set, min_ip)
+            ipsrlls = prune_by_keywords(ipsrlls, keyword_set, min_ip)  # see the note at two lines up
         ipsrlls = prune_overlapped_paragraphs(ipsrlls, args.paragraph)
 
         for ipsrll in ipsrlls:
@@ -176,7 +177,7 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
                         esession.print("> Warning: skip non-existing file: %s" % tf, force=True)
                     else:
                         r = db.lookup(tf)
-                        if r is None or r[0] != sig:
+                        if r is None or not file_signature_eq(sig, r[0]):
                             pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, args.window)
                             db.store(tf, sig, pos_vecs)
                         else:

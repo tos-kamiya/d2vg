@@ -3,12 +3,8 @@ from typing import *
 import unittest
 
 import contextlib
-from itertools import zip_longest
 import os
-import re
 import tempfile
-
-import numpy as np
 
 from d2vg import raw_db
 

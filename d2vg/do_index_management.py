@@ -8,7 +8,7 @@ from .cli import *
 from .embedding_utils import extract_pos_vecs
 from .esesion import ESession
 from . import index_db
-from .index_db import file_signature, decode_file_signature
+from .index_db import file_signature, decode_file_signature, file_signature_eq
 from . import model_loader
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
@@ -20,7 +20,7 @@ def sub_remove_index_no_corresponding_files(db_base_path: str, window: int, db_i
     target_files = []
     with index_db.open_partial_index_db_signature_iterator(db_base_path, window, db_index) as it:
         for fn, sig in it:
-            if file_signature(fn) != sig:
+            if not file_signature_eq(sig, file_signature(fn)):
                 target_files.append(fn)
 
     index_db.remove_partial_index_db_items(db_base_path, window, db_index, target_files)
@@ -131,8 +131,8 @@ def sub_update_index(file_names: List[str], lang: str, lang_model_file: str, win
             if sig is None:
                 esession.print("> Warning: skip non-existing file: %s" % tf, force=True)
                 continue  # tf
-            if db.lookup_signature(tf) == sig:
-                continue
+            if file_signature_eq(sig, db.lookup_signature(tf)):
+                continue  # for tf
             try:
                 lines = parser.parse(tf)
             except parsers.ParseError as e:

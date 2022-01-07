@@ -18,6 +18,7 @@ from .raw_db import RawDb, FileSignature, PosVec
 DB_FILE_EXTENSION = ".sqlite3"
 DB_DEFAULT_CLUSTER_SIZE = 64
 DB_WRITE_QUEUE_MAX_LEN = 2 ** 30
+MAX_FILE_MTIME_DELTA = 3  # sec
 
 
 if platform.system() == "Windows":
@@ -40,6 +41,27 @@ def decode_file_signature(sig: FileSignature) -> Tuple[int, int]:
     size_str = sig[:i]
     mtime_str = sig[i + 1 :]
     return int(size_str), int(mtime_str)
+
+
+def file_signature_eq(sig1: FileSignature, sig2: Optional[FileSignature]) -> bool:
+    assert sig1 is not None
+
+    if sig2 is None:
+        return False
+
+    if sig1 == sig2:
+        return True
+
+    if sig1[:-1] == sig2[:-1]:  # differs only in the last digit (sec) in mtime
+        mtime_diff = ord(sig1[-1:]) - ord(sig2[-1:])
+        return -MAX_FILE_MTIME_DELTA <= mtime_diff <= MAX_FILE_MTIME_DELTA
+
+    cp = os.path.commonprefix([sig1, sig2])
+    if '-' not in cp:
+        return False  # differs in the file size
+    mtime1 = int(sig1[sig1.find('-') + 1 :])
+    mtime2 = int(sig2[sig2.find('-') + 1 :])
+    return -MAX_FILE_MTIME_DELTA <= (mtime1 - mtime2) <= MAX_FILE_MTIME_DELTA
 
 
 def file_name_crc(file_name: str) -> Optional[int]:
