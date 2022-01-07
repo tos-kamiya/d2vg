@@ -19,6 +19,7 @@ from . import search_result
 from . import do_incremental_search
 from . import do_index_search
 from . import do_index_management
+from . import file_opener
 
 
 setup_model_main = d2vg_setup_model.main

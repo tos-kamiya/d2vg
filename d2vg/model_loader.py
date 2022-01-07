@@ -10,6 +10,7 @@ from gensim.models.doc2vec import Doc2Vec
 from gensim.utils import tokenize
 
 from .vec import Vec
+from .file_opener import open_file
 
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -63,7 +64,7 @@ def get_model_files(
         ps = [p for p in ps if os.path.isfile(p)]
         lang_model_paths = []
         for p in ps:
-            with open(p) as inp:
+            with open_file(p) as inp:
                 lines = [L.rstrip() for L in inp.readlines()]
             assert len(lines) >= 1
 

@@ -13,6 +13,8 @@ import docx2txt
 if platform.system() != "Windows":
     import pdftotext
 
+from .file_opener import open_file
+
 
 _script_dir: str = os.path.dirname(os.path.realpath(__file__))
 
@@ -31,7 +33,7 @@ if _ja_nkf_abspath:
 else:
 
     def read_text_file(file_name: str) -> str:
-        with open(file_name) as inp:
+        with open_file(file_name) as inp:
             return inp.read()
 
 
@@ -111,7 +113,7 @@ else:
             p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if p.returncode != 0:
                 raise ParseError("ParseError: %s, file: %s" % (p.stderr.decode("utf-8").rstrip(), repr(file_name)))
-            with open(tempf, "r", encoding="utf-8") as f:
+            with open_file(tempf) as f:
                 text = f.read()
         finally:
             if os.path.exists(tempf):
@@ -120,7 +122,7 @@ else:
 
 
 def html_parse(file_name: str) -> str:
-    with open(file_name) as inp:
+    with open_file(file_name) as inp:
         html_doc = inp.read()
         soup = bs4.BeautifulSoup(html_doc, "html.parser")
         for script in soup(["script", "style"]):

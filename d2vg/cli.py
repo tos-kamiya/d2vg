@@ -9,6 +9,7 @@ from init_attrs_with_kwargs import InitAttrsWKwArgs
 from .iter_funcs import *
 from .esesion import ESession
 from . import model_loader
+from .file_opener import open_file
 
 
 DB_DIR: str = ".d2vg"
@@ -74,7 +75,7 @@ def do_expand_pattern(pattern: str, esession: ESession) -> str:
     elif pattern.startswith("="):
         assert pattern != "=-"
         try:
-            with open(pattern[1:]) as inp:
+            with open_file(pattern[1:]) as inp:
                 return inp.read()
         except OSError:
             esession.clear()
@@ -99,7 +100,7 @@ def do_expand_target_files(target_files: Iterable[str], esession: ESession) -> T
                 expand_target_files_i(tfs, True)
             elif f.startswith("="):
                 try:
-                    with open(f[1:]) as inp:
+                    with open_file(f[1:]) as inp:
                         tfs = [L.rstrip() for L in inp]
                 except OSError:
                     sys.exit("Error: fail to open file: %s" % repr(f[1:]))

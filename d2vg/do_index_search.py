@@ -139,7 +139,7 @@ def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: C
         else:
             temp_dir = tempfile.TemporaryDirectory()
             glob_file = os.path.join(temp_dir.name, "filepattern")
-            with open(glob_file, "w") as outp:
+            with open_file(glob_file, "w") as outp:
                 for L in args.file:
                     print(L, file=outp)
 
