@@ -1,4 +1,4 @@
-from typing import *
+from typing import Callable, Iterable, List, Optional, Tuple
 
 from glob import glob
 import os

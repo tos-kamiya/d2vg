@@ -1,4 +1,4 @@
-from typing import *
+from typing import Generator, Iterable, Iterator, List, NewType, Optional, Tuple
 
 from contextlib import contextmanager
 import platform
@@ -28,8 +28,7 @@ def open(db_filename: str, mode: str) -> RawDb:
     db = sqlite3.connect("file:%s?mode=%s" % (db_filename, mode), uri=True, isolation_level="DEFERRED")
     if mode == "rwc":
         db.execute("""CREATE TABLE IF NOT EXISTS data (filename TEXT NOT NULL, chunk INTEGER NOT NULL, value BLOB, 
-PRIMARY KEY (filename, chunk))"""
-        )
+PRIMARY KEY (filename, chunk))""")
         db.execute("CREATE INDEX IF NOT EXISTS data_filename ON data(filename)")
     return db
 

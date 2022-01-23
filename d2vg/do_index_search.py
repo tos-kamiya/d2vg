@@ -1,15 +1,17 @@
-from typing import *
+from typing import List, Optional, Tuple
 
 from functools import lru_cache
 import multiprocessing
 import heapq
+import os
 import platform
+import sys
 import subprocess
 import tempfile
 
 import bson
 
-from .cli import *
+from .cli import CLArgs, DB_DIR, do_expand_pattern, open_file
 from .esesion import ESession
 from .fnmatcher import FNMatcher
 from . import index_db
@@ -17,8 +19,8 @@ from .index_db import file_signature, file_signature_eq
 from . import model_loader
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor, kill_all_subprocesses
-from .search_result import *
-from .vec import *
+from .search_result import IPSRLL_OPT, SearchResult, print_search_results, prune_overlapped_paragraphs
+from .vec import Vec, inner_product_n, inner_product_u, to_float_list
 
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -86,7 +88,7 @@ def sub_index_search_r(
         cmd = cmd + ["-p"]
     try:
         b = subprocess.check_output(cmd)
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         esession.print("> Warning: error for DB %d" % db_i_c[0], force=True)
         return []
     except Exception as e:
@@ -207,7 +209,7 @@ def do_index_search(lang: str, lang_model_file: str, esession: ESession, args: C
                     _ip, (b, e), _lines, _line_tokens = ipsrll
                     top1_message = "Tentative top-1: %s:%d-%d" % (fn, b + 1, e + 1)
                     esession.flash("[%d/%d] %s" % (subi + 1, cluster_size, top1_message))
-    except KeyboardInterrupt as _e:
+    except KeyboardInterrupt:
         esession.print("> Warning: interrupted [%d/%d] in looking up index DB" % (subi + 1, cluster_size), force=True)
         esession.print("> Warning: shows the search results up to now.", force=True)
         executor.shutdown(wait=False, cancel_futures=True)

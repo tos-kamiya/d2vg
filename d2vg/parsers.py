@@ -1,10 +1,9 @@
-from typing import *
+from typing import List, Optional
 
 import os
 import platform
 import re
 import subprocess
-import sys
 import zipfile
 
 import bs4
@@ -134,5 +133,5 @@ def html_parse(file_name: str) -> str:
 def docx_parse(file_name: str) -> str:
     try:
         return docx2txt.process(file_name)
-    except zipfile.BadZipFile as _e:
+    except zipfile.BadZipFile:
         raise ParseError("ParseError: encrypted or corrupted .docx file: %s" % repr(file_name))

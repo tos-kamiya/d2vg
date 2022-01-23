@@ -6,12 +6,9 @@ import sys
 
 from docopt import docopt
 
-from .cli import *
+from .cli import CLArgs, DOC, VERSION
 from .esesion import ESession
-from .iter_funcs import *
 from . import model_loader
-from .search_result import *
-from .vec import *
 
 from .do_incremental_search import do_incremental_search
 from .do_index_search import do_index_search

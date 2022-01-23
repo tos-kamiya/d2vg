@@ -1,4 +1,4 @@
-from typing import *
+from typing import Iterable, List, Optional, Tuple
 
 from binascii import crc32
 from math import floor

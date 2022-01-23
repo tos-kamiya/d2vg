@@ -1,19 +1,22 @@
-from typing import *
+from typing import FrozenSet, List, Optional, Tuple
 
 from functools import lru_cache
 import multiprocessing
 import heapq
+import os
+import sys
 
-from .cli import *
+from .cli import CLArgs, DB_DIR, do_expand_pattern, do_expand_target_files
 from .embedding_utils import extract_pos_vecs
 from .esesion import ESession
 from . import index_db
 from .index_db import FileSignature, file_signature, file_signature_eq
+from .iter_funcs import split_to_length
 from . import model_loader
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
-from .search_result import *
-from .vec import *
+from .search_result import IPSRLL_OPT, SearchResult, print_search_results, prune_by_keywords, prune_overlapped_paragraphs
+from .vec import inner_product_n, inner_product_u
 
 
 def do_parse_and_tokenize(file_names: List[str], lang: str, esession: ESession) -> List[Optional[Tuple[str, FileSignature, List[str], List[List[str]]]]]:
@@ -187,7 +190,7 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
                     verbose_print_cur_status(tfi)
         else:
             verbose_print_cur_status(tfi)
-    except KeyboardInterrupt as _e:
+    except KeyboardInterrupt:
         esession.print("> Warning: interrupted [%d/%d] in reading file: %s" % (tfi + 1, len(target_files), tf), force=True)
         esession.print("> Warning: shows the search results up to now.", force=True)
         executor.shutdown(wait=False, cancel_futures=True)

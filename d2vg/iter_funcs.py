@@ -1,4 +1,4 @@
-from typing import *
+from typing import Iterable, Iterator, List, Tuple, TypeVar
 
 
 T = TypeVar("T")

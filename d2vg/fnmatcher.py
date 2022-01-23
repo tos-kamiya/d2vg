@@ -1,4 +1,4 @@
-from typing import *
+from typing import Iterable
 
 from fnmatch import fnmatch
 from os.path import normpath

@@ -1,9 +1,8 @@
-from typing import *
+from typing import Callable, FrozenSet, Iterable, List, Optional, Tuple
 
-from .iter_funcs import *
-
-from .index_db import FileSignature
 from .embedding_utils import extract_headline
+from .index_db import FileSignature
+from .iter_funcs import concatinated, ranges_overwrapping
 from .vec import Vec
 
 

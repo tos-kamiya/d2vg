@@ -1,10 +1,11 @@
-from typing import *
+from typing import List, Tuple
 
 from datetime import datetime
 import multiprocessing
 import os
+import sys
 
-from .cli import *
+from .cli import DB_DIR, CLArgs, do_expand_target_files
 from .embedding_utils import extract_pos_vecs
 from .esesion import ESession
 from . import index_db
@@ -12,8 +13,6 @@ from .index_db import file_signature, decode_file_signature, file_signature_eq
 from . import model_loader
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
-from .search_result import *
-from .vec import *
 
 
 def sub_remove_index_no_corresponding_files(db_base_path: str, window: int, db_index: int) -> int:
@@ -55,7 +54,7 @@ def do_remove_index_no_corresponding_files(lang: str, lang_model_file: str, eses
         for subi, c in enumerate(subit):
             esession.flash("[%d/%d] removing obsolete index data" % (subi, cluster_size))
             count_removed_index_data += c
-    except KeyboardInterrupt as _e:
+    except KeyboardInterrupt:
         executor.shutdown(wait=False, cancel_futures=True)
     else:
         executor.shutdown()

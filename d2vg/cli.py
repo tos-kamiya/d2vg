@@ -1,4 +1,4 @@
-from typing import *
+from typing import Iterable, List, Optional, Tuple
 
 from glob import glob
 import importlib
@@ -6,8 +6,9 @@ import os.path
 import sys
 
 from init_attrs_with_kwargs import InitAttrsWKwArgs
-from .iter_funcs import *
+
 from .esesion import ESession
+from .iter_funcs import remove_non_first_appearances
 from . import model_loader
 from .file_opener import open_file
 

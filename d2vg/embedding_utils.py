@@ -1,9 +1,9 @@
-from typing import *
+from typing import Callable, List, Optional
 
 import numpy as np
 
 from .vec import Vec
-from .iter_funcs import *
+from .iter_funcs import concatinated
 
 from .index_db import PosVec
 

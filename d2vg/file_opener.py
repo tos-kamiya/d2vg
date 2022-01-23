@@ -1,4 +1,4 @@
-from typing import *
+from typing import Generator, TextIO
 from typing import TextIO
 
 from contextlib import contextmanager
