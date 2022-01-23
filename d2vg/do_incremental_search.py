@@ -13,6 +13,7 @@ from . import index_db
 from .index_db import FileSignature, file_signature, file_signature_eq
 from .iter_funcs import split_to_length
 from . import model_loader
+from .model_loader import LangAndModelFile
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
 from .search_result import IPSRLL_OPT, SearchResult, print_search_results, prune_by_keywords, prune_overlapped_paragraphs
@@ -42,7 +43,7 @@ def do_parse_and_tokenize_i(d: Tuple[List[str], str, ESession]) -> List[Optional
     return do_parse_and_tokenize(d[0], d[1], d[2])
 
 
-def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, args: CLArgs) -> None:
+def do_incremental_search(laf: LangAndModelFile, esession: ESession, args: CLArgs) -> None:
     if args.worker == 0:
         args.worker = multiprocessing.cpu_count()
     assert args.headline_length >= 8
@@ -63,7 +64,7 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
 
     db = None
     if os.path.exists(DB_DIR) and os.path.isdir(DB_DIR):
-        db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
+        db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(laf))
         db = index_db.open(db_base_path, args.window, "c")
 
     files_stored = []
@@ -85,9 +86,9 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
         return
 
     esession.flash("> Loading Doc2Vec model.")
-    model = model_loader.D2VModel(lang, lang_model_file)
+    model = model_loader.D2VModel(laf)
 
-    text_to_tokens = model_loader.load_tokenize_func(lang)
+    text_to_tokens = model_loader.load_tokenize_func(laf.lang)
     tokens = text_to_tokens(pattern)
     oov_tokens = model.find_oov_tokens(tokens)
     if set(tokens) == set(oov_tokens) and not args.unknown_word_as_keyword:
@@ -159,14 +160,14 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
 
         executor = ProcessPoolExecutor(max_workers=args.worker)
         chunk_size = max(10, min(len(target_files) // 200, 100))
-        args_it = [(chunk, lang, esession) for chunk in split_to_length(files_not_stored, chunk_size)]
+        args_it = [(chunk, laf.lang, esession) for chunk in split_to_length(files_not_stored, chunk_size)]
         files_not_stored = None  # before forking process, remove a (potentially) large object from heap
         tokenize_it = executor.map(do_parse_and_tokenize_i, args_it)
 
         for cr in tokenize_it:
             for i, r in enumerate(cr):
                 if model is None:
-                    model = model_loader.D2VModel(lang, lang_model_file)
+                    model = model_loader.D2VModel(laf)
                 tfi += 1
                 if r is None:
                     continue
@@ -200,7 +201,7 @@ def do_incremental_search(lang: str, lang_model_file: str, esession: ESession, a
         if db is not None:
             db.close()
     if model is None:
-        model = model_loader.D2VModel(lang, lang_model_file)
+        model = model_loader.D2VModel(laf)
 
     esession.activate(False)
     parse = lru_cache(maxsize=args.top_n)(parser.parse) if args.paragraph else parser.parse

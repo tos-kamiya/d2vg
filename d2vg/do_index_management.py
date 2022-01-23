@@ -11,6 +11,7 @@ from .esesion import ESession
 from . import index_db
 from .index_db import file_signature, decode_file_signature, file_signature_eq
 from . import model_loader
+from .model_loader import LangAndModelFile
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
 
@@ -30,11 +31,11 @@ def sub_remove_index_no_corresponding_files_i(a: Tuple[str, int, int]) -> int:
     return sub_remove_index_no_corresponding_files(*a)
 
 
-def do_remove_index_no_corresponding_files(lang: str, lang_model_file: str, esession: ESession, args: CLArgs) -> None:
+def do_remove_index_no_corresponding_files(laf: LangAndModelFile, esession: ESession, args: CLArgs) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(laf))
     r = index_db.exists(db_base_path, args.window)
     if r == 0:
         esession.clear()
@@ -75,14 +76,14 @@ def sub_list_file_indexed_i(args: Tuple[str, int, int]) -> List[Tuple[str, int, 
     return sub_list_file_indexed(*args)
 
 
-def do_list_file_indexed(lang: str, lang_model_file: str, esession: ESession, args: CLArgs) -> None:
+def do_list_file_indexed(laf: LangAndModelFile, esession: ESession, args: CLArgs) -> None:
     if args.worker == 0:
         args.worker = multiprocessing.cpu_count()
 
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(laf))
     r = index_db.exists(db_base_path, args.window)
     if r == 0:
         esession.clear()
@@ -118,12 +119,12 @@ def do_list_file_indexed(lang: str, lang_model_file: str, esession: ESession, ar
         print("%s\t%s\t%d\t%d" % (fn, t, fs, window_size))
 
 
-def sub_update_index(file_names: List[str], lang: str, lang_model_file: str, window: int, esession: ESession) -> None:
+def sub_update_index(file_names: List[str], laf: LangAndModelFile, window: int, esession: ESession) -> None:
     parser = parsers.Parser()
-    text_to_tokens = model_loader.load_tokenize_func(lang)
-    model = model_loader.D2VModel(lang, lang_model_file)
+    text_to_tokens = model_loader.load_tokenize_func(laf.lang)
+    model = model_loader.D2VModel(laf)
 
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(laf))
     with index_db.open(db_base_path, window, "c") as db:
         for tf in file_names:
             sig = file_signature(tf)
@@ -142,11 +143,11 @@ def sub_update_index(file_names: List[str], lang: str, lang_model_file: str, win
                 db.store(tf, sig, pos_vecs)
 
 
-def sub_update_index_i(d: Tuple[List[str], str, str, int, ESession]) -> None:
-    return sub_update_index(d[0], d[1], d[2], d[3], d[4])
+def sub_update_index_i(d: Tuple[List[str], LangAndModelFile, int, ESession]) -> None:
+    return sub_update_index(d[0], d[1], d[2], d[3])
 
 
-def do_update_index(lang: str, lang_model_file: str, esession: ESession, args: CLArgs) -> None:
+def do_update_index(laf: LangAndModelFile, esession: ESession, args: CLArgs) -> None:
     assert args.worker is not None
 
     esession.flash("> Locating document files.")
@@ -162,7 +163,7 @@ def do_update_index(lang: str, lang_model_file: str, esession: ESession, args: C
         esession.print("> Created a `%s` directory for index data." % DB_DIR, force=True)
 
     cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(lang, lang_model_file))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(laf))
     c = index_db.exists(db_base_path, args.window)
     if c > 0:
         if cluster_size != c:
@@ -172,7 +173,7 @@ def do_update_index(lang: str, lang_model_file: str, esession: ESession, args: C
         db = index_db.open(db_base_path, args.window, "c", cluster_size)
         db.close()
 
-    do_remove_index_no_corresponding_files(lang, lang_model_file, esession, args)
+    do_remove_index_no_corresponding_files(laf, esession, args)
 
     file_splits = [list() for _ in range(cluster_size)]
     for tf in target_files:
@@ -184,7 +185,7 @@ def do_update_index(lang: str, lang_model_file: str, esession: ESession, args: C
     file_splits.sort(key=lambda file_list: len(file_list), reverse=True)  # prioritize chunks containing large number of files
 
     executor = ProcessPoolExecutor(max_workers=args.worker)
-    args_it = [(chunk, lang, lang_model_file, args.window, esession) for chunk in file_splits]
+    args_it = [(chunk, laf, args.window, esession) for chunk in file_splits]
     file_splits = None  # before forking process, remove a (potentially) large object from heap
     indexing_it = executor.map(sub_update_index_i, args_it)
     try:

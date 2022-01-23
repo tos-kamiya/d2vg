@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import Callable, Iterable, List, NamedTuple, Optional, Tuple
 
 from glob import glob
 import os
@@ -80,6 +80,11 @@ def get_model_files(
     return []
 
 
+class LangAndModelFile(NamedTuple):
+    lang: str
+    file: str
+
+
 def exit_with_installation_message(e: ModuleNotFoundError, lang: str):
     print("Error: %s" % e, file=sys.stderr)
     print("  Need to install d2vg with `{lang}` option: pip install d2vg[{lang}]".format(lang=lang), file=sys.stderr)
@@ -129,16 +134,16 @@ def load_tokenize_func(lang: str) -> Callable[[str], List[str]]:
     return text_to_tokens
 
 
-def get_index_db_base_name(lang: str, lang_model_path: str):
-    fn = os.path.basename(lang_model_path)
-    return "%s-%s-%s" % (lang, fn, INDEXER_VERSION)
+def get_index_db_base_name(laf: LangAndModelFile):
+    fn = os.path.basename(laf.file)
+    return "%s-%s-%s" % (laf.lang, fn, INDEXER_VERSION)
 
 
 class D2VModel:
-    def __init__(self, lang: str, lang_model_path: str):
-        self.lang = lang
-        self.lang_model_path = lang_model_path
-        self.model = Doc2Vec.load(lang_model_path)
+    def __init__(self, laf: LangAndModelFile):
+        self.lang = laf.lang
+        self.lang_model_path = laf.file
+        self.model = Doc2Vec.load(laf.file)
 
     def find_oov_tokens(self, tokens: Iterable[str]) -> List[str]:
         return [t for t in tokens if self.model.wv.key_to_index.get(t, None) is None]
