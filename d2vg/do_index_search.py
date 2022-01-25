@@ -97,7 +97,7 @@ def sub_index_search_r(
         raise e
     else:
         d = bson.loads(b)
-        r = [((ip, tuple(sr), None, None), fn, sig) for ip, fn, sig, sr in d["ipfssrs"]]
+        r = [((ip, tuple(sr), None, None), fn, sig) for ip, fn, sig, sr in d["ipfnsigposs"]]
         return r
 
 
