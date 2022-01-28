@@ -4,7 +4,7 @@
 
 (1) 依存やd2vg本体を`apt`や`pip'を使ってインストール **(必須)**
 
-`pdf2text`を記述 https://github.com/jalan/pdftotext に従ってインストールしてください。
+**重要:** d2vgのインストールの前に、`pdftotext`を記述 https://github.com/jalan/pdftotext に従ってインストールしてください。
 
 日本語Doc2Vecモデルを利用するためには、次のようにパッケージ名のあとに **`[ja]`をつけて** `d2vg`をインストールしてください。
 

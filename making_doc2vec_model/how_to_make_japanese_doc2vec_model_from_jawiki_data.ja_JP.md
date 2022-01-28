@@ -34,7 +34,7 @@ with open(output_file, 'w') as outp:
         for L in inp:
             L = L.rstrip()
             try:
-                tokens = list(t.tokenize(L)
+                tokens = list(t.tokenize(L))
                 if tokens:
                     print(' '.join(tokens), file=outp)
             except UnicodeDecodeError:

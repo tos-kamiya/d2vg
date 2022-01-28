@@ -4,7 +4,7 @@ The following steps have been checked on Ubuntu 20.04.
 
 (1) Install the dependencies and d2vg with `apt` and `pip`. **(Required)**
 
-Install pdf2text according to the instructions at https://github.com/jalan/pdftotext.
+**Important:** Before installation of d2vg, install pdftotext according to the instructions at https://github.com/jalan/pdftotext.
 
 Install `d2vg` as follows.
 
