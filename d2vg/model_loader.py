@@ -31,7 +31,7 @@ def get_model_root_dir() -> str:
         return os.path.join(appdirs.user_config_dir(_app_name), models)
 
 
-def get_model_langs(
+def get_model_names(
     model_root_dirs: Optional[List[str]] = None,
 ) -> List[Tuple[str, str]]:
     if model_root_dirs is None:
@@ -80,9 +80,24 @@ def get_model_files(
     return []
 
 
-class LangAndModelFile(NamedTuple):
+class ModelConfig(NamedTuple):
     lang: str
+    name: str
     file: str
+
+
+class ModelConfigError(Exception):
+    pass
+
+
+def get_model_config(name: str) -> ModelConfig:
+    lang_model_files = get_model_files(name)
+    if not lang_model_files:
+        raise ModelConfigError("Model not found: %s" % name)
+    if len(lang_model_files) >= 2:
+        raise ModelConfigError("Multiple models are found: %s\n " % name)
+    mc = ModelConfig(name, name, lang_model_files[0])
+    return mc
 
 
 def exit_with_installation_message(e: ModuleNotFoundError, lang: str):
@@ -134,16 +149,16 @@ def load_tokenize_func(lang: str) -> Callable[[str], List[str]]:
     return text_to_tokens
 
 
-def get_index_db_base_name(laf: LangAndModelFile):
-    fn = os.path.basename(laf.file)
-    return "%s-%s-%s" % (laf.lang, fn, INDEXER_VERSION)
+def get_index_db_base_name(mc: ModelConfig):
+    fn = os.path.basename(mc.file)
+    return "%s-%s-%s" % (mc.name, fn, INDEXER_VERSION)
 
 
 class D2VModel:
-    def __init__(self, laf: LangAndModelFile):
-        self.lang = laf.lang
-        self.lang_model_path = laf.file
-        self.model = Doc2Vec.load(laf.file)
+    def __init__(self, mc: ModelConfig):
+        self.name = mc.name
+        self.lang = mc.lang
+        self.model = Doc2Vec.load(mc.file)
 
     def find_oov_tokens(self, tokens: Iterable[str]) -> List[str]:
         return [t for t in tokens if self.model.wv.key_to_index.get(t, None) is None]

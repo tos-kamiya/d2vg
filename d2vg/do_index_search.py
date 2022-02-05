@@ -17,7 +17,7 @@ from .fnmatcher import FNMatcher
 from . import index_db
 from .index_db import file_signature, file_signature_eq
 from . import model_loader
-from .model_loader import LangAndModelFile
+from .model_loader import ModelConfig
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor, kill_all_subprocesses
 from .search_result import IPSRLL_OPT, SearchResult, print_search_results, prune_overlapped_paragraphs
@@ -105,11 +105,11 @@ def sub_index_search_r_i(a: Tuple[str, str, int, Tuple[int, int], str, int, bool
     return sub_index_search_r(*a)
 
 
-def do_index_search(laf: LangAndModelFile, esession: ESession, args: CLArgs) -> None:
+def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(laf))
+    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(mc))
     r = index_db.exists(db_base_path, args.window)
     if r == 0:
         esession.clear()
@@ -147,9 +147,9 @@ def do_index_search(laf: LangAndModelFile, esession: ESession, args: CLArgs) -> 
                     print(L, file=outp)
 
     esession.flash("> Loading Doc2Vec model.")
-    model = model_loader.D2VModel(laf)
+    model = model_loader.D2VModel(mc)
 
-    text_to_tokens = model_loader.load_tokenize_func(laf.lang)
+    text_to_tokens = model_loader.load_tokenize_func(mc.lang)
     tokens = text_to_tokens(pattern)
     oov_tokens = model.find_oov_tokens(tokens)
     if set(tokens) == set(oov_tokens):
@@ -221,7 +221,7 @@ def do_index_search(laf: LangAndModelFile, esession: ESession, args: CLArgs) -> 
             temp_dir.cleanup()
 
     esession.activate(False)
-    model = model_loader.D2VModel(laf)
+    model = model_loader.D2VModel(mc)
     parser = parsers.Parser()
     parse = lru_cache(maxsize=args.top_n)(parser.parse) if args.paragraph else parser.parse
     search_results = heapq.nlargest(args.top_n, search_results)

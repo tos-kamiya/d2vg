@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 import locale
 import os
@@ -8,7 +8,7 @@ from docopt import docopt
 
 from .cli import CLArgs, DOC, VERSION
 from .esesion import ESession
-from .model_loader import LangAndModelFile, get_model_files, get_model_langs
+from .model_loader import ModelConfig, ModelConfigError, get_model_config
 
 from .do_incremental_search import do_incremental_search
 from .do_index_search import do_index_search
@@ -64,30 +64,24 @@ def main():
     if lang is None:
         sys.exit("Error: specify the language with option -l")
 
-    lang_model_files = get_model_files(lang)
-    if not lang_model_files:
-        print("Error: not found Doc2Vec model for language: %s" % lang, file=sys.stderr)
-        lang_candidates = sorted(set(get_model_langs()))
-        if not lang_candidates:
-            sys.exit("  No model files are found in the system.")
-        else:
-            sys.exit("  Specify either: %s" % ", ".join(l for l, _d in lang_candidates))
-    if len(lang_model_files) >= 2:
-        print("Error: multiple Doc2Vec models are found for language: %s" % lang, file=sys.stderr)
-        print("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % lang, file=sys.stderr)
-        print("   re-install a model for the language.", file=sys.stderr)
+    try:
+        mc: ModelConfig = get_model_config(lang)
+    except ModelConfigError as e:
+        print("Error: %s" % e, file=sys.stderr)
+        if str(e).startswith('Multiple'):
+            print("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % lang, file=sys.stderr)
+            print("   re-install a model for the language.", file=sys.stderr)
         sys.exit(1)
-    laf = LangAndModelFile(lang, lang_model_files[0])
-    
+
     with ESession(active=args.verbose) as esession:
         if args.update_index:
-            do_update_index(laf, esession, args)
+            do_update_index(mc, esession, args)
         elif args.within_indexed:
-            do_index_search(laf, esession, args)
+            do_index_search(mc, esession, args)
         elif args.list_indexed:
-            do_list_file_indexed(laf, esession, args)
+            do_list_file_indexed(mc, esession, args)
         else:
-            do_incremental_search(laf, esession, args)
+            do_incremental_search(mc, esession, args)
 
 
 if __name__ == "__main__":
