@@ -206,4 +206,4 @@ def do_incremental_search(laf: LangAndModelFile, esession: ESession, args: CLArg
     esession.activate(False)
     parse = lru_cache(maxsize=args.top_n)(parser.parse) if args.paragraph else parser.parse
     search_results = heapq.nlargest(args.top_n, search_results)
-    print_search_results(search_results, parse, text_to_tokens, model.tokens_to_vec, pattern_vec, args.headline_length)
+    print_search_results(search_results, parse, text_to_tokens, model.tokens_to_vec, pattern_vec, args.headline_length, args.unit_vector)

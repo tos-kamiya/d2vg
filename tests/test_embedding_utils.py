@@ -33,7 +33,7 @@ class EmbeddingUtlsTest(unittest.TestCase):
 
         pattern_vec = np.array([1.0, 0.0], dtype=np.float32)
 
-        lt = extract_headline(lines[sr[0] : sr[1]], None, text_to_tokens, tokens_to_vec, pattern_vec, 80)
+        lt = extract_headline(lines[sr[0] : sr[1]], None, text_to_tokens, tokens_to_vec, pattern_vec, 80, False)
         self.assertEqual(lt, "|".join(high_ip_token_subseq))
 
     def test_extract_pos_vecs(self):

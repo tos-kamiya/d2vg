@@ -1,4 +1,4 @@
-from typing import *
+from typing import List, Optional
 
 import locale
 import os
@@ -16,6 +16,15 @@ from .do_index_management import do_update_index, do_list_file_indexed
 
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
+
+
+def get_system_lang() -> Optional[str]:
+    lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
+    if lng is not None:
+        i = lng.find("_")
+        if i >= 0:
+            lng = lng[:i]
+    return lng
 
 
 def main():
@@ -49,44 +58,27 @@ def main():
             if fs.count("-") + fs.count("=-") >= 2:
                 sys.exit("Error: the standard input `-` specified multiple in <pattern> and <file>.")
 
-    lang_candidates = get_model_langs()
-    if args.list_lang:
-        lang_candidates.sort()
-        print("\n".join("%s %s" % (l, repr(m)) for l, m in lang_candidates))
-        prevl = None
-        for l, _m in lang_candidates:
-            if l == prevl:
-                print("> Warning: multiple Doc2Vec models are found for language: %s" % l, file=sys.stderr)
-                print(">   Remove the models with `d2vg-setup-model --delete -l %s`, then" % l, file=sys.stderr)
-                print(">   re-install a model for the language.", file=sys.stderr)
-            prevl = l
-        sys.exit(0)
-
-    lang = None
-    lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
-    if lng is not None:
-        i = lng.find("_")
-        if i >= 0:
-            lng = lng[:i]
-        lang = lng
+    lang = args.lang if args.lang else get_system_lang()
     if args.lang:
         lang = args.lang
     if lang is None:
         sys.exit("Error: specify the language with option -l")
 
-    if not any(lang == l for l, _d in lang_candidates):
-        print("Error: not found Doc2Vec model for language: %s" % lang, file=sys.stderr)
-        sys.exit("  Specify either: %s" % ", ".join(l for l, _d in lang_candidates))
-
     lang_model_files = get_model_files(lang)
-    assert lang_model_files
+    if not lang_model_files:
+        print("Error: not found Doc2Vec model for language: %s" % lang, file=sys.stderr)
+        lang_candidates = sorted(set(get_model_langs()))
+        if not lang_candidates:
+            sys.exit("  No model files are found in the system.")
+        else:
+            sys.exit("  Specify either: %s" % ", ".join(l for l, _d in lang_candidates))
     if len(lang_model_files) >= 2:
         print("Error: multiple Doc2Vec models are found for language: %s" % lang, file=sys.stderr)
         print("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % lang, file=sys.stderr)
         print("   re-install a model for the language.", file=sys.stderr)
         sys.exit(1)
     laf = LangAndModelFile(lang, lang_model_files[0])
-
+    
     with ESession(active=args.verbose) as esession:
         if args.update_index:
             do_update_index(laf, esession, args)

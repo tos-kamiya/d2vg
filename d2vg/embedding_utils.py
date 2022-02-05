@@ -2,10 +2,9 @@ from typing import Callable, List, Optional
 
 import numpy as np
 
-from .vec import Vec
-from .iter_funcs import concatinated
-
 from .index_db import PosVec
+from .iter_funcs import concatinated
+from .vec import Vec, inner_product_n, inner_product_u
 
 
 def extract_headline(
@@ -15,6 +14,7 @@ def extract_headline(
     tokens_to_vec: Callable[[List[str]], Vec],
     pattern_vec: Vec,
     headline_len: int,
+    unit_vector: bool,
 ) -> str:
     if not lines:
         return ""
@@ -25,6 +25,8 @@ def extract_headline(
     if line_tokens is None:
         line_tokens = [text_to_tokens(L) for L in lines]
 
+    inner_product = inner_product_u if unit_vector else inner_product_n
+
     len_lines = len(lines)
     max_ip_data = None
     for p in range(len_lines):
@@ -34,7 +36,7 @@ def extract_headline(
             sublines_textlen += len(lines[q])
             q += 1
         vec = tokens_to_vec(concatinated(line_tokens[p:q]))
-        ip = float(np.inner(vec, pattern_vec))
+        ip = inner_product(vec, pattern_vec)
         if max_ip_data is None or ip > max_ip_data[0]:
             max_ip_data = ip, (p, q)
     assert max_ip_data is not None

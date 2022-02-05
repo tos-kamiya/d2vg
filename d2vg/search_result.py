@@ -58,6 +58,7 @@ def print_search_results(
     tokens_to_vec: Callable[[List[str]], Vec],
     pattern_vec: Vec,
     headline_length: int,
+    unit_vector: bool,
 ) -> None:
     for ipsrll, tf, _sig in search_results:
         ip, (b, e), lines, line_tokens = ipsrll
@@ -68,5 +69,5 @@ def print_search_results(
         lines = lines[b:e]
         if line_tokens:
             line_tokens = line_tokens[b:e]
-        headline = extract_headline(lines, line_tokens, text_to_tokens, tokens_to_vec, pattern_vec, headline_length)
+        headline = extract_headline(lines, line_tokens, text_to_tokens, tokens_to_vec, pattern_vec, headline_length, unit_vector)
         print("%g\t%s:%d-%d\t%s" % (ip, tf, b + 1, e + 1, headline))
