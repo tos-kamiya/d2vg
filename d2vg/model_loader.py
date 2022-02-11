@@ -9,7 +9,7 @@ import appdirs
 from gensim.models.doc2vec import Doc2Vec
 from gensim.utils import tokenize
 
-from .vec import Vec
+from .vec import Vec, concatenate
 from .file_opener import open_file
 
 
@@ -21,6 +21,55 @@ _app_name = "d2vg"
 _author = "tos.kamiya"
 _user_data_dir = appdirs.user_data_dir(_app_name, _author)
 _user_config_dir = appdirs.user_config_dir(_app_name)
+
+
+def exit_with_installation_message(e: ModuleNotFoundError, lang: str):
+    print("Error: %s" % e, file=sys.stderr)
+    print("  Need to install d2vg with `{lang}` option: pip install d2vg[{lang}]".format(lang=lang), file=sys.stderr)
+    sys.exit(1)
+
+
+def load_tokenize_func(lang: str) -> Callable[[str], List[str]]:
+    if lang == "ja":
+        try:
+            from janome.tokenizer import Tokenizer
+        except ModuleNotFoundError as e:
+            exit_with_installation_message(e, lang)
+
+        janomet = Tokenizer(wakati=True)
+
+        def text_to_tokens(text: str) -> List[str]:
+            return list(janomet.tokenize(text))
+
+    elif lang == "ko":
+        try:
+            from konlpy.tag import Kkma
+        except ModuleNotFoundError as e:
+            exit_with_installation_message(e, lang)
+
+        kkma = Kkma()
+
+        def text_to_tokens(text: str) -> List[str]:
+            tokens = [w for w, _ in kkma.pos(text)]
+            return tokens
+
+    elif lang == "zh":
+        try:
+            import jieba
+        except ModuleNotFoundError as e:
+            exit_with_installation_message(e, lang)
+
+        def text_to_tokens(text: str) -> List[str]:
+            tokens = list(jieba.cut(text, cut_all=False))
+            return tokens
+
+    else:
+
+        def text_to_tokens(text: str) -> List[str]:
+            tokens = list(tokenize(text))
+            return tokens
+
+    return text_to_tokens
 
 
 def get_model_root_dir() -> str:
@@ -83,7 +132,7 @@ def get_model_files(
 class ModelConfig(NamedTuple):
     lang: str
     name: str
-    file: str
+    files: List[str]
 
 
 class ModelConfigError(Exception):
@@ -91,77 +140,48 @@ class ModelConfigError(Exception):
 
 
 def get_model_config(name: str) -> ModelConfig:
-    lang_model_files = get_model_files(name)
-    if not lang_model_files:
-        raise ModelConfigError("Model not found: %s" % name)
-    if len(lang_model_files) >= 2:
-        raise ModelConfigError("Multiple models are found: %s\n " % name)
-    mc = ModelConfig(name, name, lang_model_files[0])
+    names = name.split('+')
+    if len(names) >= 2:
+        extra_names = sorted(names[1:])
+        names = [names[0]] + extra_names
+    model_files = []
+    for n in names:
+        lang_model_files = get_model_files(n)
+        if not lang_model_files:
+            raise ModelConfigError("Model not found: %s" % n)
+        if len(lang_model_files) >= 2:
+            raise ModelConfigError("Multiple models are found: %s\n " % n)
+        model_files.append(lang_model_files[0])
+    mc = ModelConfig(names[0], '+'.join(names), model_files)
     return mc
 
 
-def exit_with_installation_message(e: ModuleNotFoundError, lang: str):
-    print("Error: %s" % e, file=sys.stderr)
-    print("  Need to install d2vg with `{lang}` option: pip install d2vg[{lang}]".format(lang=lang), file=sys.stderr)
-    sys.exit(1)
-
-
-def load_tokenize_func(lang: str) -> Callable[[str], List[str]]:
-    if lang == "ja":
-        try:
-            from janome.tokenizer import Tokenizer
-        except ModuleNotFoundError as e:
-            exit_with_installation_message(e, lang)
-
-        janomet = Tokenizer(wakati=True)
-
-        def text_to_tokens(text: str) -> List[str]:
-            return list(janomet.tokenize(text))
-
-    elif lang == "ko":
-        try:
-            from konlpy.tag import Kkma
-        except ModuleNotFoundError as e:
-            exit_with_installation_message(e, lang)
-
-        kkma = Kkma()
-
-        def text_to_tokens(text: str) -> List[str]:
-            tokens = [w for w, _ in kkma.pos(text)]
-            return tokens
-
-    elif lang == "zh":
-        try:
-            import jieba
-        except ModuleNotFoundError as e:
-            exit_with_installation_message(e, lang)
-
-        def text_to_tokens(text: str) -> List[str]:
-            tokens = list(jieba.cut(text, cut_all=False))
-            return tokens
-
-    else:
-
-        def text_to_tokens(text: str) -> List[str]:
-            tokens = list(tokenize(text))
-            return tokens
-
-    return text_to_tokens
-
-
 def get_index_db_base_name(mc: ModelConfig):
-    fn = os.path.basename(mc.file)
+    fn = '+'.join(os.path.basename(f) for f in mc.files)
     return "%s-%s-%s" % (mc.name, fn, INDEXER_VERSION)
 
 
 class D2VModel:
     def __init__(self, mc: ModelConfig):
-        self.name = mc.name
-        self.lang = mc.lang
-        self.model = Doc2Vec.load(mc.file)
+        self.name: str = mc.name
+        self.lang: str = mc.lang
+        self._models = [Doc2Vec.load(f) for f in mc.files]
+        assert len(self._models) >= 1
+
+        if len(self._models) == 1:
+            m = self._models[0]
+            def tokens_to_vec(tokens: List[str]) -> Vec:
+                return m.infer_vector(tokens)
+        else:
+            def tokens_to_vec(tokens: List[str]) -> Vec:
+                vecs = [m.infer_vector(tokens) for m in self._models]
+                return concatenate(vecs)
+        self.tokens_to_vec: Callable[[List[str]], Vec] = tokens_to_vec
 
     def find_oov_tokens(self, tokens: Iterable[str]) -> List[str]:
-        return [t for t in tokens if self.model.wv.key_to_index.get(t, None) is None]
+        oov_set = set(t for t in tokens if self._models[0].wv.key_to_index.get(t, None) is None)
+        for m in self._models[1:]:
+            oovs = [t for t in tokens if m.wv.key_to_index.get(t, None) is None]
+            oov_set.intersection_update(oovs)
+        return sorted(oov_set)
 
-    def tokens_to_vec(self, tokens: List[str]) -> Vec:
-        return self.model.infer_vector(tokens)

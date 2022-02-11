@@ -26,3 +26,7 @@ def inner_product_u(dv: Vec, pv: Vec) -> float:
 
 def inner_product_n(dv: Vec, pv: Vec) -> float:
     return float(np.inner(normalize_vec(dv), pv))
+
+
+def concatenate(vecs: List[Vec]) -> Vec:
+    return np.concatenate(vecs, axis=0)
