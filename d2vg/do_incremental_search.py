@@ -12,8 +12,7 @@ from .esesion import ESession
 from . import index_db
 from .index_db import FileSignature, file_signature, file_signature_eq
 from .iter_funcs import split_to_length
-from . import model_loader
-from .model_loader import ModelConfig
+from .model_loader import ModelConfig, get_index_db_base_name, load_model
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
 from .search_result import IPSRLL_OPT, SearchResult, print_search_results, prune_by_keywords, prune_overlapped_paragraphs
@@ -62,7 +61,7 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
 
     db = None
     if os.path.exists(DB_DIR) and os.path.isdir(DB_DIR):
-        db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(mc))
+        db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
         db = index_db.open(db_base_path, args.window, "c")
 
     files_stored = []
@@ -84,7 +83,7 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
         return
 
     esession.flash("> Loading Doc2Vec model.")
-    model = model_loader.D2VModel(mc)
+    model = load_model(mc)
 
     oov_tokens = model.find_oov_tokens(pattern)
     pattern_vec = model.lines_to_vec([pattern])
@@ -159,7 +158,7 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
         for cr in tokenize_it:
             for i, r in enumerate(cr):
                 if model is None:
-                    model = model_loader.D2VModel(mc)
+                    model = load_model(mc)
                 tfi += 1
                 if r is None:
                     continue
@@ -193,7 +192,7 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
         if db is not None:
             db.close()
     if model is None:
-        model = model_loader.D2VModel(mc)
+        model = load_model(mc)
 
     esession.activate(False)
     parse = lru_cache(maxsize=args.top_n)(parser.parse) if args.paragraph else parser.parse

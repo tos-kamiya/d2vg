@@ -64,12 +64,12 @@ __doc__: str = """Setup d2vg's Doc2Vec model.
 
 Usage:
   d2vg-setup-model <file>
-  d2vg-setup-model --delete -l LANG
+  d2vg-setup-model --delete -m MODEL
   d2vg-setup-model --delete-all
 
 Options:
-  --delete                  Delete a model for the language.
-  --lang=LANG, -l LANG      Model language.
+  --delete                  Delete a model.
+  --model=MODEL, -l MODEL   Model name.
   --delete-all              Delete all models.
 """
 
@@ -84,10 +84,10 @@ def main():
         return
 
     if args["--delete"]:
-        lang = args["--lang"]
-        fps = get_model_files(lang, model_root_dir=model_root_dir)
+        model = args["--model"]
+        fps = get_model_files(model, model_root_dir=model_root_dir)
         if not fps:
-            sys.exit("Error: no model found for the language: %s" % lang)
+            sys.exit("Error: no model found for the language: %s" % model)
         for fp in fps:
             model_dir = os.path.dirname(fp)
             shutil.rmtree(model_dir)

@@ -58,19 +58,12 @@ def main():
             if fs.count("-") + fs.count("=-") >= 2:
                 sys.exit("Error: the standard input `-` specified multiple in <pattern> and <file>.")
 
-    lang = args.lang if args.lang else get_system_lang()
-    if args.lang:
-        lang = args.lang
-    if lang is None:
-        sys.exit("Error: specify the language with option -l")
-
     try:
-        mc: ModelConfig = get_model_config(lang)
+        mc: ModelConfig = get_model_config(args.model)
     except ModelConfigError as e:
         print("Error: %s" % e, file=sys.stderr)
         if str(e).startswith('Multiple'):
-            print("   Remove the models with `d2vg-setup-model --delete -l %s`, then" % lang, file=sys.stderr)
-            print("   re-install a model for the language.", file=sys.stderr)
+            print("   Remove the models with `d2vg-setup-model --delete -m %s`, then re-install the model." % args.model, file=sys.stderr)
         sys.exit(1)
 
     with ESession(active=args.verbose) as esession:

@@ -10,8 +10,7 @@ from .embedding_utils import extract_pos_vecs
 from .esesion import ESession
 from . import index_db
 from .index_db import file_signature, decode_file_signature, file_signature_eq
-from . import model_loader
-from .model_loader import ModelConfig
+from .model_loader import ModelConfig, get_index_db_base_name, load_model
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
 
@@ -35,7 +34,7 @@ def do_remove_index_no_corresponding_files(laf: ModelConfig, esession: ESession,
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(laf))
+    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(laf))
     r = index_db.exists(db_base_path, args.window)
     if r == 0:
         esession.clear()
@@ -83,7 +82,7 @@ def do_list_file_indexed(mc: ModelConfig, esession: ESession, args: CLArgs) -> N
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(mc))
+    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
     r = index_db.exists(db_base_path, args.window)
     if r == 0:
         esession.clear()
@@ -121,9 +120,9 @@ def do_list_file_indexed(mc: ModelConfig, esession: ESession, args: CLArgs) -> N
 
 def sub_update_index(file_names: List[str], mc: ModelConfig, window: int, esession: ESession) -> None:
     parser = parsers.Parser()
-    model = model_loader.D2VModel(mc)
+    model = load_model(mc)
 
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(mc))
+    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
     with index_db.open(db_base_path, window, "c") as db:
         for tf in file_names:
             sig = file_signature(tf)
@@ -161,7 +160,7 @@ def do_update_index(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
         esession.print("> Created a `%s` directory for index data." % DB_DIR, force=True)
 
     cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(mc))
+    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
     c = index_db.exists(db_base_path, args.window)
     if c > 0:
         if cluster_size != c:

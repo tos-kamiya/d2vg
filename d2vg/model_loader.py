@@ -6,8 +6,10 @@ import platform
 import sys
 
 import appdirs
+import sentence_transformers
 from gensim.models.doc2vec import Doc2Vec
 from gensim.utils import tokenize
+from transformers import DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST
 
 from .iter_funcs import concatenated_list
 from .file_opener import open_file
@@ -140,7 +142,11 @@ class ModelConfigError(Exception):
     pass
 
 
-def get_model_config(name: str) -> ModelConfig:
+def get_model_config(name: Optional[str]) -> ModelConfig:
+    if name is None:
+        mc = ModelConfig('', 'stsb-xlm-r-multilingual', [])
+        return mc
+
     names = name.split('+')
     if len(names) >= 2:
         extra_names = sorted(names[1:])
@@ -157,12 +163,22 @@ def get_model_config(name: str) -> ModelConfig:
     return mc
 
 
-def get_index_db_base_name(mc: ModelConfig):
-    fn = '+'.join(os.path.basename(f) for f in mc.files)
-    return "%s-%s-%s" % (mc.name, fn, INDEXER_VERSION)
+def get_index_db_base_name(mc: ModelConfig) -> str:
+    if not mc.files:
+        return 'sentence_transformers-%s-%s' % ('stsb-xlm-r-multilingual', sentence_transformers.__version__)
+    else:
+        fn = '+'.join(os.path.basename(f) for f in mc.files)
+        return "%s-%s-%s" % (mc.name, fn, INDEXER_VERSION)
 
 
-class D2VModel:
+class Model:
+    def lines_to_vec(self, lines: List[str]) -> Vec:
+        raise NotImplementedError
+
+    def find_oov_tokens(self, line: str) -> List[str]:
+        raise NotImplementedError
+
+class Doc2VecModel(Model):
     def __init__(self, mc: ModelConfig):
         self.name: str = mc.name
         self.lang: str = mc.lang
@@ -170,17 +186,13 @@ class D2VModel:
         assert len(self._models) >= 1
         self._tokenize_func = load_tokenize_func(self.lang)
 
+    def lines_to_vec(self, lines: List[str]) -> Vec:
+        tokens = concatenated_list(self._tokenize_func(L) for L in lines)
         if len(self._models) == 1:
-            m = self._models[0]
-            def lines_to_vec(lines: List[str]) -> Vec:
-                tokens = concatenated_list(self._tokenize_func(L) for L in lines)
-                return m.infer_vector(tokens)
+            return self._models[0].infer_vector(tokens)
         else:
-            def lines_to_vec(lines: List[str]) -> Vec:
-                tokens = concatenated_list(self._tokenize_func(L) for L in lines)
-                vecs = [m.infer_vector(tokens) for m in self._models]
-                return concatenate(vecs)
-        self.lines_to_vec: Callable[[List[str]], Vec] = lines_to_vec
+            vecs = [m.infer_vector(tokens) for m in self._models]
+            return concatenate(vecs)
 
     def find_oov_tokens(self, line: str) -> List[str]:
         tokens = self._tokenize_func(line)
@@ -189,4 +201,26 @@ class D2VModel:
             oovs = [t for t in tokens if m.wv.key_to_index.get(t, None) is None]
             oov_set.intersection_update(oovs)
         return sorted(oov_set)
+
+
+class SentenceTransformersModel(Model):
+    def __init__(self, mc: ModelConfig):
+        assert mc.lang == ''
+        assert mc.name == 'stsb-xlm-r-multilingual'
+        self.model = sentence_transformers.SentenceTransformer('stsb-xlm-r-multilingual')
+
+    def lines_to_vec(self, lines: List[str]) -> Vec:
+        text = '\n'.join(lines)
+        vec = self.model.encode(text, convert_to_numpy=True)
+        return vec
+
+    def find_oov_tokens(self, line: str) -> List[str]:
+        return []
+
+
+def load_model(mc: ModelConfig) -> Model:
+    if mc.name == 'stsb-xlm-r-multilingual':
+        return SentenceTransformersModel(mc)
+    else:
+        return Doc2VecModel(mc)
 

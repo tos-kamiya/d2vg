@@ -16,8 +16,7 @@ from .esesion import ESession
 from .fnmatcher import FNMatcher
 from . import index_db
 from .index_db import file_signature, file_signature_eq
-from . import model_loader
-from .model_loader import ModelConfig
+from .model_loader import ModelConfig, get_index_db_base_name, load_model
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor, kill_all_subprocesses
 from .search_result import IPSRLL_OPT, SearchResult, print_search_results, prune_overlapped_paragraphs
@@ -108,7 +107,7 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(mc))
+    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
     r = index_db.exists(db_base_path, args.window)
     if r == 0:
         esession.clear()
@@ -146,7 +145,7 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
                     print(L, file=outp)
 
     esession.flash("> Loading Doc2Vec model.")
-    model = model_loader.D2VModel(mc)
+    model = load_model(mc)
 
     oov_tokens = model.find_oov_tokens(pattern)
     if oov_tokens:
@@ -215,7 +214,7 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
             temp_dir.cleanup()
 
     esession.activate(False)
-    model = model_loader.D2VModel(mc)
+    model = load_model(mc)
     parser = parsers.Parser()
     parse = lru_cache(maxsize=args.top_n)(parser.parse) if args.paragraph else parser.parse
     search_results = heapq.nlargest(args.top_n, search_results)

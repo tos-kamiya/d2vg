@@ -22,7 +22,7 @@ class CLArgs(InitAttrsWKwArgs):
     file: List[str]
     verbose: bool
     worker: Optional[int]
-    lang: Optional[str]
+    model: Optional[str]
     unknown_word_as_keyword: bool
     top_n: int
     paragraph: bool
@@ -31,7 +31,7 @@ class CLArgs(InitAttrsWKwArgs):
     headline_length: int
     within_indexed: bool
     update_index: bool
-    list_lang: bool
+    list_model: bool
     list_indexed: bool
     help: bool
     version: bool
@@ -40,18 +40,18 @@ class CLArgs(InitAttrsWKwArgs):
 __doc__: str = """Doc2Vec Grep.
 
 Usage:
-  d2vg [-v] [-j WORKER] [-l LANG] [-K] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] <pattern> <file>...
-  d2vg --within-indexed [-v] [-j WORKER] [-l LANG] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] <pattern> [<file>...]
-  d2vg --update-index [-v] -j WORKER [-l LANG] [-w NUM] <file>...
-  d2vg --list-lang
-  d2vg --list-indexed [-l LANG] [-j WORKER] [-w NUM]
+  d2vg [-v] [-j WORKER] [-m MODEL] [-K] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] <pattern> <file>...
+  d2vg --within-indexed [-v] [-j WORKER] [-m MODEL] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] <pattern> [<file>...]
+  d2vg --update-index [-v] -j WORKER [-m MODEL] [-w NUM] <file>...
+  d2vg --list-model
+  d2vg --list-indexed [-m MODEL] [-j WORKER] [-w NUM]
   d2vg --help
   d2vg --version
 
 Options:
   --verbose, -v                 Verbose.
   --worker=WORKER, -j WORKER    Number of worker processes. `0` is interpreted as number of CPU cores.
-  --lang=LANG, -l LANG          Model language.
+  --model=MODEL, -m MODEL       Model name.
   --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
   --top-n=NUM, -t NUM           Show top NUM files [default: 20].
   --paragraph, -p               Search paragraphs in documents.
@@ -61,7 +61,7 @@ Options:
   --within-indexed, -I          Search only within the document files whose indexes are stored in the DB.
   --update-index                Add/update index data for the document files and save it in the DB of `{db_dir}` directory.
   --list-indexed                List the document files (whose indexes are stored) in the DB.
-  --list-lang                   Listing the languages in which the corresponding models are installed.
+  --list-model                  Listing the languages in which the corresponding models are installed.
 """.format(
     default_window_size=model_loader.DEFAULT_WINDOW_SIZE,
     db_dir=DB_DIR,
