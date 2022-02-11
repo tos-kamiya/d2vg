@@ -19,34 +19,34 @@ class EmbeddingUtlsTest(unittest.TestCase):
     def test_extract_headline(self):
         lines = ["%d" % i for i in range(10)]
         sr = (3, 6)
-        high_ip_token_subseq = lines[sr[0] : sr[1]]
+        high_ip_line_subseq = lines[sr[0] : sr[1]]
 
         # stubs
-        def text_to_tokens(line: str) -> List[str]:
-            return line.split(" ")
-
-        def tokens_to_vec(tokens: List[str]) -> Vec:
-            if tokens == high_ip_token_subseq:
+        def lines_to_vec(lines: List[str]) -> Vec:
+            if lines == high_ip_line_subseq:
                 return np.array([1.0, 0.0], dtype=np.float32)
             else:
                 return np.array([0.0, 0.0], dtype=np.float32)
 
         pattern_vec = np.array([1.0, 0.0], dtype=np.float32)
 
-        lt = extract_headline(lines[sr[0] : sr[1]], None, text_to_tokens, tokens_to_vec, pattern_vec, 80, False)
-        self.assertEqual(lt, "|".join(high_ip_token_subseq))
+        lt = extract_headline(lines[sr[0] : sr[1]], lines_to_vec, pattern_vec, 80, False)
+        self.assertEqual(lt, "|".join(high_ip_line_subseq))
 
     def test_extract_pos_vecs(self):
-        line_tokens = [
-            ["1", "2", "3"],
-            ["4", "5", "6"],
-            ["7", "8", "9"],
+        lines = [
+            "1 2 3",
+            "4 5 6",
+            "7 8 9",
         ]
 
-        def tokens_to_vector(tokens):
+        def lines_to_vec(lines):
+            tokens = []
+            for L in lines:
+                tokens.extend(L.split(' '))
             return np.array([max([int(t) for t in tokens]), min([int(t) for t in tokens])], dtype=np.float32)
 
-        actual = extract_pos_vecs(line_tokens, tokens_to_vector, 2)
+        actual = extract_pos_vecs(lines, lines_to_vec, 2)
         expected = [
             ((0, 2), np.array([6.0, 1.0], dtype=np.float32)),
             ((1, 3), np.array([9.0, 4.0], dtype=np.float32)),
@@ -56,7 +56,7 @@ class EmbeddingUtlsTest(unittest.TestCase):
             for a1i, e1i in zip_longest(a[1], e[1]):
                 self.assertEqual(a1i, e1i)
 
-        actual = extract_pos_vecs(line_tokens, tokens_to_vector, 1)
+        actual = extract_pos_vecs(lines, lines_to_vec, 1)
         expected = [
             ((0, 1), np.array([3.0, 1.0], dtype=np.float32)),
             ((1, 2), np.array([6.0, 4.0], dtype=np.float32)),

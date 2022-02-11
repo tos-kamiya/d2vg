@@ -51,13 +51,12 @@ def sub_index_search(
             if fnmatcher is not None and not fnmatcher.match(fn):
                 continue  # for fn
 
-            ipsrlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, None, None) for sr, vec in pos_vecs]  # ignore type mismatch
+            ipsrlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, None) for sr, vec in pos_vecs]  # ignore type mismatch
             ipsrlls = prune_overlapped_paragraphs(ipsrlls, paragraph)
 
-            for ip, subrange, _lines, _line_tokens in ipsrlls:
+            for ip, subrange, _lines in ipsrlls:
                 # assert _lines is None
-                # assert _line_tokens is None
-                heapq.heappush(search_results, ((ip, subrange, None, None), fn, sig))
+                heapq.heappush(search_results, ((ip, subrange, None), fn, sig))
                 if len(search_results) > top_n:
                     _smallest = heapq.heappop(search_results)
 
@@ -149,15 +148,10 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
     esession.flash("> Loading Doc2Vec model.")
     model = model_loader.D2VModel(mc)
 
-    text_to_tokens = model_loader.load_tokenize_func(mc.lang)
-    tokens = text_to_tokens(pattern)
-    oov_tokens = model.find_oov_tokens(tokens)
-    if set(tokens) == set(oov_tokens):
-        esession.clear()
-        sys.exit("Error: <pattern> not including any known words")
+    oov_tokens = model.find_oov_tokens(pattern)
     if oov_tokens:
         esession.print("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
-    pattern_vec = model.tokens_to_vec(tokens)
+    pattern_vec = model.lines_to_vec([pattern])
     model = None  # before forking process, remove a large object from heap
 
     esession.flash("> Calculating similarity to each document.")
@@ -207,7 +201,7 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
                 max_tf = heapq.nlargest(1, search_results)
                 if max_tf:
                     ipsrll, fn, _sig = max_tf[0]
-                    _ip, (b, e), _lines, _line_tokens = ipsrll
+                    _ip, (b, e), _lines = ipsrll
                     top1_message = "Tentative top-1: %s:%d-%d" % (fn, b + 1, e + 1)
                     esession.flash("[%d/%d] %s" % (subi + 1, cluster_size, top1_message))
     except KeyboardInterrupt:
@@ -225,4 +219,4 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
     parser = parsers.Parser()
     parse = lru_cache(maxsize=args.top_n)(parser.parse) if args.paragraph else parser.parse
     search_results = heapq.nlargest(args.top_n, search_results)
-    print_search_results(search_results, parse, text_to_tokens, model.tokens_to_vec, pattern_vec, args.headline_length, args.unit_vector)
+    print_search_results(search_results, parse, model.lines_to_vec, pattern_vec, args.headline_length, args.unit_vector)

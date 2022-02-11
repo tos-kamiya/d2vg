@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, List, NamedTuple, Optional, Tuple
+from typing import Callable, List, NamedTuple, Optional, Tuple
 
 from glob import glob
 import os
@@ -9,8 +9,9 @@ import appdirs
 from gensim.models.doc2vec import Doc2Vec
 from gensim.utils import tokenize
 
-from .vec import Vec, concatenate
+from .iter_funcs import concatenated_list
 from .file_opener import open_file
+from .vec import Vec, concatenate
 
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -167,18 +168,22 @@ class D2VModel:
         self.lang: str = mc.lang
         self._models = [Doc2Vec.load(f) for f in mc.files]
         assert len(self._models) >= 1
+        self._tokenize_func = load_tokenize_func(self.lang)
 
         if len(self._models) == 1:
             m = self._models[0]
-            def tokens_to_vec(tokens: List[str]) -> Vec:
+            def lines_to_vec(lines: List[str]) -> Vec:
+                tokens = concatenated_list(self._tokenize_func(L) for L in lines)
                 return m.infer_vector(tokens)
         else:
-            def tokens_to_vec(tokens: List[str]) -> Vec:
+            def lines_to_vec(lines: List[str]) -> Vec:
+                tokens = concatenated_list(self._tokenize_func(L) for L in lines)
                 vecs = [m.infer_vector(tokens) for m in self._models]
                 return concatenate(vecs)
-        self.tokens_to_vec: Callable[[List[str]], Vec] = tokens_to_vec
+        self.lines_to_vec: Callable[[List[str]], Vec] = lines_to_vec
 
-    def find_oov_tokens(self, tokens: Iterable[str]) -> List[str]:
+    def find_oov_tokens(self, line: str) -> List[str]:
+        tokens = self._tokenize_func(line)
         oov_set = set(t for t in tokens if self._models[0].wv.key_to_index.get(t, None) is None)
         for m in self._models[1:]:
             oovs = [t for t in tokens if m.wv.key_to_index.get(t, None) is None]

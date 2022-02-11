@@ -14,7 +14,7 @@ def remove_non_first_appearances(lst: Iterable[T]) -> List[T]:
     return r
 
 
-def concatinated(lists: Iterable[Iterable[T]]) -> List[T]:
+def concatenated_list(lists: Iterable[Iterable[T]]) -> List[T]:
     r = []
     for l in lists:
         r.extend(l)

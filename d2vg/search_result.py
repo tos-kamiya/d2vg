@@ -2,31 +2,31 @@ from typing import Callable, FrozenSet, Iterable, List, Optional, Tuple
 
 from .embedding_utils import extract_headline
 from .index_db import FileSignature
-from .iter_funcs import concatinated, ranges_overwrapping
+from .iter_funcs import ranges_overwrapping
 from .vec import Vec
 
 
-IPSRLL = Tuple[float, Tuple[int, int], List[str], List[List[str]]]
-IPSRLL_OPT = Tuple[float, Tuple[int, int], Optional[List[str]], Optional[List[List[str]]]]
+IPSRLL = Tuple[float, Tuple[int, int], List[str]]
+IPSRLL_OPT = Tuple[float, Tuple[int, int], Optional[List[str]]]
 
 
 def prune_by_keywords(ip_srlls: Iterable[IPSRLL], keyword_set: FrozenSet[str], min_ip: Optional[float] = None) -> List[IPSRLL]:
     ipsrll_inc_kws: List[IPSRLL] = []
-    lines: Optional[List[str]] = None
-    line_tokens: Optional[List[List[str]]] = None
-    for ip, (sp, ep), ls, lts in ip_srlls:
+    for ipsrll in ip_srlls:
+        ip, (b, e), ls = ipsrll
         if min_ip is not None and ip < min_ip:  # pruning by similarity (inner product)
             continue  # ip
-        if line_tokens is None:
-            assert ls is not None
-            assert lts is not None
-            lines = ls
-            line_tokens = lts
-        assert line_tokens is not None
-        if not keyword_set.issubset(concatinated(line_tokens[sp:ep])):
+        assert ls is not None
+        remaining_keyword_set = set(keyword_set)
+        for line in ls[b:e]:
+            for k in list(remaining_keyword_set):
+                if k in line:
+                    remaining_keyword_set.discard(k)
+            if not remaining_keyword_set:
+                break  # for line
+        if remaining_keyword_set:
             continue  # ip
-        assert lines is not None
-        ipsrll_inc_kws.append((ip, (sp, ep), lines, line_tokens))
+        ipsrll_inc_kws.append(ipsrll)
     return ipsrll_inc_kws
 
 
@@ -54,20 +54,17 @@ SearchResult = Tuple[IPSRLL_OPT, str, FileSignature]
 def print_search_results(
     search_results: List[SearchResult],
     parse: Callable[[str], List[str]],
-    text_to_tokens: Callable[[str], List[str]],
-    tokens_to_vec: Callable[[List[str]], Vec],
+    lines_to_vec: Callable[[List[str]], Vec],
     pattern_vec: Vec,
     headline_length: int,
     unit_vector: bool,
 ) -> None:
     for ipsrll, tf, _sig in search_results:
-        ip, (b, e), lines, line_tokens = ipsrll
+        ip, (b, e), lines = ipsrll
         if ip < 0:
             break  # for tf
         if lines is None:
             lines = parse(tf)
         lines = lines[b:e]
-        if line_tokens:
-            line_tokens = line_tokens[b:e]
-        headline = extract_headline(lines, line_tokens, text_to_tokens, tokens_to_vec, pattern_vec, headline_length, unit_vector)
+        headline = extract_headline(lines, lines_to_vec, pattern_vec, headline_length, unit_vector)
         print("%g\t%s:%d-%d\t%s" % (ip, tf, b + 1, e + 1, headline))

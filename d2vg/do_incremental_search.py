@@ -20,9 +20,8 @@ from .search_result import IPSRLL_OPT, SearchResult, print_search_results, prune
 from .vec import inner_product_n, inner_product_u
 
 
-def do_parse_and_tokenize(file_names: List[str], lang: str, esession: ESession) -> List[Optional[Tuple[str, FileSignature, List[str], List[List[str]]]]]:
+def do_parse(file_names: List[str], esession: ESession) -> List[Optional[Tuple[str, FileSignature, List[str]]]]:
     parser = parsers.Parser()
-    text_to_tokens = model_loader.load_tokenize_func(lang)
 
     r = []
     for tf in file_names:
@@ -34,13 +33,12 @@ def do_parse_and_tokenize(file_names: List[str], lang: str, esession: ESession) 
             r.append(None)
         else:
             assert sig is not None
-            line_tokens = [text_to_tokens(L) for L in lines]
-            r.append((tf, sig, lines, line_tokens))
+            r.append((tf, sig, lines))
     return r
 
 
-def do_parse_and_tokenize_i(d: Tuple[List[str], str, ESession]) -> List[Optional[Tuple[str, FileSignature, List[str], List[List[str]]]]]:
-    return do_parse_and_tokenize(d[0], d[1], d[2])
+def do_parse_i(d: Tuple[List[str], ESession]) -> List[Optional[Tuple[str, FileSignature, List[str]]]]:
+    return do_parse(d[0], d[1])
 
 
 def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
@@ -88,13 +86,8 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
     esession.flash("> Loading Doc2Vec model.")
     model = model_loader.D2VModel(mc)
 
-    text_to_tokens = model_loader.load_tokenize_func(mc.lang)
-    tokens = text_to_tokens(pattern)
-    oov_tokens = model.find_oov_tokens(tokens)
-    if set(tokens) == set(oov_tokens) and not args.unknown_word_as_keyword:
-        esession.clear()
-        sys.exit("Error: <pattern> not including any known words")
-    pattern_vec = model.tokens_to_vec(tokens)
+    oov_tokens = model.find_oov_tokens(pattern)
+    pattern_vec = model.lines_to_vec([pattern])
     keyword_set: FrozenSet[str] = frozenset([])
     if oov_tokens:
         if args.unknown_word_as_keyword:
@@ -107,8 +100,8 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
     inner_product = inner_product_u if args.unit_vector else inner_product_n
     search_results: List[SearchResult] = []
 
-    def update_search_results(tf, sig, pos_vecs, lines, line_tokens):
-        ipsrlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, lines, line_tokens) for sr, vec in pos_vecs]  # ignore type mismatch
+    def update_search_results(tf, sig, pos_vecs, lines):
+        ipsrlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, lines) for sr, vec in pos_vecs]  # ignore type mismatch
         if keyword_set:  # ensure ip_srlls's type is actually List[IPSRLL], in this case
             min_ip = heapq.nsmallest(1, search_results)[0][0][0] if len(search_results) >= args.top_n else None
             ipsrlls = prune_by_keywords(ipsrlls, keyword_set, min_ip)  # see the note at two lines up
@@ -126,7 +119,7 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
         max_tf = heapq.nlargest(1, search_results)
         if max_tf:
             ipsrll, f, _sig = max_tf[0]
-            _ip, (b, e), _lines, _line_tokens = ipsrll
+            _ip, (b, e), _lines = ipsrll
             top1_message = "Tentative top-1: %s:%d-%d" % (f, b + 1, e + 1)
             esession.flash("[%d/%d] %s" % (tfi + 1, len_files, top1_message))
 
@@ -143,16 +136,15 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
                 esession.clear()
                 sys.exit("Error: file signature does not match (the file was modified during search?): %s" % tf)
             pos_vecs = r[1]
-            update_search_results(tf, r[0], pos_vecs, None, None)
+            update_search_results(tf, r[0], pos_vecs, None)
             if tfi % 100 == 1:
                 verbose_print_cur_status(tfi)
         tfi = len(files_stored)
 
         if read_from_stdin:
             lines = parser.parse_text(sys.stdin.read())
-            line_tokens = [text_to_tokens(L) for L in lines]
-            pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, args.window)
-            update_search_results("-", "0-0", pos_vecs, lines, line_tokens)
+            pos_vecs = extract_pos_vecs(lines, model.lines_to_vec, args.window)
+            update_search_results("-", "0-0", pos_vecs, lines)
             tfi += 1
 
         if args.worker is not None:
@@ -160,9 +152,9 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
 
         executor = ProcessPoolExecutor(max_workers=args.worker)
         chunk_size = max(10, min(len(target_files) // 200, 100))
-        args_it = [(chunk, mc.lang, esession) for chunk in split_to_length(files_not_stored, chunk_size)]
+        args_it = [(chunk, esession) for chunk in split_to_length(files_not_stored, chunk_size)]
         files_not_stored = None  # before forking process, remove a (potentially) large object from heap
-        tokenize_it = executor.map(do_parse_and_tokenize_i, args_it)
+        tokenize_it = executor.map(do_parse_i, args_it)
 
         for cr in tokenize_it:
             for i, r in enumerate(cr):
@@ -171,10 +163,10 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
                 tfi += 1
                 if r is None:
                     continue
-                tf, sig, lines, line_tokens = r
+                tf, sig, lines = r
                 if db is None:
-                    pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, args.window)
-                    update_search_results(tf, sig, pos_vecs, lines, line_tokens)
+                    pos_vecs = extract_pos_vecs(lines, model.lines_to_vec, args.window)
+                    update_search_results(tf, sig, pos_vecs, lines)
                 else:
                     sig = file_signature(tf)
                     if sig is None:
@@ -182,11 +174,11 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
                     else:
                         r = db.lookup(tf)
                         if r is None or not file_signature_eq(sig, r[0]):
-                            pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, args.window)
+                            pos_vecs = extract_pos_vecs(lines, model.lines_to_vec, args.window)
                             db.store(tf, sig, pos_vecs)
                         else:
                             pos_vecs = r[1]
-                        update_search_results(tf, sig, pos_vecs, lines, line_tokens)
+                        update_search_results(tf, sig, pos_vecs, lines)
                 if i == 0:
                     verbose_print_cur_status(tfi)
         else:
@@ -206,4 +198,4 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> 
     esession.activate(False)
     parse = lru_cache(maxsize=args.top_n)(parser.parse) if args.paragraph else parser.parse
     search_results = heapq.nlargest(args.top_n, search_results)
-    print_search_results(search_results, parse, text_to_tokens, model.tokens_to_vec, pattern_vec, args.headline_length, args.unit_vector)
+    print_search_results(search_results, parse, model.lines_to_vec, pattern_vec, args.headline_length, args.unit_vector)

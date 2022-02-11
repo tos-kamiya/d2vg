@@ -10,7 +10,7 @@ import sqlite3
 import bson
 import numpy as np
 
-from .iter_funcs import concatinated, split_to_length
+from .iter_funcs import concatenated_list, split_to_length
 from . import raw_db
 from .raw_db import RawDb, FileSignature, PosVec
 
@@ -153,7 +153,7 @@ class IndexDb:
         if r is None:
             return None
         sig, pvvs = r
-        return FileSignature(sig), concatinated(loads_pos_vecs(pvv) for pvv in pvvs)
+        return FileSignature(sig), concatenated_list(loads_pos_vecs(pvv) for pvv in pvvs)
 
     def store(self, file_name: str, sig: FileSignature, pos_vecs: List[PosVec]) -> None:
         if file_name == "-" or os.path.isabs(file_name):
@@ -264,7 +264,7 @@ class PartialIndexDbItemIterator:
         r = raw_db.lookup(self._db, fn)
         assert r is not None
         sig, pvvs = r
-        return fn, FileSignature(sig), concatinated(loads_pos_vecs(pvv) for pvv in pvvs)
+        return fn, FileSignature(sig), concatenated_list(loads_pos_vecs(pvv) for pvv in pvvs)
 
 
 def open_partial_index_db_item_iterator(db_base_path: str, window_size: int, db_index: int) -> PartialIndexDbItemIterator:

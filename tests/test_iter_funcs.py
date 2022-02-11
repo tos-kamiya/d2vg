@@ -13,9 +13,9 @@ class IterFuncsTest(unittest.TestCase):
         expected = [1, 2, 3, 4]
         self.assertSequenceEqual(actual, expected)
 
-    def test_concatinated(self):
+    def test_concatenated_list(self):
         lsts = [[1, 2], [3, 4, 5], [6], [], [7, 8]]
-        actual = concatinated(lsts)
+        actual = concatenated_list(lsts)
         expected = [1, 2, 3, 4, 5, 6, 7, 8]
         self.assertSequenceEqual(actual, expected)
 

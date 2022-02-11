@@ -12,11 +12,10 @@ from d2vg.search_result import prune_by_keywords, prune_overlapped_paragraphs
 class SearchResultFuncsTest(unittest.TestCase):
     def test_prune_by_keywords(self):
         lines = ["a b", "c d", "e f", "b a"]
-        line_tokens = [L.split(" ") for L in lines]
         ip_srlls = [
-            (0.1, (0, 2), lines, line_tokens),  # a b, c d
-            (0.3, (1, 3), lines, line_tokens),  # c d, e f
-            (0.2, (2, 4), lines, line_tokens),  # e f, b a
+            (0.1, (0, 2), lines),  # a b, c d
+            (0.3, (1, 3), lines),  # c d, e f
+            (0.2, (2, 4), lines),  # e f, b a
         ]
 
         actual = prune_by_keywords(ip_srlls, frozenset(["a", "b"]), min_ip=None)
@@ -33,11 +32,10 @@ class SearchResultFuncsTest(unittest.TestCase):
 
     def test_prune_overlapped_paragraphs(self):
         lines = ["a b", "c d", "e f", "b a"]
-        line_tokens = [L.split(" ") for L in lines]
         ip_srlls = [
-            (0.1, (0, 2), lines, line_tokens),
-            (0.3, (1, 3), lines, line_tokens),
-            (0.2, (2, 4), lines, line_tokens),
+            (0.1, (0, 2), lines),
+            (0.3, (1, 3), lines),
+            (0.2, (2, 4), lines),
         ]
 
         actual = prune_overlapped_paragraphs(ip_srlls, True)
@@ -45,9 +43,9 @@ class SearchResultFuncsTest(unittest.TestCase):
         self.assertEqual(actual, expected)
 
         ip_srlls = [
-            (0.3, (0, 2), lines, line_tokens),
-            (0.2, (1, 3), lines, line_tokens),
-            (0.1, (2, 4), lines, line_tokens),
+            (0.3, (0, 2), lines),
+            (0.2, (1, 3), lines),
+            (0.1, (2, 4), lines),
         ]
 
         actual = prune_overlapped_paragraphs(ip_srlls, True)
@@ -55,9 +53,9 @@ class SearchResultFuncsTest(unittest.TestCase):
         self.assertEqual(actual, expected)
 
         ip_srlls = [
-            (0.3, (0, 2), lines, line_tokens),
-            (0.1, (1, 3), lines, line_tokens),
-            (0.2, (2, 4), lines, line_tokens),
+            (0.3, (0, 2), lines),
+            (0.1, (1, 3), lines),
+            (0.2, (2, 4), lines),
         ]
 
         actual = prune_overlapped_paragraphs(ip_srlls, True)

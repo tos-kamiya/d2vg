@@ -121,7 +121,6 @@ def do_list_file_indexed(mc: ModelConfig, esession: ESession, args: CLArgs) -> N
 
 def sub_update_index(file_names: List[str], mc: ModelConfig, window: int, esession: ESession) -> None:
     parser = parsers.Parser()
-    text_to_tokens = model_loader.load_tokenize_func(mc.lang)
     model = model_loader.D2VModel(mc)
 
     db_base_path = os.path.join(DB_DIR, model_loader.get_index_db_base_name(mc))
@@ -138,8 +137,7 @@ def sub_update_index(file_names: List[str], mc: ModelConfig, window: int, esessi
             except parsers.ParseError as e:
                 esession.print("> Warning: %s" % e, force=True)
             else:
-                line_tokens = [text_to_tokens(L) for L in lines]
-                pos_vecs = extract_pos_vecs(line_tokens, model.tokens_to_vec, window)
+                pos_vecs = extract_pos_vecs(lines, model.lines_to_vec, window)
                 db.store(tf, sig, pos_vecs)
 
 
