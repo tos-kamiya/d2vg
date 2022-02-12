@@ -18,7 +18,9 @@ from .file_opener import open_file
 _script_dir: str = os.path.dirname(os.path.realpath(__file__))
 
 _ja_nkf_abspath: Optional[str] = None
-if platform.system() == "Windows" and os.path.exists(os.path.join(_script_dir, "nkf32.exe")):
+if platform.system() == "Windows" and os.path.exists(
+    os.path.join(_script_dir, "nkf32.exe")
+):
     _ja_nkf_abspath = os.path.abspath(os.path.join(_script_dir, "nkf32.exe"))
 
 
@@ -27,7 +29,6 @@ if _ja_nkf_abspath:
     def read_text_file(file_name: str) -> str:
         b = subprocess.check_output([_ja_nkf_abspath, "-Lu", "--oc=UTF-8", file_name])
         return b.decode("utf-8")
-
 
 else:
 
@@ -95,7 +96,6 @@ if platform.system() != "Windows":
         # text = re.sub(r'(cid:\d+)', '', text)  # remove unknown glyphs
 
         return text
-
 
 else:
     import tempfile

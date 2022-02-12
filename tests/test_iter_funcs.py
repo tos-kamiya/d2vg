@@ -35,9 +35,15 @@ class IterFuncsTest(unittest.TestCase):
         tc = fc = 0
         for i in range(1000):
             x = rand.randrange(20)
-            range1 = (x, x + rand.randrange(1, 10))  # prevent from generating an empty range
+            range1 = (
+                x,
+                x + rand.randrange(1, 10),
+            )  # prevent from generating an empty range
             y = rand.randrange(20)
-            range2 = (y, y + rand.randrange(1, 10))  # prevent from generating an empty range
+            range2 = (
+                y,
+                y + rand.randrange(1, 10),
+            )  # prevent from generating an empty range
             act = ranges_overwrapping(range1, range2)
             s1 = set(range(range1[0], range1[1]))
             s2 = set(range(range2[0], range2[1]))

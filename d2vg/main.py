@@ -50,7 +50,7 @@ def main():
         mc: ModelConfig = get_model_config(args.model)
     except ModelConfigError as e:
         print("Error: %s" % e, file=sys.stderr)
-        if str(e).startswith('Multiple'):
+        if str(e).startswith("Multiple"):
             print("   Remove the models with `d2vg-setup-model --delete -m %s`, then re-install the model." % args.model, file=sys.stderr)
         sys.exit(1)
 

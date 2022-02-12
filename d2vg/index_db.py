@@ -17,13 +17,15 @@ from .raw_db import RawDb, FileSignature, PosVec
 
 DB_FILE_EXTENSION = ".sqlite3"
 DB_DEFAULT_CLUSTER_SIZE = 64
-DB_WRITE_QUEUE_MAX_LEN = 2 ** 30
+DB_WRITE_QUEUE_MAX_LEN = 2**30
 MAX_FILE_MTIME_DELTA = 3  # sec
 
 
 if platform.system() == "Windows":
+
     def normpath(file_name: str) -> str:
         return os.path.normpath(file_name.replace("\\", "/"))
+
 else:
     normpath = os.path.normpath
 
@@ -57,10 +59,10 @@ def file_signature_eq(sig1: FileSignature, sig2: Optional[FileSignature]) -> boo
         return -MAX_FILE_MTIME_DELTA <= mtime_diff <= MAX_FILE_MTIME_DELTA
 
     cp = os.path.commonprefix([sig1, sig2])
-    if '-' not in cp:
+    if "-" not in cp:
         return False  # differs in the file size
-    mtime1 = int(sig1[sig1.find('-') + 1 :])
-    mtime2 = int(sig2[sig2.find('-') + 1 :])
+    mtime1 = int(sig1[sig1.find("-") + 1 :])
+    mtime2 = int(sig2[sig2.find("-") + 1 :])
     return -MAX_FILE_MTIME_DELTA <= (mtime1 - mtime2) <= MAX_FILE_MTIME_DELTA
 
 
@@ -264,7 +266,7 @@ class PartialIndexDbItemIterator:
         r = raw_db.lookup(self._db, fn)
         assert r is not None
         sig, pvvs = r
-        return fn, FileSignature(sig), concatenated_list(loads_pos_vecs(pvv) for pvv in pvvs)
+        return (fn, FileSignature(sig), concatenated_list(loads_pos_vecs(pvv) for pvv in pvvs))
 
 
 def open_partial_index_db_item_iterator(db_base_path: str, window_size: int, db_index: int) -> PartialIndexDbItemIterator:

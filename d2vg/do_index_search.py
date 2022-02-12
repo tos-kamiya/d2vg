@@ -140,7 +140,7 @@ def do_index_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> None:
                 for L in a.file:
                     print(L, file=outp)
 
-    esession.flash("> Loading Doc2Vec model.")
+    esession.flash("> Loading model.")
     model = load_model(mc)
 
     oov_tokens = model.find_oov_tokens(pattern)
@@ -165,26 +165,19 @@ def do_index_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> None:
     esession.flash("[0/%d] (progress is counted by member DB files in index DB%s)" % (cluster_size, additional_message))
     executor = ProcessPoolExecutor(max_workers=a.worker)
     if exec_sub_index_search is None:
-        subit = executor.map(
-            sub_index_search_i,
-            ((pattern_vec, db_base_path, a.window, i, fnmatcher, a.top_n, a.unit_vector, a.paragraph) for i in range(cluster_size)),
-        )
+        argsit = ((pattern_vec, db_base_path, a.window, i, fnmatcher, a.top_n, a.unit_vector, a.paragraph) for i in range(cluster_size))
+        subit = executor.map(sub_index_search_i, argsit)
     else:
         assert pattern_vec_file is not None
         assert glob_file is not None
-        subit = executor.map(
-            sub_index_search_r_i,
-            (
-                (pattern_vec_file, db_base_path, a.window, (i, cluster_size), glob_file, a.top_n, a.unit_vector, a.paragraph, esession)
-                for i in range(cluster_size)
-            ),
-        )
+        argsit = ((pattern_vec_file, db_base_path, a.window, (i, cluster_size), glob_file, a.top_n, a.unit_vector, a.paragraph, esession) for i in range(cluster_size))
+        subit = executor.map(sub_index_search_r_i, argsit)
     subi = 0
     try:
         for subi, sub_search_results in enumerate(subit):
             for item in sub_search_results:
                 _ipsrls, fn, sig = item
-                # _ip, _sr, _lines, _line_tokens = _ipsrls
+                # _ip, _sr, _lines = _ipsrls
                 if not file_signature_eq(sig, file_signature(fn)):
                     esession.print("> Warning: obsolete index data. Skip file: %s" % fn, force=True)
                     continue  # for item

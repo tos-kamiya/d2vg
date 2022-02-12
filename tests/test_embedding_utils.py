@@ -30,7 +30,9 @@ class EmbeddingUtlsTest(unittest.TestCase):
 
         pattern_vec = np.array([1.0, 0.0], dtype=np.float32)
 
-        lt = extract_headline(lines[sr[0] : sr[1]], lines_to_vec, pattern_vec, 80, False)
+        lt = extract_headline(
+            lines[sr[0] : sr[1]], lines_to_vec, pattern_vec, 80, False
+        )
         self.assertEqual(lt, "|".join(high_ip_line_subseq))
 
     def test_extract_pos_vecs(self):
@@ -43,8 +45,11 @@ class EmbeddingUtlsTest(unittest.TestCase):
         def lines_to_vec(lines):
             tokens = []
             for L in lines:
-                tokens.extend(L.split(' '))
-            return np.array([max([int(t) for t in tokens]), min([int(t) for t in tokens])], dtype=np.float32)
+                tokens.extend(L.split(" "))
+            return np.array(
+                [max([int(t) for t in tokens]), min([int(t) for t in tokens])],
+                dtype=np.float32,
+            )
 
         actual = extract_pos_vecs(lines, lines_to_vec, 2)
         expected = [

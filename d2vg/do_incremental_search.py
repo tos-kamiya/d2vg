@@ -82,7 +82,7 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> Non
     if len_files == 0:
         return
 
-    esession.flash("> Loading Doc2Vec model.")
+    esession.flash("> Loading model.")
     model = load_model(mc)
 
     oov_tokens = model.find_oov_tokens(pattern)

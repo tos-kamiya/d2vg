@@ -68,9 +68,15 @@ def lookup_signature(db: RawDb, filename: str) -> Optional[FileSignature]:
 def store(db: RawDb, filename: str, signature: str, posvecs_chunks: Iterable[bytes]) -> None:
     with cursor(db) as cur:
         cur.execute("DELETE FROM data WHERE filename = ?", (filename,))
-        cur.execute("INSERT INTO data (filename, chunk, value) VALUES (?, ?, ?)", (filename, 0, signature.encode("utf-8")))
+        cur.execute(
+            "INSERT INTO data (filename, chunk, value) VALUES (?, ?, ?)",
+            (filename, 0, signature.encode("utf-8")),
+        )
         for i, pvc in enumerate(posvecs_chunks):
-            cur.execute("INSERT INTO data (filename, chunk, value) VALUES (?, ?, ?)", (filename, i + 1, pvc))
+            cur.execute(
+                "INSERT INTO data (filename, chunk, value) VALUES (?, ?, ?)",
+                (filename, i + 1, pvc),
+            )
 
 
 def commit(db: RawDb) -> None:

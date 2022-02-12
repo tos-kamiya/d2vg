@@ -1,4 +1,4 @@
-from typing import Callable, FrozenSet, Iterable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from .embedding_utils import extract_headline
 from .index_db import FileSignature
@@ -6,7 +6,7 @@ from .iter_funcs import ranges_overwrapping
 from .vec import Vec
 
 
-IPSRLS = Tuple[float, Tuple[int, int], List[str]]
+# IPSRLS = Tuple[float, Tuple[int, int], List[str]]
 IPSRLS_OPT = Tuple[float, Tuple[int, int], Optional[List[str]]]
 
 

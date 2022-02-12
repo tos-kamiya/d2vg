@@ -82,9 +82,7 @@ def get_model_root_dir() -> str:
         return os.path.join(appdirs.user_config_dir(_app_name), models)
 
 
-def get_model_names(
-    model_root_dirs: Optional[List[str]] = None,
-) -> List[Tuple[str, str]]:
+def get_model_names(model_root_dirs: Optional[List[str]] = None) -> List[Tuple[str, str]]:
     if model_root_dirs is None:
         model_root_dirs = [os.path.join(p) for p in [_user_config_dir, _user_data_dir, _script_dir]]
 
@@ -98,11 +96,7 @@ def get_model_names(
     return list(zip(langs, paths))
 
 
-def get_model_files(
-    lang: str,
-    model_root_dir: Optional[str] = None,
-    exit_when_obsolete_model_found: bool = True,
-) -> List[str]:
+def get_model_files(lang: str, model_root_dir: Optional[str] = None, exit_when_obsolete_model_found: bool = True) -> List[str]:
     if model_root_dir is not None:
         model_root_dirs = [model_root_dir]
     else:
@@ -121,9 +115,7 @@ def get_model_files(
 
             if exit_when_obsolete_model_found:
                 if lines[0] == "jawiki-w100k-d100.model":  # special error messages for those migrating from 0.7.0
-                    sys.exit(
-                        "Error: the model file is obsolete and incompatible.\nInstall a newer model file and remove the directory: %s" % os.path.dirname(ps[0])
-                    )
+                    sys.exit("Error: the model file is obsolete and incompatible.\nInstall a newer model file and remove the directory: %s" % os.path.dirname(ps[0]))
 
             lmp = os.path.join(os.path.dirname(p), lines[0])
             lang_model_paths.append(lmp)
@@ -143,10 +135,10 @@ class ModelConfigError(Exception):
 
 def get_model_config(name: Optional[str]) -> ModelConfig:
     if name is None:
-        mc = ModelConfig('', 'stsb-xlm-r-multilingual', [])
+        mc = ModelConfig("", "stsb-xlm-r-multilingual", [])
         return mc
 
-    names = name.split('+')
+    names = name.split("+")
     if len(names) >= 2:
         extra_names = sorted(names[1:])
         names = [names[0]] + extra_names
@@ -158,15 +150,18 @@ def get_model_config(name: Optional[str]) -> ModelConfig:
         if len(lang_model_files) >= 2:
             raise ModelConfigError("Multiple models are found: %s\n " % n)
         model_files.append(lang_model_files[0])
-    mc = ModelConfig(names[0], '+'.join(names), model_files)
+    mc = ModelConfig(names[0], "+".join(names), model_files)
     return mc
 
 
 def get_index_db_base_name(mc: ModelConfig) -> str:
     if not mc.files:
-        return 'sentence_transformers-%s-%s' % ('stsb-xlm-r-multilingual', sentence_transformers.__version__)
+        return "sentence_transformers-%s-%s" % (
+            "stsb-xlm-r-multilingual",
+            sentence_transformers.__version__,
+        )
     else:
-        fn = '+'.join(os.path.basename(f) for f in mc.files)
+        fn = "+".join(os.path.basename(f) for f in mc.files)
         return "%s-%s-%s" % (mc.name, fn, INDEXER_VERSION)
 
 
@@ -176,6 +171,7 @@ class Model:
 
     def find_oov_tokens(self, line: str) -> List[str]:
         raise NotImplementedError
+
 
 class Doc2VecModel(Model):
     def __init__(self, mc: ModelConfig):
@@ -204,12 +200,12 @@ class Doc2VecModel(Model):
 
 class SentenceTransformersModel(Model):
     def __init__(self, mc: ModelConfig):
-        assert mc.lang == ''
-        assert mc.name == 'stsb-xlm-r-multilingual'
-        self.model = sentence_transformers.SentenceTransformer('stsb-xlm-r-multilingual')
+        assert mc.lang == ""
+        assert mc.name == "stsb-xlm-r-multilingual"
+        self.model = sentence_transformers.SentenceTransformer("stsb-xlm-r-multilingual")
 
     def lines_to_vec(self, lines: List[str]) -> Vec:
-        text = '\n'.join(lines)
+        text = "\n".join(lines)
         vec = self.model.encode(text, convert_to_numpy=True)
         return vec
 
@@ -218,8 +214,7 @@ class SentenceTransformersModel(Model):
 
 
 def load_model(mc: ModelConfig) -> Model:
-    if mc.name == 'stsb-xlm-r-multilingual':
+    if mc.name == "stsb-xlm-r-multilingual":
         return SentenceTransformersModel(mc)
     else:
         return Doc2VecModel(mc)
-

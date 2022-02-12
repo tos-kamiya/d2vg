@@ -30,25 +30,25 @@ def sub_remove_index_no_corresponding_files_i(a: Tuple[str, int, int]) -> int:
     return sub_remove_index_no_corresponding_files(*a)
 
 
-def do_remove_index_no_corresponding_files(laf: ModelConfig, esession: ESession, args: CLArgs) -> None:
+def do_remove_index_no_corresponding_files(laf: ModelConfig, esession: ESession, a: CLArgs) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
     db_base_path = os.path.join(DB_DIR, get_index_db_base_name(laf))
-    r = index_db.exists(db_base_path, args.window)
+    r = index_db.exists(db_base_path, a.window)
     if r == 0:
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
     cluster_size = r
 
-    if args.worker == 0:
-        args.worker = multiprocessing.cpu_count()
+    if a.worker == 0:
+        a.worker = multiprocessing.cpu_count()
 
-    assert args.headline_length >= 8
+    assert a.headline_length >= 8
 
     esession.flash("[0/%d] removing obsolete index data (progress is counted by member DB files in index DB)" % cluster_size)
-    executor = ProcessPoolExecutor(max_workers=args.worker)
-    subit = executor.map(sub_remove_index_no_corresponding_files_i, ((db_base_path, args.window, i) for i in range(cluster_size)))
+    executor = ProcessPoolExecutor(max_workers=a.worker)
+    subit = executor.map(sub_remove_index_no_corresponding_files_i, ((db_base_path, a.window, i) for i in range(cluster_size)))
     count_removed_index_data = 0
     try:
         for subi, c in enumerate(subit):

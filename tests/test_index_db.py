@@ -11,7 +11,13 @@ import tempfile
 import numpy as np
 
 from d2vg import index_db
-from d2vg.index_db import FileSignature, PosVec, decode_file_signature, file_signature, file_signature_eq
+from d2vg.index_db import (
+    FileSignature,
+    PosVec,
+    decode_file_signature,
+    file_signature,
+    file_signature_eq,
+)
 
 
 @contextlib.contextmanager
