@@ -19,7 +19,7 @@ from .index_db import file_signature, file_signature_eq
 from .model_loader import ModelConfig, get_index_db_base_name, load_model
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor, kill_all_subprocesses
-from .search_result import IPSRLL_OPT, SearchResult, print_search_results, prune_overlapped_paragraphs
+from .search_result import IPSRLS_OPT, SearchResult, print_search_results, prune_overlapped_paragraphs
 from .vec import Vec, inner_product_n, inner_product_u, to_float_list
 
 
@@ -50,10 +50,10 @@ def sub_index_search(
             if fnmatcher is not None and not fnmatcher.match(fn):
                 continue  # for fn
 
-            ipsrlls: List[IPSRLL_OPT] = [(inner_product(vec, pattern_vec), sr, None) for sr, vec in pos_vecs]  # ignore type mismatch
-            ipsrlls = prune_overlapped_paragraphs(ipsrlls, paragraph)
+            ipsrlss: List[IPSRLS_OPT] = [(inner_product(vec, pattern_vec), sr, None) for sr, vec in pos_vecs]  # ignore type mismatch
+            ipsrlss = prune_overlapped_paragraphs(ipsrlss, paragraph)
 
-            for ip, subrange, _lines in ipsrlls:
+            for ip, subrange, _lines in ipsrlss:
                 # assert _lines is None
                 heapq.heappush(search_results, ((ip, subrange, None), fn, sig))
                 if len(search_results) > top_n:
@@ -103,45 +103,41 @@ def sub_index_search_r_i(a: Tuple[str, str, int, Tuple[int, int], str, int, bool
     return sub_index_search_r(*a)
 
 
-def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
+def do_index_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
     db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
-    r = index_db.exists(db_base_path, args.window)
+    r = index_db.exists(db_base_path, a.window)
     if r == 0:
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
     cluster_size = r
 
-    if args.worker == 0:
-        args.worker = multiprocessing.cpu_count()
-    assert args.headline_length >= 8
+    if a.worker == 0:
+        a.worker = multiprocessing.cpu_count()
+    assert a.headline_length >= 8
 
-    if args.unknown_word_as_keyword:
-        esession.clear()
-        sys.exit("Error: invalid option with --within-indexed")
-
-    pattern = do_expand_pattern(args.pattern, esession)
+    pattern = do_expand_pattern(a.pattern, esession)
     if not pattern:
         esession.clear()
         sys.exit("Error: pattern string is empty.")
 
-    if args.file and len(args.file) > 100:
+    if a.file and len(a.file) > 100:
         esession.print("> Warning: many (100+) filenames are specified. Consider using glob patterns enclosed in quotes, like '*.txt'", force=True)
 
     fnmatcher = None
     temp_dir = None
     glob_file = None
     pattern_vec_file = None
-    if args.file:
+    if a.file:
         if exec_sub_index_search is None:
-            fnmatcher = FNMatcher(args.file)
+            fnmatcher = FNMatcher(a.file)
         else:
             temp_dir = tempfile.TemporaryDirectory()
             glob_file = os.path.join(temp_dir.name, "filepattern")
             with open_file(glob_file, "w") as outp:
-                for L in args.file:
+                for L in a.file:
                     print(L, file=outp)
 
     esession.flash("> Loading Doc2Vec model.")
@@ -167,11 +163,11 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
     if exec_sub_index_search is not None:
         additional_message = ", with sub-index-search engine"
     esession.flash("[0/%d] (progress is counted by member DB files in index DB%s)" % (cluster_size, additional_message))
-    executor = ProcessPoolExecutor(max_workers=args.worker)
+    executor = ProcessPoolExecutor(max_workers=a.worker)
     if exec_sub_index_search is None:
         subit = executor.map(
             sub_index_search_i,
-            ((pattern_vec, db_base_path, args.window, i, fnmatcher, args.top_n, args.unit_vector, args.paragraph) for i in range(cluster_size)),
+            ((pattern_vec, db_base_path, a.window, i, fnmatcher, a.top_n, a.unit_vector, a.paragraph) for i in range(cluster_size)),
         )
     else:
         assert pattern_vec_file is not None
@@ -179,7 +175,7 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
         subit = executor.map(
             sub_index_search_r_i,
             (
-                (pattern_vec_file, db_base_path, args.window, (i, cluster_size), glob_file, args.top_n, args.unit_vector, args.paragraph, esession)
+                (pattern_vec_file, db_base_path, a.window, (i, cluster_size), glob_file, a.top_n, a.unit_vector, a.paragraph, esession)
                 for i in range(cluster_size)
             ),
         )
@@ -187,20 +183,20 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
     try:
         for subi, sub_search_results in enumerate(subit):
             for item in sub_search_results:
-                _ipsrll, fn, sig = item
-                # _ip, _sr, _lines, _line_tokens = _ipsrll
+                _ipsrls, fn, sig = item
+                # _ip, _sr, _lines, _line_tokens = _ipsrls
                 if not file_signature_eq(sig, file_signature(fn)):
                     esession.print("> Warning: obsolete index data. Skip file: %s" % fn, force=True)
                     continue  # for item
                 heapq.heappush(search_results, item)
-                if len(search_results) > args.top_n:
+                if len(search_results) > a.top_n:
                     _smallest = heapq.heappop(search_results)
 
             if esession.is_active():
                 max_tf = heapq.nlargest(1, search_results)
                 if max_tf:
-                    ipsrll, fn, _sig = max_tf[0]
-                    _ip, (b, e), _lines = ipsrll
+                    ipsrls, fn, _sig = max_tf[0]
+                    _ip, (b, e), _lines = ipsrls
                     top1_message = "Tentative top-1: %s:%d-%d" % (fn, b + 1, e + 1)
                     esession.flash("[%d/%d] %s" % (subi + 1, cluster_size, top1_message))
     except KeyboardInterrupt:
@@ -216,6 +212,6 @@ def do_index_search(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
     esession.activate(False)
     model = load_model(mc)
     parser = parsers.Parser()
-    parse = lru_cache(maxsize=args.top_n)(parser.parse) if args.paragraph else parser.parse
-    search_results = heapq.nlargest(args.top_n, search_results)
-    print_search_results(search_results, parse, model.lines_to_vec, pattern_vec, args.headline_length, args.unit_vector)
+    parse = lru_cache(maxsize=a.top_n)(parser.parse) if a.paragraph else parser.parse
+    search_results = heapq.nlargest(a.top_n, search_results)
+    print_search_results(search_results, parse, model.lines_to_vec, pattern_vec, a.headline_length, a.unit_vector)

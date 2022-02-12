@@ -2,7 +2,7 @@ from typing import *
 
 import unittest
 
-from d2vg.search_result import prune_by_keywords, prune_overlapped_paragraphs
+from d2vg.search_result import prune_overlapped_paragraphs
 
 # def wait_1sec(*args):
 #     time.sleep(1)
@@ -10,60 +10,40 @@ from d2vg.search_result import prune_by_keywords, prune_overlapped_paragraphs
 
 
 class SearchResultFuncsTest(unittest.TestCase):
-    def test_prune_by_keywords(self):
-        lines = ["a b", "c d", "e f", "b a"]
-        ip_srlls = [
-            (0.1, (0, 2), lines),  # a b, c d
-            (0.3, (1, 3), lines),  # c d, e f
-            (0.2, (2, 4), lines),  # e f, b a
-        ]
-
-        actual = prune_by_keywords(ip_srlls, frozenset(["a", "b"]), min_ip=None)
-        expected = [ip_srlls[0], ip_srlls[2]]
-        self.assertEqual(actual, expected)
-
-        actual = prune_by_keywords(ip_srlls, frozenset(["a", "b"]), min_ip=0.15)
-        expected = [ip_srlls[2]]
-        self.assertEqual(actual, expected)
-
-        actual = prune_by_keywords(ip_srlls, frozenset(["d", "e"]), min_ip=None)
-        expected = [ip_srlls[1]]
-        self.assertEqual(actual, expected)
-
     def test_prune_overlapped_paragraphs(self):
         lines = ["a b", "c d", "e f", "b a"]
-        ip_srlls = [
+        ipsrlss = [
             (0.1, (0, 2), lines),
             (0.3, (1, 3), lines),
             (0.2, (2, 4), lines),
         ]
 
-        actual = prune_overlapped_paragraphs(ip_srlls, True)
-        expected = [ip_srlls[1]]
+        actual = prune_overlapped_paragraphs(ipsrlss, True)
+        expected = [ipsrlss[1]]
         self.assertEqual(actual, expected)
 
-        ip_srlls = [
+        ipsrlss = [
             (0.3, (0, 2), lines),
             (0.2, (1, 3), lines),
             (0.1, (2, 4), lines),
         ]
 
-        actual = prune_overlapped_paragraphs(ip_srlls, True)
-        expected = [ip_srlls[0]]
+        actual = prune_overlapped_paragraphs(ipsrlss, True)
+        expected = [ipsrlss[0]]
         self.assertEqual(actual, expected)
 
-        ip_srlls = [
+        ipsrlss = [
             (0.3, (0, 2), lines),
             (0.1, (1, 3), lines),
             (0.2, (2, 4), lines),
         ]
 
-        actual = prune_overlapped_paragraphs(ip_srlls, True)
-        expected = [ip_srlls[0], ip_srlls[2]]
+        actual = prune_overlapped_paragraphs(ipsrlss, True)
+        expected = [ipsrlss[0], ipsrlss[2]]
         self.assertEqual(actual, expected)
 
-        actual = prune_overlapped_paragraphs(ip_srlls, False)
-        expected = [ip_srlls[0]]
+        actual = prune_overlapped_paragraphs(ipsrlss, False)
+        expected = [ipsrlss[0]]
         self.assertEqual(actual, expected)
 
     # def test_kill_child_processes(self):

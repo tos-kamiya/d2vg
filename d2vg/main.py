@@ -1,6 +1,3 @@
-from typing import Optional
-
-import locale
 import os
 import sys
 
@@ -12,19 +9,10 @@ from .model_loader import ModelConfig, ModelConfigError, get_model_config
 
 from .do_incremental_search import do_incremental_search
 from .do_index_search import do_index_search
-from .do_index_management import do_update_index, do_list_file_indexed
+from .do_index_management import do_update_index, do_list_indexed_documents
 
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
-
-
-def get_system_lang() -> Optional[str]:
-    lng = locale.getdefaultlocale()[0]  # such as `ja_JP` or `en_US`
-    if lng is not None:
-        i = lng.find("_")
-        if i >= 0:
-            lng = lng[:i]
-    return lng
 
 
 def main():
@@ -72,7 +60,7 @@ def main():
         elif args.within_indexed:
             do_index_search(mc, esession, args)
         elif args.list_indexed:
-            do_list_file_indexed(mc, esession, args)
+            do_list_indexed_documents(mc, esession, args)
         else:
             do_incremental_search(mc, esession, args)
 

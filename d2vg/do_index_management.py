@@ -75,15 +75,15 @@ def sub_list_file_indexed_i(args: Tuple[str, int, int]) -> List[Tuple[str, int, 
     return sub_list_file_indexed(*args)
 
 
-def do_list_file_indexed(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
-    if args.worker == 0:
-        args.worker = multiprocessing.cpu_count()
+def do_list_indexed_documents(mc: ModelConfig, esession: ESession, a: CLArgs) -> None:
+    if a.worker == 0:
+        a.worker = multiprocessing.cpu_count()
 
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
     db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
-    r = index_db.exists(db_base_path, args.window)
+    r = index_db.exists(db_base_path, a.window)
     if r == 0:
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
@@ -91,12 +91,12 @@ def do_list_file_indexed(mc: ModelConfig, esession: ESession, args: CLArgs) -> N
 
     sis = []
     for db_index in range(cluster_size):
-        it = index_db.open_partial_index_db_item_iterator(db_base_path, args.window, db_index)
+        it = index_db.open_partial_index_db_item_iterator(db_base_path, a.window, db_index)
         sis.append((len(it), db_index))
     sis.sort(reverse=True)
 
-    executor = ProcessPoolExecutor(max_workers=args.worker)
-    subit = executor.map(sub_list_file_indexed_i, ((db_base_path, args.window, i) for _s, i in sis))
+    executor = ProcessPoolExecutor(max_workers=a.worker)
+    subit = executor.map(sub_list_file_indexed_i, ((db_base_path, a.window, i) for _s, i in sis))
     try:
         file_data: List[Tuple[str, int, int, int]] = []
         for fd in subit:

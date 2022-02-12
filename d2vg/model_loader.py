@@ -9,7 +9,6 @@ import appdirs
 import sentence_transformers
 from gensim.models.doc2vec import Doc2Vec
 from gensim.utils import tokenize
-from transformers import DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST
 
 from .iter_funcs import concatenated_list
 from .file_opener import open_file

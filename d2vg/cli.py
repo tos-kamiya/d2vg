@@ -9,7 +9,7 @@ from init_attrs_with_kwargs import InitAttrsWKwArgs
 
 from .esesion import ESession
 from .iter_funcs import remove_non_first_appearances
-from . import model_loader
+from .model_loader import DEFAULT_WINDOW_SIZE
 from .file_opener import open_file
 
 
@@ -23,7 +23,6 @@ class CLArgs(InitAttrsWKwArgs):
     verbose: bool
     worker: Optional[int]
     model: Optional[str]
-    unknown_word_as_keyword: bool
     top_n: int
     paragraph: bool
     unit_vector: bool
@@ -40,7 +39,7 @@ class CLArgs(InitAttrsWKwArgs):
 __doc__: str = """Doc2Vec Grep.
 
 Usage:
-  d2vg [-v] [-j WORKER] [-m MODEL] [-K] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] <pattern> <file>...
+  d2vg [-v] [-j WORKER] [-m MODEL] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] <pattern> <file>...
   d2vg --within-indexed [-v] [-j WORKER] [-m MODEL] [-t NUM] [-p] [-u] [-w NUM] [-a WIDTH] <pattern> [<file>...]
   d2vg --update-index [-v] -j WORKER [-m MODEL] [-w NUM] <file>...
   d2vg --list-model
@@ -52,7 +51,6 @@ Options:
   --verbose, -v                 Verbose.
   --worker=WORKER, -j WORKER    Number of worker processes. `0` is interpreted as number of CPU cores.
   --model=MODEL, -m MODEL       Model name.
-  --unknown-word-as-keyword, -K     When pattern including unknown words, retrieve only documents including such words.
   --top-n=NUM, -t NUM           Show top NUM files [default: 20].
   --paragraph, -p               Search paragraphs in documents.
   --unit-vector, -u             Convert discrete representations to unit vectors before comparison.
@@ -63,7 +61,7 @@ Options:
   --list-indexed                List the document files (whose indexes are stored) in the DB.
   --list-model                  Listing the languages in which the corresponding models are installed.
 """.format(
-    default_window_size=model_loader.DEFAULT_WINDOW_SIZE,
+    default_window_size=DEFAULT_WINDOW_SIZE,
     db_dir=DB_DIR,
 )
 

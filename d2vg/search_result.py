@@ -6,49 +6,29 @@ from .iter_funcs import ranges_overwrapping
 from .vec import Vec
 
 
-IPSRLL = Tuple[float, Tuple[int, int], List[str]]
-IPSRLL_OPT = Tuple[float, Tuple[int, int], Optional[List[str]]]
+IPSRLS = Tuple[float, Tuple[int, int], List[str]]
+IPSRLS_OPT = Tuple[float, Tuple[int, int], Optional[List[str]]]
 
 
-def prune_by_keywords(ip_srlls: Iterable[IPSRLL], keyword_set: FrozenSet[str], min_ip: Optional[float] = None) -> List[IPSRLL]:
-    ipsrll_inc_kws: List[IPSRLL] = []
-    for ipsrll in ip_srlls:
-        ip, (b, e), ls = ipsrll
-        if min_ip is not None and ip < min_ip:  # pruning by similarity (inner product)
-            continue  # ip
-        assert ls is not None
-        remaining_keyword_set = set(keyword_set)
-        for line in ls[b:e]:
-            for k in list(remaining_keyword_set):
-                if k in line:
-                    remaining_keyword_set.discard(k)
-            if not remaining_keyword_set:
-                break  # for line
-        if remaining_keyword_set:
-            continue  # ip
-        ipsrll_inc_kws.append(ipsrll)
-    return ipsrll_inc_kws
-
-
-def prune_overlapped_paragraphs(ip_srlls: List[IPSRLL_OPT], paragraph: bool) -> List[IPSRLL_OPT]:
-    if not ip_srlls:
-        return ip_srlls
+def prune_overlapped_paragraphs(ipsrlss: List[IPSRLS_OPT], paragraph: bool) -> List[IPSRLS_OPT]:
+    if not ipsrlss:
+        return ipsrlss
     elif paragraph:
         dropped_index_set = set()
-        for i, (ip_srll1, ip_srll2) in enumerate(zip(ip_srlls, ip_srlls[1:])):
-            ip1, sr1 = ip_srll1[0], ip_srll1[1]
-            ip2, sr2 = ip_srll2[0], ip_srll2[1]
+        for i, (ipsrls1, ipsrls2) in enumerate(zip(ipsrlss, ipsrlss[1:])):
+            ip1, sr1 = ipsrls1[0], ipsrls1[1]
+            ip2, sr2 = ipsrls2[0], ipsrls2[1]
             if ranges_overwrapping(sr1, sr2):
                 if ip1 < ip2:
                     dropped_index_set.add(i)
                 else:
                     dropped_index_set.add(i + 1)
-        return [ip_srll for i, ip_srll in enumerate(ip_srlls) if i not in dropped_index_set]
+        return [ipsrls for i, ipsrls in enumerate(ipsrlss) if i not in dropped_index_set]
     else:
-        return [sorted(ip_srlls).pop()]  # take last (having the largest ip) item
+        return [sorted(ipsrlss).pop()]  # take last (having the largest ip) item
 
 
-SearchResult = Tuple[IPSRLL_OPT, str, FileSignature]
+SearchResult = Tuple[IPSRLS_OPT, str, FileSignature]
 
 
 def print_search_results(
@@ -59,8 +39,8 @@ def print_search_results(
     headline_length: int,
     unit_vector: bool,
 ) -> None:
-    for ipsrll, tf, _sig in search_results:
-        ip, (b, e), lines = ipsrll
+    for ipsrls, tf, _sig in search_results:
+        ip, (b, e), lines = ipsrls
         if ip < 0:
             break  # for tf
         if lines is None:

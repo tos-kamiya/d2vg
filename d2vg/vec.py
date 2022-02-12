@@ -1,7 +1,5 @@
 from typing import List, NewType
 
-from math import pow
-
 import numpy as np
 from gensim.matutils import unitvec
 

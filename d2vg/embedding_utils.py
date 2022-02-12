@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 from .index_db import PosVec
 from .vec import Vec, inner_product_n, inner_product_u
