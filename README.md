@@ -138,6 +138,9 @@ cd directory of document files
 d2vg -I -j <worker_processes> <query_phrase>
 ```
 
+Example of searching within the index. Over 10 million text files, in 6 minutes or so:  
+![](images/run6.png)
+
 (3) Listing of indexed document files
 
 Outputs a list of document files whose index data is stored in the database.
@@ -149,9 +152,6 @@ d2vg --list-indexed -j <worker_processes>
 ```
 
 If you have a large number of document files and you are sure that they will not be updated so often, I strongly recommend that you use explicit indexing.
-
-Example of searching within the index. Over 10 million text files, in 6 minutes or so:  
-![](images/run6.png)
 
 ## Troubleshooting
 
