@@ -159,7 +159,7 @@ d2vg --list-indexed -j <worker_processes>
 If you have a large number of document files and you are sure that they will not be updated so often, I strongly recommend that you use explicit indexing.
 
 Example of searching within the index. Over 10 million text files, in 6 minutes or so:  
-![](images/run5.png)
+![](images/run6.png)
 
 ## Troubleshooting
 
