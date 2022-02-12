@@ -12,7 +12,6 @@ d2vg, a Doc2Vec grep (but also uses sentence transformers, despite the name)
 Use Doc2Vec models and sentence transformers model to search document files that contain similar parts to the phrase in the query.
 
 * Supports searching within text files (.txt), PDF files (.pdf), and MS Word files (.docx)
-* Supported languages are English and Japanese, in addition to experimental support languages: Chinese, Korean.
 * Performance gain by indexing
 
 ## Installation
@@ -20,16 +19,7 @@ Use Doc2Vec models and sentence transformers model to search document files that
 &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.md)  
 &rarr; [Installation on Windows](docs/installation-on-windows.md)  
 
-By default, d2vg uses the sentence transformers model for multiple languages.
-
-To use Doc2Vec's model specific to a particular language, run the following pip3 command line.
-* For Japanese, type the following command line example.
-* For Chinese, change `d2vg[ja]` to `d2vg[zh]`.
-* For Korean, change `d2vg[ja]` to `d2vg[ko]`.
-
-```sh
-pip3 install d2vg[ja]
-```
+By default, `d2vg` uses the sentence transformers model for multiple languages.
 
 ## Usage
 
@@ -82,6 +72,8 @@ The memory usage and time required for searching are also different.
 
 Example of a search using the English-specific Doc2Vec model with option -m  
 ![](images/run2.png)
+
+(Note) To use the language-specific Doc2Vec model, you need to install the "Install language-specific Doc2Vec model files" during installation.
 
 ### Incremental Indexing
 
