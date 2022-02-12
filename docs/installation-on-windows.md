@@ -31,11 +31,13 @@ In order to use non-English Doc2Vec models, depending on the language, you may n
 pip3 install d2vg[ja]
 ```
 
-(2) Install an English Doc2Vec model file. **(Required)**
+(2) Install language-specific Doc2Vec model files. **(Recommended)**
+
+By default, d2vg uses the sentence transformers model for multiple languages, but it is recommended that you install the Doc2Vec model that is specific to a particular language.
 
 Download the Doc2Vec model file from the github release page.
 
-Install the downloaded file by giving it to `d2vg-setup-model`.
+For example, to install English Doc2Vec model, downloaded a file `enwiki-m700-c380-d100.tar.bz2` and set up it with `d2vg-setup-model`.
 
 ```sh
 d2vg-setup-model the/downloaded/directory/enwiki-m700-c380-d100.tar.bz2
