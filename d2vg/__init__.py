@@ -4,9 +4,11 @@ __version__ = importlib.metadata.version("d2vg")
 
 from .main import main
 
+from . import d2vg_setup_model
+setup_model_main = d2vg_setup_model.main
+
 from . import model_loader
 from . import parsers
-from . import d2vg_setup_model
 from . import vec
 from . import index_db
 from . import fnmatcher
@@ -21,5 +23,3 @@ from . import do_index_search
 from . import do_index_management
 from . import file_opener
 
-
-setup_model_main = d2vg_setup_model.main

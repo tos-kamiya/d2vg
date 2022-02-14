@@ -9,7 +9,7 @@ import tempfile
 
 from docopt import docopt
 
-from .model_loader import get_model_root_dir, get_model_files, get_model_names
+from .model_loader import get_model_root_dirs, list_models
 
 
 TAR_COMPRESSION_METHODS = ["gz", "bz2", "xz"]
@@ -27,32 +27,6 @@ def do_check_compression_method(file_or_url: str) -> str:
     return compression_method
 
 
-def do_verify_archive_file(tar: tarfile.TarFile, model_root_dir: str):
-    installed_language_set = frozenset(l for l, _f in get_model_names(model_root_dirs=[model_root_dir]))
-    members = tar.getmembers()
-    file_dirs = set()
-    detected_lang = None
-    for m in members:
-        if m.isdir():
-            file_dirs.add(m.name)
-        elif m.isfile():
-            dn = os.path.dirname(m.name) or ""
-            file_dirs.add(dn)
-            fn = os.path.basename(m.name)
-            if fn.endswith(".ref"):
-                detected_lang = fn[:-4]
-                if detected_lang in installed_language_set:
-                    sys.exit(
-                        "Error: a model already has been installed for language. Remove the model with `d2vg-setup-model --delete -l %s` before installation."
-                        % detected_lang
-                    )
-    if detected_lang is None:
-        sys.exit("Error: not a model file (<lang>.ref not found).")
-
-    root_dir_of_all_files = file_dirs.pop() if len(file_dirs) != 1 else None
-    return detected_lang, root_dir_of_all_files
-
-
 def identify_tar_compression_method(file_name: str) -> Optional[str]:
     for tcm in TAR_COMPRESSION_METHODS:
         if file_name.endswith(".tar." + tcm):
@@ -61,15 +35,15 @@ def identify_tar_compression_method(file_name: str) -> Optional[str]:
 
 
 __doc__: str = """Setup d2vg's Doc2Vec model.
-
 Usage:
   d2vg-setup-model <file>
+  d2vg-setup-model --list-model
   d2vg-setup-model --delete -m MODEL
-  d2vg-setup-model --delete-all
-
+  d2vg-setup-model --delete-all-installed
 Options:
-  --delete                  Delete a model.
-  --model=MODEL, -l MODEL   Model name.
+  --list-model              Show installed models.
+  --delete                  Delete a model for the language.
+  --model=MODEL, -m MODEL   Model.
   --delete-all              Delete all models.
 """
 
@@ -77,21 +51,28 @@ Options:
 def main():
     args = docopt(__doc__, version="d2vg-setup-model %s" % __version__)
 
-    model_root_dir = get_model_root_dir()
+    model_root_dir = get_model_root_dirs()[0]
 
-    if args["--delete-all"]:
+    if args["--list-model"]:
+        model_name_and_file_paths = list_models(model_root_dir)
+        for n, p in model_name_and_file_paths:
+            print("%s %s" % (n, repr(p)))
+        return
+
+    if args["--delete-all-installed"]:
         shutil.rmtree(model_root_dir)
         return
 
     if args["--delete"]:
         model = args["--model"]
-        fps = get_model_files(model, model_root_dir=model_root_dir)
-        if not fps:
-            sys.exit("Error: no model found for the language: %s" % model)
-        for fp in fps:
-            model_dir = os.path.dirname(fp)
-            shutil.rmtree(model_dir)
-        return
+        model_name_and_file_paths = list_models(model_root_dir)
+        for n, p in model_name_and_file_paths:
+            if n == model:
+                model_dir_path = os.path.dirname(p)
+                shutil.rmtree(model_dir_path)
+                return
+        else:
+            sys.exit("Error: not found model: %s" % model)
 
     archive_file = args["<file>"]
 
@@ -101,9 +82,6 @@ def main():
     # examine structure of the archive file
     compression_method = do_check_compression_method(archive_file)
     tar = tarfile.open(archive_file, "r:%s" % compression_method)
-
-    print("Verifying: %s" % archive_file, file=sys.stderr, flush=True)
-    _detected_lang, root_dir_of_all_files = do_verify_archive_file(tar, model_root_dir)
 
     # expand files to the model directory from the archive file
     print("Expanding: %s" % archive_file, file=sys.stderr, flush=True)

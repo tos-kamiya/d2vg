@@ -58,7 +58,7 @@ if output_file_epoch1 is not None:
     model.train(documents, total_examples=model.corpus_count, epochs=1)
     print("> save (epoch = 1)", file=sys.stderr)
     model.save(output_file_epoch1)
-model.train(documents, total_examples=model.corpus_count, epochs=9)
+model.train(documents, total_examples=model.corpus_count, epochs=19)
 
 print("> save", file=sys.stderr)
 model.save(output_file)

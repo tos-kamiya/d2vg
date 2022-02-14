@@ -30,11 +30,12 @@ def sub_remove_index_no_corresponding_files_i(a: Tuple[str, int, int]) -> int:
     return sub_remove_index_no_corresponding_files(*a)
 
 
-def do_remove_index_no_corresponding_files(laf: ModelConfig, esession: ESession, a: CLArgs) -> None:
+def do_remove_index_no_corresponding_files(mcs: List[ModelConfig], esession: ESession, a: CLArgs) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(laf))
+    b = '+'.join(get_index_db_base_name(mc) for mc in mcs)
+    db_base_path = os.path.join(DB_DIR, b)
     r = index_db.exists(db_base_path, a.window)
     if r == 0:
         esession.clear()
@@ -75,14 +76,15 @@ def sub_list_file_indexed_i(args: Tuple[str, int, int]) -> List[Tuple[str, int, 
     return sub_list_file_indexed(*args)
 
 
-def do_list_indexed_documents(mc: ModelConfig, esession: ESession, a: CLArgs) -> None:
+def do_list_indexed_documents(mcs: List[ModelConfig], esession: ESession, a: CLArgs) -> None:
     if a.worker == 0:
         a.worker = multiprocessing.cpu_count()
 
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
+    b = '+'.join(get_index_db_base_name(mc) for mc in mcs)
+    db_base_path = os.path.join(DB_DIR, b)
     r = index_db.exists(db_base_path, a.window)
     if r == 0:
         esession.clear()
@@ -118,11 +120,12 @@ def do_list_indexed_documents(mc: ModelConfig, esession: ESession, a: CLArgs) ->
         print("%s\t%s\t%d\t%d" % (fn, t, fs, window_size))
 
 
-def sub_update_index(file_names: List[str], mc: ModelConfig, window: int, esession: ESession) -> None:
+def sub_update_index(file_names: List[str], mcs: List[ModelConfig], window: int, esession: ESession) -> None:
     parser = parsers.Parser()
-    model = load_model(mc)
+    model = load_model(mcs)
 
-    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
+    b = '+'.join(get_index_db_base_name(mc) for mc in mcs)
+    db_base_path = os.path.join(DB_DIR, b)
     with index_db.open(db_base_path, window, "c") as db:
         for tf in file_names:
             sig = file_signature(tf)
@@ -140,11 +143,11 @@ def sub_update_index(file_names: List[str], mc: ModelConfig, window: int, esessi
                 db.store(tf, sig, pos_vecs)
 
 
-def sub_update_index_i(d: Tuple[List[str], ModelConfig, int, ESession]) -> None:
+def sub_update_index_i(d: Tuple[List[str], List[ModelConfig], int, ESession]) -> None:
     return sub_update_index(d[0], d[1], d[2], d[3])
 
 
-def do_update_index(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
+def do_update_index(mcs: List[ModelConfig], esession: ESession, args: CLArgs) -> None:
     assert args.worker is not None
 
     esession.flash("> Locating document files.")
@@ -160,7 +163,8 @@ def do_update_index(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
         esession.print("> Created a `%s` directory for index data." % DB_DIR, force=True)
 
     cluster_size = index_db.DB_DEFAULT_CLUSTER_SIZE
-    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
+    b = '+'.join(get_index_db_base_name(mc) for mc in mcs)
+    db_base_path = os.path.join(DB_DIR, b)
     c = index_db.exists(db_base_path, args.window)
     if c > 0:
         if cluster_size != c:
@@ -170,7 +174,7 @@ def do_update_index(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
         db = index_db.open(db_base_path, args.window, "c", cluster_size)
         db.close()
 
-    do_remove_index_no_corresponding_files(mc, esession, args)
+    do_remove_index_no_corresponding_files(mcs, esession, args)
 
     file_splits = [list() for _ in range(cluster_size)]
     for tf in target_files:
@@ -182,7 +186,7 @@ def do_update_index(mc: ModelConfig, esession: ESession, args: CLArgs) -> None:
     file_splits.sort(key=lambda file_list: len(file_list), reverse=True)  # prioritize chunks containing large number of files
 
     executor = ProcessPoolExecutor(max_workers=args.worker)
-    args_it = [(chunk, mc, args.window, esession) for chunk in file_splits]
+    args_it = [(chunk, mcs, args.window, esession) for chunk in file_splits]
     file_splits = None  # before forking process, remove a (potentially) large object from heap
     indexing_it = executor.map(sub_update_index_i, args_it)
     try:

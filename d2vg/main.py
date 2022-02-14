@@ -5,7 +5,7 @@ from docopt import docopt
 
 from .cli import CLArgs, DOC, VERSION
 from .esesion import ESession
-from .model_loader import ModelConfig, ModelConfigError, get_model_config
+from .model_loader import get_model_config, get_model_root_dirs, list_models
 
 from .do_incremental_search import do_incremental_search
 from .do_index_search import do_index_search
@@ -16,18 +16,13 @@ _script_dir = os.path.dirname(os.path.realpath(__file__))
 
 
 def main():
-    pattern_from_file = False
     argv = sys.argv[1:]
     for i, a in enumerate(argv):
-        if a in ["-n", "--normalize-by-length"]:
-            print("> Warning: option --normalize-by-length is now deprecated. Use --unit-vector.", file=sys.stderr)
-            argv[i] = "--unit-vector"
-        elif a in ["-f", "--pattern-from-file"]:
-            print("> Warning: option --pattern-from-file is now deprecated. Specify `=<filename>` as pattern.", file=sys.stderr)
-            pattern_from_file = True
-            del argv[i]
-        elif a == "--bin-dir":
+        if a == "--bin-dir":
             print(os.path.join(_script_dir, "bin"))
+            return
+        if a == '--model-dir':
+            print("\n".join(get_model_root_dirs()))
             return
 
     raw_args = docopt(DOC, argv=argv, version="d2vg %s" % VERSION)
@@ -37,8 +32,6 @@ def main():
         sys.exit("Error: --top-n=0 is no longer supported.")
 
     if args.pattern:
-        if pattern_from_file:
-            args.pattern = "=" + args.pattern
         if args.pattern == "=-":
             sys.exit("Error: can not specify `=-` as <pattern>.")
         if args.file:
@@ -46,23 +39,22 @@ def main():
             if fs.count("-") + fs.count("=-") >= 2:
                 sys.exit("Error: the standard input `-` specified multiple in <pattern> and <file>.")
 
-    try:
-        mc: ModelConfig = get_model_config(args.model)
-    except ModelConfigError as e:
-        print("Error: %s" % e, file=sys.stderr)
-        if str(e).startswith("Multiple"):
-            print("   Remove the models with `d2vg-setup-model --delete -m %s`, then re-install the model." % args.model, file=sys.stderr)
-        sys.exit(1)
+    if not args.model:
+        args.model = ''
+    mcs = [get_model_config(m) for m in args.model.split('+')]
 
     with ESession(active=args.verbose) as esession:
-        if args.update_index:
-            do_update_index(mc, esession, args)
+        if args.list_model:
+            model_name_and_paths = list_models()
+            print('\n'.join(("%s\t%s" % np) for np in model_name_and_paths))
+        elif args.update_index:
+            do_update_index(mcs, esession, args)
         elif args.within_indexed:
-            do_index_search(mc, esession, args)
+            do_index_search(mcs, esession, args)
         elif args.list_indexed:
-            do_list_indexed_documents(mc, esession, args)
+            do_list_indexed_documents(mcs, esession, args)
         else:
-            do_incremental_search(mc, esession, args)
+            do_incremental_search(mcs, esession, args)
 
 
 if __name__ == "__main__":

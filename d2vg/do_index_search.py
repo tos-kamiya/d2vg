@@ -103,11 +103,12 @@ def sub_index_search_r_i(a: Tuple[str, str, int, Tuple[int, int], str, int, bool
     return sub_index_search_r(*a)
 
 
-def do_index_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> None:
+def do_index_search(mcs: List[ModelConfig], esession: ESession, a: CLArgs) -> None:
     if not (os.path.exists(DB_DIR) and os.path.isdir(DB_DIR)):
         esession.clear()
         sys.exit("Error: no index DB (directory `%s`)" % DB_DIR)
-    db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
+    b = '+'.join(get_index_db_base_name(mc) for mc in mcs)
+    db_base_path = os.path.join(DB_DIR, b)
     r = index_db.exists(db_base_path, a.window)
     if r == 0:
         esession.clear()
@@ -140,12 +141,13 @@ def do_index_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> None:
                 for L in a.file:
                     print(L, file=outp)
 
-    esession.flash("> Loading model.")
-    model = load_model(mc)
+    esession.flash("> Loading model(s).")
+    model = load_model(mcs)
 
     oov_tokens = model.find_oov_tokens(pattern)
     if oov_tokens:
         esession.print("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
+
     pattern_vec = model.lines_to_vec([pattern])
     model = None  # before forking process, remove a large object from heap
 
@@ -203,7 +205,7 @@ def do_index_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> None:
             temp_dir.cleanup()
 
     esession.activate(False)
-    model = load_model(mc)
+    model = load_model(mcs)
     parser = parsers.Parser()
     parse = lru_cache(maxsize=a.top_n)(parser.parse) if a.paragraph else parser.parse
     search_results = heapq.nlargest(a.top_n, search_results)

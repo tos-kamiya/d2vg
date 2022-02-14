@@ -40,7 +40,7 @@ def do_parse_i(d: Tuple[List[str], ESession]) -> List[Optional[Tuple[str, FileSi
     return do_parse(d[0], d[1])
 
 
-def do_incremental_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> None:
+def do_incremental_search(mcs: List[ModelConfig], esession: ESession, a: CLArgs) -> None:
     if a.worker == 0:
         a.worker = multiprocessing.cpu_count()
     assert a.headline_length >= 8
@@ -61,7 +61,8 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> Non
 
     db = None
     if os.path.exists(DB_DIR) and os.path.isdir(DB_DIR):
-        db_base_path = os.path.join(DB_DIR, get_index_db_base_name(mc))
+        b = '+'.join(get_index_db_base_name(mc) for mc in mcs)
+        db_base_path = os.path.join(DB_DIR, b)
         db = index_db.open(db_base_path, a.window, "c")
 
     files_stored = []
@@ -82,13 +83,14 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> Non
     if len_files == 0:
         return
 
-    esession.flash("> Loading model.")
-    model = load_model(mc)
+    esession.flash("> Loading model(s).")
+    model = load_model(mcs)
 
     oov_tokens = model.find_oov_tokens(pattern)
-    pattern_vec = model.lines_to_vec([pattern])
     if oov_tokens:
         esession.print("> Warning: unknown words: %s" % ", ".join(oov_tokens), force=True)
+
+    pattern_vec = model.lines_to_vec([pattern])
 
     esession.flash("> Calculating similarity to each document.")
     inner_product = inner_product_u if a.unit_vector else inner_product_n
@@ -150,7 +152,7 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> Non
         for cr in tokenize_it:
             for i, r in enumerate(cr):
                 if model is None:
-                    model = load_model(mc)
+                    model = load_model(mcs)
                 tfi += 1
                 if r is None:
                     continue
@@ -184,7 +186,7 @@ def do_incremental_search(mc: ModelConfig, esession: ESession, a: CLArgs) -> Non
         if db is not None:
             db.close()
     if model is None:
-        model = load_model(mc)
+        model = load_model(mcs)
 
     esession.activate(False)
     parse = lru_cache(maxsize=a.top_n)(parser.parse) if a.paragraph else parser.parse
