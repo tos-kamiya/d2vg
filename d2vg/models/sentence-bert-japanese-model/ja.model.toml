@@ -1,0 +1,2 @@
+type = "sentence-bert-japanese-model"
+file = "sonoisa/sentence-bert-base-ja-mean-tokens-v2"
