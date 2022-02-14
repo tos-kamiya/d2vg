@@ -1,5 +1,7 @@
 ## Installation on Windows
 
+`d2vg` is compatible with Python versions `3.8` and `3.9` (cannot be installed with Python `3.10` because d2vg requires PyTorch).
+
 (1) Install the dependencies and d2vg. **(Required)**
 
 If you are using [Chocolatey](https://chocolatey.org/), you can install Poppler as follows:

@@ -1,5 +1,7 @@
 ## Windowsでのインストール
 
+Pythonのバージョン`3.8`と`3.9`に対応しています(PyTorchが必要であるためPython `3.10`ではインストールできません）。
+
 (1) 依存やd2vg本体のインストール **(必須)**
 
 [Chocolatey](https://chocolatey.org/)を利用している場合には、Popplerを次でインストールしてください。

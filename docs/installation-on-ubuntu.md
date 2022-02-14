@@ -2,6 +2,8 @@
 
 The following steps have been checked on Ubuntu 20.04.
 
+`d2vg` is compatible with Python versions `3.8` and `3.9` (cannot be installed with Python `3.10` because d2vg requires PyTorch).
+
 (1) Install the dependencies and d2vg with `apt` and `pip`. **(Required)**
 
 **Important:** Before installation of d2vg, install pdftotext according to the instructions at https://github.com/jalan/pdftotext.
