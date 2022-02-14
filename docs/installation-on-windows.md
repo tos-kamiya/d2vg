@@ -68,10 +68,3 @@ The bin directory of d2vg can be found as follows:
 ```sh
 d2vg --bin-dir
 ```
-
-### Note on running d2vg
-
-The option `-v` (to show the progress of the search) will output ANSI escape sequences.
-Use a terminal supporting ANSI escape sequences, such as PowerShell.
-
-![](images/win-example-powershell.png)

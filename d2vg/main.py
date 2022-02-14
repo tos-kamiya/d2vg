@@ -1,4 +1,5 @@
 import os
+import platform
 import sys
 
 from docopt import docopt
@@ -16,6 +17,10 @@ _script_dir = os.path.dirname(os.path.realpath(__file__))
 
 
 def main():
+    if platform.system() == "Windows":
+        import colorama
+        colorama.init()
+
     argv = sys.argv[1:]
     for i, a in enumerate(argv):
         if a == "--bin-dir":

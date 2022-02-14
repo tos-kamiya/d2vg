@@ -3,7 +3,7 @@ from typing import Callable
 import sys
 
 
-_ANSI_ESCAPE_CLEAR_CUR_LINE = "\x1b[1K\x1b[1G"
+_ANSI_ESCAPE_CLEAR_CUR_LINE = "\x1b[1K\n\x1b[1A"
 
 
 class ESession:
