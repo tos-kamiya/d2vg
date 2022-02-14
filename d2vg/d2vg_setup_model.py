@@ -54,9 +54,8 @@ def main():
     model_root_dir = get_model_root_dirs()[0]
 
     if args["--list-model"]:
-        model_name_and_file_paths = list_models(model_root_dir)
-        for n, p in model_name_and_file_paths:
-            print("%s %s" % (n, repr(p)))
+        model_name_and_paths = list_models(model_root_dir)
+        print('\n'.join(("%s\t%s" % np) for np in model_name_and_paths))
         return
 
     if args["--delete-all-installed"]:
