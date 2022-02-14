@@ -40,7 +40,9 @@ This example shows a search from 441 PDF files. The peak memory usage was 5.4 Gi
 Verbose option. If specified, it will show the progress and the documents that have the highest similarity up to that point while the search is in progress.
 
 `--model=MODEL, -l MODEL`.  
-Select a Doc2Vec model for the language. The available models are `en`, `ja`, `ko`, and `zh`.
+Select a Doc2Vec model for the language. The available models are `en-s`, and `ja-s`.
+Without the model option, the default multilingual model will be used.
+The reason for the suffix `-s` of these model names is that each of the models has a smaller vocabulary and file size than the default multilingual model. The amount of memory required at runtime is smaller as well.
 
 `--top-n=NUM, -t NUM`  
 Show top NUM documents as results. The default value is 20.
@@ -64,8 +66,8 @@ This may speed up searches, especially when searching from documents that have n
 ### Using the language-specific Doc2Vec model
 
 By default, the multilingual sentence transformers model is used for search.
-The `-m` option allows you to search using a specific language model. 
-For example, you can use `-m en` to use the model for English.
+The `--model` option allows you to search using a specific language model. 
+For example, you can use `-m en-s` to use the model for English.
 
 The search results will differ between the default model and the language-specific model.
 The memory usage and time required for searching are also different.
@@ -173,21 +175,6 @@ If you have a large number of document files and you are sure that they will not
 
 **Q**: I installed the Doc2Vec model correctly, but I got the error "`Error: not found Doc2Vec model for language: jp`".  
 **A**: The language specification was wrong, it should be `ja`, not `jp`.
-
-### Doc2Vec model distribution files
-
-The Doc2Vec model should be created with Gensim v4.
-
-Prepare a file named `<MODEL.ref>` (the `MODEL` is a name of model specified with the option `-m`), contains the relative path to the Doc2Vec model file.
-
-For example, in the case of English Doc2Vec model, the content of the file `en.ref` is the line `enwiki-m700-c380-d100.model`.
-
-```
-~/.config/d2vg/models/enwiki-m700-c380-d100
-├── en.ref
-├── enwiki-m700-c380-d100.model
-└── enwiki-m700-c380-d100.model.dv.vectors.npy
-```
 
 ## Todos
 
