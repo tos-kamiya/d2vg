@@ -23,23 +23,23 @@ githubのリリースページから、英語、日本語に対応するDoc2Vec�
 ダウンロードしたファイルを、`d2vg-setup-model`に与えてインストールしてください。
 
 ```sh
-d2vg-setup-model <ダウンロードしたディレクトリ>/enwiki-m700-c380-d100.tar.bz2
-d2vg-setup-model <ダウンロードしたディレクトリ>/jawiki-janome-m100-c400-d100.tar.bz2
+d2vg-setup-model <ダウンロードしたディレクトリ>/enwiki-xxxxxxxx.tar.bz2
+d2vg-setup-model <ダウンロードしたディレクトリ>/jawiki-xxxxxxxx.tar.bz2
 ```
 
-インストールできているか確認するには、d2vgの`--list-lang`オプションを使ってください。
+インストールできているか確認するには、d2vgの`--list-model`オプションを使ってください。
 
 ```sh
-$ d2vg --list-lang
-ja '/home/<ユーザー名>/.config/d2vg/models/jawiki-janome-m100-c400-d100/ja.ref'
-en '/home/<ユーザー名>/.config/d2vg/models/enwiki-m700-c380-d100/en.ref'
+$ d2vg --list-model
+en '/home/<ユーザー名>/.config/d2vg/models/enwiki-xxxxxxxx/en-s.model.toml'
+ja '/home/<ユーザー名>/.config/d2vg/models/jawiki-xxxxxxxx/ja-s.model.toml'
 ```
 
 何か問題があった場合は、古いDoc2Vecモデルが残っていた可能性があります。
 インストールされているDoc2Vecモデルのファイルを次のようにして削除してから、再度Doc2Vecモデルのインストールの手順を行ってください。
 
 ```sh
-d2vg-setup-model --delete-all
+d2vg-setup-model --delete-all-installed
 ```
 
 (3) インデックス検索エンジンのインストール **(オプション)**

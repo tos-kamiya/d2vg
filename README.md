@@ -63,7 +63,7 @@ Normalize distributed representations of documents into unit vectors when calcul
 Number of worker processes. `0` is interpreted as number of CPU cores.
 This may speed up searches, especially when searching from documents that have not been indexed.
 
-### Using the language-specific Doc2Vec model
+### Using the language-specific model
 
 By default, the multilingual sentence transformers model is used for search.
 The `--model` option allows you to search using a specific language model. 
@@ -75,7 +75,7 @@ The memory usage and time required for searching are also different.
 Example of a search using the English-specific Doc2Vec model with option -m  
 ![](images/run2.png)
 
-(Note) To use the language-specific Doc2Vec model, you need to install the "Install language-specific Doc2Vec model files" during installation.
+(Note) To use the English-specific model, you need to follow the instructions "Install language-specific Doc2Vec model files" during installation.
 
 ### Search individual lines of a text file
 
@@ -118,13 +118,13 @@ For DOS prompt or Powershell, use `rd /s /q .d2vg` or `rm -r -fo .d2vg`, respect
 Example of a search with indexing enabled:  
 ![](images/run4.png)
 
-In this example, it took 53 seconds without indexing, but it was reduced to 5 seconds or so.
+In this example, it took 1 minutes without indexing, but it was reduced to 5 seconds or so.
 
 ### Explicit indexing and searching within the index
 
 There is a method to explicitly create an index and search within the index, especially assuming searching millions of document files.
 
-The index DB created by explicit indexing is exactly the same as the one created by normal incremental indexing.
+The index DB by explicit indexing is the common DB with normal incremental indexing.
 Therefore, explicit index creation and searching within an index can be mixed with incremental indexing. For example, index creation can be done by incremental indexing, and search can be done within the index.
 
 (1) Creating an index

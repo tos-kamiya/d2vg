@@ -18,10 +18,29 @@ curl -O https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.x
 
 (3) Cleaning (remove XML tag, etc.)
 
+Prepare a script `en_tokenize.py` having the following contents:
+
+```python
+import sys
+from gensim.utils import tokenize
+
+input_file = sys.argv[1]
+output_file = sys.argv[2]
+
+with open(output_file, 'w') as outp:
+    with open(input_file) as inp:
+        for L in inp:
+            L = L.rstrip()
+            tokens = tokenize(L)
+            if tokens:
+                print(' '.join(tokens), file=outp)
+```
+
 ```sh
 mkdir wc
 python3 -m wikiextractor.WikiExtractor -b 120m -o wc enwiki-latest-pages-articles.xml.bz2
-ls wc/**/* | xargs -P11 -n1 -I "{}" python3 ../remove_doc_and_file_tags.py "{}" "{}".tokenized
+ls wc/**/wiki_* | xargs -P11 -n1 -I "{}" python3 ../remove_doc_and_file_tags.py "{}" "{}".rdft
+ls wc/**/wiki_*.rdft | xargs -P11 -n1 -I "{}" python3 en_tokenize.py "{}" "{}".tokenized
 ```
 
 The option `-b 120m` of wikiextractor is the size of the data chunk, and the option `-P11` of xarg is the number of worker processes. You can change them according to your environment.
@@ -29,8 +48,8 @@ The option `-b 120m` of wikiextractor is the size of the data chunk, and the opt
 (4) Build Doc2Vec model
 
 ```sh
-python3 ../trim_docs.py -w 11 -o wiki_tokenized -m 700 -c 380 wc/**/*.tokenized
-python3 ../train.py wiki_tokenized -o enwiki-m700-c380-d100.model -e tmp.model
+python3 ../doc_sampling.py -o wiki_tokenized 0.12 wc/**/*.tokenized
+python3 ../train.py wiki_tokenized -o enwiki-s012-m100-d100.model -m 100 -e tmp.model
 ```
 
-Running the above command line, the vocabulary size was `54899`.
+As a result of executing the above command line, the size of the vocabulary was 63,776 words.
