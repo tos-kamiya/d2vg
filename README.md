@@ -60,7 +60,7 @@ The default value is 20.
 Normalize distributed representations of documents into unit vectors when calculating similarity to query phrases. When the length difference between paragraphs is large, the shorter paragraphs will be given priority in the search results. 
 
 `--worker=NUM, -j NUM`
-Number of worker processes. `0` is interpreted as number of CPU cores.
+Number of worker processes. `0` is interpreted as a number of CPU cores.
 This may speed up searches, especially when searching from documents that have not been indexed.
 
 ### Using the language-specific model
@@ -118,25 +118,25 @@ For DOS prompt or Powershell, use `rd /s /q .d2vg` or `rm -r -fo .d2vg`, respect
 Example of a search with indexing enabled:  
 ![](images/run4.png)
 
-In this example, it took 1 minutes without indexing, but it was reduced to 5 seconds or so.
+In this example, it took 1 minute without indexing, but it was reduced to 5 seconds or so.
 
 ### Explicit indexing and searching within the index
 
 There is a method to explicitly create an index and search within the index, especially assuming searching millions of document files.
 
-The index DB by explicit indexing is the common DB with normal incremental indexing.
+The explicit indexing and the (regular) incremental indexing share (access) the same index DB.
 Therefore, explicit index creation and searching within an index can be mixed with incremental indexing. For example, index creation can be done by incremental indexing, and search can be done within the index.
 
 (1) Creating an index
 
-In this explicit index creation, the Doc2Vec model is loaded as many times as the number of worker processes, and the index data are created in parallel and stored in the index DB. Note that it requires a large amount of memory.
+In this explicit index creation, models are loaded as many times as the number of worker processes, and the index data are created in parallel and stored in the index DB. Note that it requires a large amount of memory.
 
 ```sh
 cd directory of document files
 d2vg --update-index -j <worker_processes> <files>...
 ```
 
-While the `-j` option for incremental indexing parallelizes the process of reading text from a document file and tokenizing it (converting it into a sequence of words), the `-j` option for explicit indexing parallelizes the process of embedding text into vectors in addtion to parsing document files.
+While the `-j` option for incremental indexing parallelizes the process of reading text from a document file and tokenizing it (converting it into a sequence of words), the `-j` option for explicit indexing parallelizes the process of embedding text into vectors in addition to parsing document files.
 
 Example of explicit indexing in action:  
 ![](images/run5.png)
@@ -167,7 +167,7 @@ If you have a large number of document files and you are sure that they will not
 
 ## Troubleshooting
 
-**Q**: **Installation of d2vg fails** with a error message saying that "pdftotext" cannot be installed.  
+**Q**: **Installation of d2vg fails** with an error message saying that "pdftotext" cannot be installed.  
 **A** The pdftotext cannot be installed with the pip command alone. Please refer to the installation instructions.  
 
 **Q**: d2vg's **search takes a very long time**.  
