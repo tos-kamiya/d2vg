@@ -10,7 +10,7 @@ from .embedding_utils import extract_pos_vecs
 from .esesion import ESession
 from . import index_db
 from .index_db import file_signature, decode_file_signature, file_signature_eq
-from .model_loader import ModelConfig, get_index_db_base_name, load_model
+from .model_loader import ModelConfig, get_index_db_base_name, load_model, do_load_model
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor
 
@@ -122,7 +122,7 @@ def do_list_indexed_documents(mcs: List[ModelConfig], esession: ESession, a: CLA
 
 def sub_update_index(file_names: List[str], mcs: List[ModelConfig], window: int, esession: ESession) -> None:
     parser = parsers.Parser()
-    model = load_model(mcs)
+    model = do_load_model(mcs,  esession)
 
     b = '+'.join(get_index_db_base_name(mc) for mc in mcs)
     db_base_path = os.path.join(DB_DIR, b)

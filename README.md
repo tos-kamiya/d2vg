@@ -167,14 +167,14 @@ If you have a large number of document files and you are sure that they will not
 
 ## Troubleshooting
 
-**Q**: When I try to install d2vg, it fails with an error message saying that "pdftotext" cannot be installed.  
+**Q**: **Installation of d2vg fails** with a error message saying that "pdftotext" cannot be installed.  
 **A** The pdftotext cannot be installed with the pip command alone. Please refer to the installation instructions.  
 
-**Q**: d2vg hangs.  
-**A**: When indexing is enabled (creating a directory `.d2vg`), force quitting may cause d2vg to hang because it cannot open the indexed DB the next time it is run. Please delete the directory `.d2vg`.
+**Q**: d2vg's **search takes a very long time**.  
+**A**: If `cuda`-enabled `torch` is not installed, the default (sentence trance formers model) takes a very long time to compute. Please follow the instructions of "Install language-specific Doc2Vec model files" during installation, and then specify the option `-m en-s` on the command line.
 
-**Q**: I installed the Doc2Vec model correctly, but I got the error "`Error: not found Doc2Vec model for language: jp`".  
-**A**: The language specification was wrong, it should be `ja`, not `jp`.
+**Q**: d2vg **hangs**.  
+**A**: When indexing is enabled (creating a directory `.d2vg`), force quitting may cause d2vg to hang because it cannot open the indexed DB the next time it is run. Please delete the directory `.d2vg`.
 
 ## Todos
 
@@ -191,9 +191,6 @@ If you have a large number of document files and you are sure that they will not
 
 I referred to the following sites to create the Doc2Vec model:  
 [Doc2vec model trained on Japanese Wikipedia](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia) (in Japanese)
-
-To create the Doc2Vec model for `ko` and `zh`, I referred to the following sources:  
-https://github.com/Kyubyong/wordvectors/blob/master/build_corpus.py
 
 Thanks to Wikipedia for releasing a huge corpus of languages:  
 https://dumps.wikimedia.org/

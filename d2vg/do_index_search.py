@@ -16,7 +16,7 @@ from .esesion import ESession
 from .fnmatcher import FNMatcher
 from . import index_db
 from .index_db import file_signature, file_signature_eq
-from .model_loader import ModelConfig, get_index_db_base_name, load_model
+from .model_loader import ModelConfig, get_index_db_base_name, load_model, do_load_model
 from . import parsers
 from .processpoolexecutor_wrapper import ProcessPoolExecutor, kill_all_subprocesses
 from .search_result import IPSRLS_OPT, SearchResult, print_search_results, prune_overlapped_paragraphs
@@ -141,8 +141,8 @@ def do_index_search(mcs: List[ModelConfig], esession: ESession, a: CLArgs) -> No
                 for L in a.file:
                     print(L, file=outp)
 
-    esession.flash("> Loading model(s).")
-    model = load_model(mcs)
+    esession.flash("> Loading model files.")
+    model = do_load_model(mcs, esession)
 
     oov_tokens = model.find_oov_tokens(pattern)
     if oov_tokens:

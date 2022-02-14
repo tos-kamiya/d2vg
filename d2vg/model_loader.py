@@ -15,8 +15,9 @@ import toml
 from transformers import BertJapaneseTokenizer, BertModel
 import torch
 
-from .iter_funcs import concatenated_list
+from .esesion import ESession
 from .file_opener import open_file
+from .iter_funcs import concatenated_list
 from .vec import Vec, concatenate
 
 
@@ -223,3 +224,11 @@ def load_model(mcs: List[ModelConfig]) -> Model:
         return SentenceBertJapaneseModel(mc)
     else:
         assert False
+
+
+def do_load_model(mcs: List[ModelConfig], esession: ESession) -> Model:
+    for mc in mcs:
+        if mc.type in ['sentence-transformer', 'sentence-bert-japanese-model']:
+            if not torch.cuda.is_available():
+                esession.print("> Warning: Since CUDA is not enabled, computation of a sentence transformer model TAKES A VERY LONG TIME.", force=True)
+    return load_model(mcs)

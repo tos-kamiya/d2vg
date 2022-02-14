@@ -164,13 +164,16 @@ d2vg --list-indexed -j <ワーカープロセスの数>
 
 ## トラブルシューティング
 
-**Q**: d2vgをインストールしようとすると、「pdftotext」がインストールできないというエラーメッセージがでて失敗する。  
+**Q**: d2vgの**インストールに失敗**する。「pdftotext」がインストールできないというエラーメッセージが出力される。  
 **A** pdftotextは、pipコマンドだけではインストールできません。インストールの手順を参照してください。  
 
-**Q**: Doc2Vecモデルをインストールしたのに「`Error: not found Doc2Vec model for language: jp`」というエラーが出ます。  
-**A**: 言語の指定が間違っています。「`jp`」ではなく「`ja`」です。
+**Q**: d2vgを実行しようとすると **「ModuleNotFoundError: No module named 'fugashi'」** といったエラーメッセージが出る。  
+**A**: pipコマンドで`d2vg[ja]`のように`[ja]`をつけて再インストールしてください。
 
-**Q**: d2vgがハングアップします。  
+**Q**: d2vgの**検索に時間がかかる**。
+**A**: `cuda`が有効にされた`torch`がインストールされていない場合には、デフォルト（sentence trance formersのモデル）では計算時間が長大になります。インストール時に「言語特化Doc2Vecモデルのインストール」を行ったうえで、コマンドラインでオプション`-m ja-s`を指定してください。
+
+**Q**: d2vgが**ハングアップする**。  
 **A**: インデックス化が有効な（ディレクトリ`.d2vg`を作成している）ときに、強制終了すると、次回実行時にインデックスDBが開けなくなってハングアップすることがあるようです。ディレクトリ`.d2vg`を削除してください。
 
 ## Todo
@@ -186,14 +189,11 @@ d2vg --list-indexed -j <ワーカープロセスの数>
 
 ## 謝辞
 
-日本語のBertモデルには次を利用させていただきました: 
+日本語のBertモデルには次を利用させていただきました:  
 [sonoisa/sentence-bert-base-ja-mean-tokens-v2](https://huggingface.co/sonoisa/sentence-bert-base-ja-mean-tokens-v2)
 
 Doc2Vecモデルの作成には次のサイトを参考にしました:  
 [日本語Wikipediaで学習したdoc2vecモデル](https://yag-ays.github.io/project/pretrained_doc2vec_wikipedia)
-
-`ko`と`zh`のDoc2Vecモデルの作成は、次のソースを参考にしました:  
-https://github.com/Kyubyong/wordvectors/blob/master/build_corpus.py
 
 膨大な言語コーパスを提供されているWikipediaに感謝いたします:  
 https://dumps.wikimedia.org/
