@@ -32,7 +32,7 @@ This example shows a search from 441 PDF files. With the default model, the peak
 
 ### TL;DR (typical usage)
 
-(In advance, please follow the "Installing the language-specific Doc2Vec model" instruction in the installation.)
+(In advance, please follow the "Install language-specific Doc2Vec model files" instruction in the installation.)
 
 (1) Search for the document files similar to the query phrase.
 
@@ -51,12 +51,12 @@ d2vg -v -m en-s <query_phrase2> <document_files>...
 
 ### Command-line options
 
-`d2vg` has several options.  Here are some options that may be used frequently.
+`d2vg` has several options. Here are some options that may be used frequently.
 
 `--verbose, -v`  
 Verbose option. If specified, it will show the progress and the documents that have the highest similarity up to that point while the search is in progress.
 
-`--model=MODEL, -l MODEL`.  
+`--model=MODEL, -m MODEL`.  
 Use a model other than the default. The available models are `en-s`, `ja` and `ja-s`.
 Without the model option, the default multilingual model will be used.
 
@@ -79,7 +79,7 @@ Normalize distributed representations of documents into unit vectors when calcul
 Number of worker processes. `0` is interpreted as a number of CPU cores.
 This may speed up searches, especially when searching from documents that have not been indexed.
 
-### Using the language-specific model
+### Using language-specific models
 
 By default, a multilingual sentence transformer model is used for search.
 The `--model` option allows you to search using a specific language model. 
