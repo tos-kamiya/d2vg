@@ -22,13 +22,32 @@ By default, `d2vg` uses a sentence transformer model for multiple languages.
 ## Usage
 
 ```sh
-d2vg -v <query_phrase> <files>...
+d2vg -v <query_phrase> <document_files>...
 ```
 
 Example of a search:  
 ![](docs/images/run1.png)
 
 This example shows a search from 441 PDF files. With the default model, the peak memory usage was 5.4 GiB.
+
+### TL;DR (typical usage)
+
+(In advance, please follow the "Installing the language-specific Doc2Vec model" instruction in the installation.)
+
+(1) Search for the document files similar to the query phrase.
+
+```sh
+d2vg -v -m en-s <query_phrase> <document_files>...
+```
+
+(2) Search for document files that are close to the query phrase with indexing the files to repeat the search many times with different queries.
+(You need to specify the document file as a relative path in this command line.)
+
+```sh
+mkdir .d2vg
+d2vg -v -m en-s <query_phrase1> <document_files>...
+d2vg -v -m en-s <query_phrase2> <document_files>...
+```
 
 ### Command-line options
 
