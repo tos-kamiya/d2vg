@@ -41,11 +41,13 @@ In this example, it took 1 minute without indexing, but it was reduced to 5 seco
 In particular, assuming a search for millions of document files (which are not likely to be changed), there is a way to explicitly create an index and then search within that index.
 
 The batch indexing and the (regular) incremental indexing share (access) the same index DB.
-Therefore, batch index creation and searching within an index can be mixed with incremental indexing. For example, index creation can be done by incremental indexing, and search can be done within the index.
+Therefore, batch index creation and searching within an index can be mixed with incremental indexing. 
+For example, you can search the first time along with the incremental indexing, and then search from within the index the second time.
 
 **(1) Creating an index**
 
-In this batch index creation, models are loaded as many times as the number of worker processes, and the index data are created in parallel and stored in the index DB. Note that it requires a large amount of memory (of CPU or GPU depending on the model).
+In this batch index creation, models are loaded as many times as the number of worker processes, and the index data are created in parallel and stored in the index DB. Note that it requires a large amount of memory.
+In particular, when performing calculations on the GPU using the default model, you need to have a graphics board with a large amount of memory.
 
 ```sh
 cd directory of document files
@@ -69,15 +71,13 @@ d2vg -I -j <worker_processes> <query_phrase>
 Example of searching within the index. Over 10 million text files, in 6 minutes or so:  
 ![](images/run6.png)
 
-**(3) Listing of indexed document files**
+### Listing of indexed document files
 
-Outputs a list of document files whose index data is stored in the database.
-Note that if you have a large number of files, it is recommended to run the program in parallel using the -j option.
+To check the document files whose data are stored in the index DB, use the option `--list-indexed`.
+If you have a large number of document files, it is recommended to use the option `-j` to run in parallel.
 
 ```sh
 cd directory of document files
 d2vg --list-indexed -j <worker_processes>
 ```
-
-If you have a large number of document files and you are sure that they will not be updated so often, I strongly recommend that you use batch indexing.
 
