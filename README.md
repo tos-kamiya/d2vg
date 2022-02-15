@@ -101,6 +101,7 @@ Example of searching from dictionary data [Webster's Unabridged English Dictiona
 - [x] DB structure change for performance
 - [x] batch indexing control command in case millions of document files to search
 - [x] Utilizing the sentence transformer models
+- [ ] License compatibility? (gensim's LGPL2)
 
 ## Acknowledgements
 
