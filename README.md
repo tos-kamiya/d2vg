@@ -3,8 +3,6 @@
 &rarr; doc [main](https://github.com/tos-kamiya/d2vg/) | [dev](https://github.com/tos-kamiya/d2vg/tree/dev)  
 &rarr; Japanese doc [main](https://github.com/tos-kamiya/d2vg/blob/main/README.ja_JP.md) | [dev](https://github.com/tos-kamiya/d2vg/blob/dev/README.ja_JP.md)  
 
-**WARNING: In the dev branch, an experiment to change the structure of the DB is currently underway. The index DB created with the alpha or beta release will not be usable in the official release.**
-
 # d2vg
 
 d2vg, a Doc2Vec grep (but also uses sentence transformers, despite the name)
@@ -12,7 +10,7 @@ d2vg, a Doc2Vec grep (but also uses sentence transformers, despite the name)
 Use Doc2Vec models and sentence transformers model to search document files that contain similar parts to the phrase in the query.
 
 * Supports searching within text files (.txt), PDF files (.pdf), and MS Word files (.docx)
-* Performance gain by indexing
+* Search performance gain by index DB
 
 ## Installation
 
@@ -30,7 +28,7 @@ d2vg -v <query_phrase> <files>...
 Example of a search:  
 ![](images/run1.png)
 
-This example shows a search from 441 PDF files. The peak memory usage was 5.4 GiB.
+This example shows a search from 441 PDF files. With the default model, the peak memory usage was 5.4 GiB.
 
 ### Options
 
@@ -40,7 +38,7 @@ This example shows a search from 441 PDF files. The peak memory usage was 5.4 Gi
 Verbose option. If specified, it will show the progress and the documents that have the highest similarity up to that point while the search is in progress.
 
 `--model=MODEL, -l MODEL`.  
-Select a Doc2Vec model for the language. The available models are `en-s`, and `ja-s`.
+Use a model other than the default. The available models are `en-s`, `ja` and `ja-s`.
 Without the model option, the default multilingual model will be used.
 
 `--top-n=NUM, -t NUM`  
@@ -119,25 +117,25 @@ Example of a search with indexing enabled:
 
 In this example, it took 1 minute without indexing, but it was reduced to 5 seconds or so.
 
-### Explicit indexing and searching within the index
+### Batch indexing and searching within the index
 
 There is a method to explicitly create an index and search within the index, especially assuming searching millions of document files.
 
-The explicit indexing and the (regular) incremental indexing share (access) the same index DB.
-Therefore, explicit index creation and searching within an index can be mixed with incremental indexing. For example, index creation can be done by incremental indexing, and search can be done within the index.
+The batch indexing and the (regular) incremental indexing share (access) the same index DB.
+Therefore, batch index creation and searching within an index can be mixed with incremental indexing. For example, index creation can be done by incremental indexing, and search can be done within the index.
 
 (1) Creating an index
 
-In this explicit index creation, models are loaded as many times as the number of worker processes, and the index data are created in parallel and stored in the index DB. Note that it requires a large amount of memory.
+In this batch index creation, models are loaded as many times as the number of worker processes, and the index data are created in parallel and stored in the index DB. Note that it requires a large amount of memory (of CPU or GPU depending on the model).
 
 ```sh
 cd directory of document files
 d2vg --update-index -j <worker_processes> <files>...
 ```
 
-While the `-j` option for incremental indexing parallelizes the process of reading text from a document file and tokenizing it (converting it into a sequence of words), the `-j` option for explicit indexing parallelizes the process of embedding text into vectors in addition to parsing document files.
+While the `-j` option for incremental indexing parallelizes the process of reading text from a document file and tokenizing it (converting it into a sequence of words), the `-j` option for batch indexing parallelizes the process of embedding text into vectors in addition to parsing document files.
 
-Example of explicit indexing in action:  
+Example of batch indexing in action:  
 ![](images/run5.png)
 
 (2) Searching within the index
@@ -162,7 +160,7 @@ cd directory of document files
 d2vg --list-indexed -j <worker_processes>
 ```
 
-If you have a large number of document files and you are sure that they will not be updated so often, I strongly recommend that you use explicit indexing.
+If you have a large number of document files and you are sure that they will not be updated so often, I strongly recommend that you use batch indexing.
 
 ## Troubleshooting
 
@@ -174,14 +172,9 @@ If you have a large number of document files and you are sure that they will not
 
 ## Todos
 
-- [x] Optimization by indexing document files
-- [x] Prepare Doc2Vec models compatible with the latest gensim (gensim v4) 
-- [x] Check installation on Windows
-- [x] Combining keyword search
-- [x] Easy installation
-- [x] DB structure change for performance (v2)
-- [x] Explicit indexing control command in case millions of document files to search (v2)
-- [x] Utilizing the sentence transformers model (v2)
+- [x] DB structure change for performance
+- [x] batch indexing control command in case millions of document files to search
+- [x] Utilizing the sentence transformers model
 
 ## Acknowledgements
 
