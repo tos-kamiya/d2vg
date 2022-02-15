@@ -5,9 +5,9 @@
 
 # d2vg
 
-d2vg, a Doc2Vec grep (but also uses sentence transformers, despite the name)
+d2vg, a Doc2Vec grep (but also uses sentence transformer models, despite the name)
 
-Use Doc2Vec models and sentence transformers model to search document files that contain similar parts to the phrase in the query.
+Use Doc2Vec models and sentence transformer models to search document files that contain similar parts to the phrase in the query.
 
 * Supports searching within text files (.txt), PDF files (.pdf), and MS Word files (.docx)
 * Search performance gain by index DB
@@ -17,7 +17,7 @@ Use Doc2Vec models and sentence transformers model to search document files that
 &rarr; [Installation on Ubuntu](docs/installation-on-ubuntu.md)  
 &rarr; [Installation on Windows](docs/installation-on-windows.md)  
 
-By default, `d2vg` uses the sentence transformers model for multiple languages.
+By default, `d2vg` uses a sentence transformer model for multiple languages.
 
 ## Usage
 
@@ -62,7 +62,7 @@ This may speed up searches, especially when searching from documents that have n
 
 ### Using the language-specific model
 
-By default, the multilingual sentence transformers model is used for search.
+By default, a multilingual sentence transformer model is used for search.
 The `--model` option allows you to search using a specific language model. 
 For example, you can use `-m en-s` to use the model for English.
 
@@ -167,14 +167,14 @@ If you have a large number of document files and you are sure that they will not
 | Symptom | Solution |
 | --- | --- |
 | **Installation of d2vg fails** with an error message saying that "pdftotext" cannot be installed.  | The pdftotext cannot be installed with the pip command alone. Please refer to the installation instructions. |
-| d2vg's **search takes a very long time**. | If `cuda`-enabled `torch` is not installed, the default (sentence trance formers model) takes a very long time to compute. Please follow the instructions of "Install language-specific Doc2Vec model files" during installation, and then specify the option `-m en-s` on the command line. |
+| d2vg's **search takes a very long time**. | If `cuda`-enabled `torch` is not installed, the default model takes a very long time to compute. (Depends on the situation, but it took 10 times longer than other models when I tried it.) To use a lightweight model, follow the instructions of "Install language-specific Doc2Vec model files" during installation, and then specify the option `-m en-s` on the command line. |
 | d2vg **hangs**.  | When indexing is enabled (creating a directory `.d2vg`), force quitting may cause d2vg to hang because it cannot open the indexed DB the next time it is run. Please delete the directory `.d2vg`. |
 
 ## Todos
 
 - [x] DB structure change for performance
 - [x] batch indexing control command in case millions of document files to search
-- [x] Utilizing the sentence transformers model
+- [x] Utilizing the sentence transformer models
 
 ## Acknowledgements
 

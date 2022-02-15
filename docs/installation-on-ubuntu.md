@@ -22,7 +22,7 @@ pip3 install d2vg[ja]
 
 (2) Install language-specific Doc2Vec model files. **(Recommended)**
 
-By default, d2vg uses the sentence transformers model for multiple languages, but it is recommended that you install the Doc2Vec model that is specific to a particular language.
+By default, d2vg uses a sentence transformer model for multiple languages, but it is recommended that you install the Doc2Vec model that is specific to a particular language.
 
 Download the Doc2Vec model file from the github release page.
 

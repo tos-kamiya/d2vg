@@ -2,9 +2,9 @@
 
 # d2vg
 
-d2vgはDoc2Vecによるgrepです（ただし、sentence transformersのモデルも利用します）。
+d2vgはDoc2Vecによるgrepです（ただし、sentence transformerのモデルも利用します）。
 
-Doc2Vecモデルやsentence transformersのモデルを使って、クエリのフレーズに似た部分を含む文書ファイルを検索します。
+Doc2Vecモデルやsentence transformerモデルを使って、クエリのフレーズに似た部分を含む文書ファイルを検索します。
 
 * テキストファイル（.txt）、PDFファイル（.pdf）、MS Wordファイル（.docx）からの検索に対応
 * インデックスDBにより検索性能を向上
@@ -14,7 +14,7 @@ Doc2Vecモデルやsentence transformersのモデルを使って、クエリの�
 &rarr; [Ubuntuでのインストール](docs/installation-on-ubuntu.ja_JP.md)  
 &rarr; [Windowsでのインストール](docs/installation-on-windows.ja_JP.md)  
 
-デフォルトで、`d2vg`は多言語に対応したsentence transformersモデルを検索に利用します。
+デフォルトで、`d2vg`は多言語に対応したsentence transformerモデルを検索に利用します。
 
 ## 利用法
 
@@ -61,7 +61,7 @@ Verboseオプションです。指定すると、検索の進行中に、その�
 
 日本語に関しては、次の3つのモデルを利用した検索を行うことができます。
 
-* 多言語に対応したsentence transformersモデル(デフォルトで利用)
+* 多言語に対応したsentence transformerモデル(デフォルトで利用)
 * 日本語Sentence Bertモデル`sonoisa/sentence-bert-base-ja-mean-tokens-v2` (オプション`-m ja`により利用)
 * Wikipeida日本語版から生成した小型のDoc2Vecモデル(オプション`-m ja-s`により利用)
 
@@ -169,14 +169,14 @@ d2vg --list-indexed -j <ワーカープロセスの数>
 | d2vgの**インストールに失敗**する。「pdftotext」がインストールできないというエラーメッセージが出力される。 |  pdftotextは、pipコマンドだけではインストールできません。インストールの手順を参照してください。 |
 | d2vgを実行しようとすると **「ModuleNotFoundError: No module named 'fugashi'」** といったエラーメッセージが出る。 | pipコマンドで`d2vg[ja]`のように`[ja]`をつけて再インストールしてください。 |
 | d2vgを実行中に **「UnicodeEncodeError: 'cp932' codec can't encode character ...」** とっいたエラーメッセージが出る。 | ファイルの文字コードに関するエラーです。Windows上で実行している場合は「NKFのインストール」を行ってみてください。 |
-| d2vgの**検索に時間がかかる**。 | `cuda`が有効にされた`torch`がインストールされていない場合には、デフォルト（sentence trance formersのモデル）では計算時間が長大になります。インストール時に「言語特化Doc2Vecモデルのインストール」を行ったうえで、コマンドラインでオプション`-m ja-s`を指定してください。 |
+| d2vgの**検索に時間がかかる**。 | `cuda`が有効にされた`torch`がインストールされていない場合には、デフォルトのモデルでは計算時間が長大になります。（状況に依存しますが、試しみたところでは他のモデルの10倍の時間がかかりました。）より軽量なモデルを使うには、インストール時に「言語特化Doc2Vecモデルのインストール」を行ったうえで、コマンドラインでオプション`-m ja-s`を指定してください。 |
 | d2vgが**ハングアップする**。 | インデックス化が有効な（ディレクトリ`.d2vg`を作成している）ときに、強制終了すると、次回実行時にインデックスDBが開けなくなってハングアップすることがあるようです。ディレクトリ`.d2vg`を削除してください。 |
 
 ## Todo
 
 - [x] パフォーマンス向上のためのDB構造の変更 (v2)
 - [x] 検索対象の文書ファイルが数百万個になったときのためのバッチによるインデックス化コマンド (v2)
-- [x] sentence transformersのモデルの利用 (v2)
+- [x] sentence transformerモデルの利用 (v2)
 
 ## 謝辞
 
