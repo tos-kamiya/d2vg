@@ -42,7 +42,6 @@ Verbose option. If specified, it will show the progress and the documents that h
 `--model=MODEL, -l MODEL`.  
 Select a Doc2Vec model for the language. The available models are `en-s`, and `ja-s`.
 Without the model option, the default multilingual model will be used.
-The reason for the suffix `-s` of these model names is that each of the models has a smaller vocabulary and file size than the default multilingual model. The amount of memory required at runtime is smaller as well.
 
 `--top-n=NUM, -t NUM`  
 Show top NUM documents as results. The default value is 20.
@@ -69,13 +68,13 @@ By default, the multilingual sentence transformers model is used for search.
 The `--model` option allows you to search using a specific language model. 
 For example, you can use `-m en-s` to use the model for English.
 
-The search results will differ between the default model and the language-specific model.
-The memory usage and time required for searching are also different.
+The suffix `-s` of model `en-s` stands for "small"; a smaller vocabulary and file size than the default multilingual model. The amount of memory required at runtime is smaller as well.
+Even if the same document files are searched, the search results will be different between the default model and `en-s`.
 
-Example of a search using the English-specific Doc2Vec model with option -m  
+Example usage of option `-m`  
 ![](images/run2.png)
 
-(Note) To use the English-specific model, you need to follow the instructions "Install language-specific Doc2Vec model files" during installation.
+(Note) To use the English-specific model (option `-m en-s`), you need to follow the instructions "Install language-specific Doc2Vec model files" during installation.
 
 ### Search individual lines of a text file
 
@@ -167,14 +166,11 @@ If you have a large number of document files and you are sure that they will not
 
 ## Troubleshooting
 
-**Q**: **Installation of d2vg fails** with an error message saying that "pdftotext" cannot be installed.  
-**A** The pdftotext cannot be installed with the pip command alone. Please refer to the installation instructions.  
-
-**Q**: d2vg's **search takes a very long time**.  
-**A**: If `cuda`-enabled `torch` is not installed, the default (sentence trance formers model) takes a very long time to compute. Please follow the instructions of "Install language-specific Doc2Vec model files" during installation, and then specify the option `-m en-s` on the command line.
-
-**Q**: d2vg **hangs**.  
-**A**: When indexing is enabled (creating a directory `.d2vg`), force quitting may cause d2vg to hang because it cannot open the indexed DB the next time it is run. Please delete the directory `.d2vg`.
+| Symptom | Solution |
+| --- | --- |
+| **Installation of d2vg fails** with an error message saying that "pdftotext" cannot be installed.  | The pdftotext cannot be installed with the pip command alone. Please refer to the installation instructions. |
+| d2vg's **search takes a very long time**. | If `cuda`-enabled `torch` is not installed, the default (sentence trance formers model) takes a very long time to compute. Please follow the instructions of "Install language-specific Doc2Vec model files" during installation, and then specify the option `-m en-s` on the command line. |
+| d2vg **hangs**.  | When indexing is enabled (creating a directory `.d2vg`), force quitting may cause d2vg to hang because it cannot open the indexed DB the next time it is run. Please delete the directory `.d2vg`. |
 
 ## Todos
 

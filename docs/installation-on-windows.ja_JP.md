@@ -63,7 +63,7 @@ d2vg-setup-model --delete-all-installed
 (いわゆるShiftJISのテキストファイルと、UTF-8のテキストファイルが混在しているときに、NKFを用いることで、文字コードを判別して読み込みます。)
 
 [ネットワーク用漢字コード変換フィルタ シフトJIS,EUC-JP,ISO-2022-JP,UTF-8,UTF-16](https://www.vector.co.jp/soft/win95/util/se295331.html)
-からダウンロードして展開したディレクトリ「vc2005win32(98,Me,NT,2000,XP,Vista,7)Windows-31J」の中にあるファイル`nkf32.exe`を利用します。
+からダウンロードして展開したディレクトリ「vc2005 > win32(98,Me,NT,2000,XP,Vista,7)Windows-31J」の中にあるファイル`nkf32.exe`を利用します。
 
 d2vgのbinディレクトリを、DOSプロンプトなどで次を実行することで確認してください。
 
