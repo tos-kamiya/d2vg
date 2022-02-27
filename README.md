@@ -1,3 +1,5 @@
+**With the adoption of SCDV, many things have changed, including the command line, usability, and performance characteristics, so we have moved it to a new repository as a new tool dvg (https://github.com/tos-kamiya/dvg/).**
+
 ![test workflow](https://github.com/tos-kamiya/d2vg/workflows/Tests/badge.svg)
 
 &rarr; [Japanese doc](https://github.com/tos-kamiya/d2vg/blob/main/README.ja_JP.md)
